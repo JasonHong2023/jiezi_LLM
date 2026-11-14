@@ -30,7 +30,7 @@
 
 ## 6. 平台安裝步驟 / Platform setup
 
-- [ ] 6.1 抽出共用的「開新視窗、沒有時間限制等待 sudo」機制（design D8），依平台選擇 `wt.exe` / 終端機模擬器 / 目前終端機 / Extract the shared no-time-limit sudo window mechanism (D8)
+- [x] 6.1 抽出共用的「開新視窗、沒有時間限制等待 sudo」機制（design D8），依平台選擇 `wt.exe` / 終端機模擬器 / 目前終端機 / Extract the shared no-time-limit sudo window mechanism (D8)
 - [ ] 6.2 `scripts/setup/wsl2/install_cuda`：依驅動支援的 CUDA 版本選擇 toolkit，使用 `wsl-ubuntu` 套件庫，不安裝驅動 / WSL2 CUDA toolkit installer
 - [ ] 6.3 `scripts/setup/ubuntu/install_cuda`：使用對應 Ubuntu 版本的 NVIDIA 套件庫，其餘同 6.2 / Native Ubuntu CUDA toolkit installer
 
