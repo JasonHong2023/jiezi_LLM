@@ -5,7 +5,7 @@
 ## 2. 題庫 / Question bank
 
 - [x] 2.1 建立 `eval/banks/r0.toml`（各來源網址、鎖定 revision、下載檔 SHA-256、登記鍵、題型、分組、題數、種子）與解析器 `src/jiezi/eval/bank.py`（含授權閘門）；測試缺登記鍵、SHA 不符 / Add the bank definition and parser with the license gate; test missing key and SHA mismatch
-- [ ] 2.2 `src/jiezi/eval/sources.py`：下載（驗 SHA-256）與各格式解析（ZIP 內 CSV、JSONL、`jsonl.gz`、JSON）為統一題目格式；以本機迷你樣本檔測試 / Download and parse each format into one item schema; test with local mini fixtures
+- [x] 2.2 `src/jiezi/eval/sources.py`：下載（驗 SHA-256）與各格式解析（ZIP 內 CSV、JSONL、`jsonl.gz`、JSON）為統一題目格式；以本機迷你樣本檔測試 / Download and parse each format into one item schema; test with local mini fixtures
 - [ ] 2.3 `src/jiezi/eval/wiki.py`：典範條目列表與指定 revision 的條目 HTML，清理、截斷、正規化；以本機 HTML 樣本測試 / Wikipedia featured list and pinned-revision article cleaning; test with local HTML fixtures
 - [ ] 2.4 `src/jiezi/eval/lock.py`：固定種子分層抽題、寫出與驗證 `r0.lock.json`、`bank_hash`、題數檢查；測試重現性與不符時停止 / Seeded stratified sampling, lock write/verify, count check; test reproducibility and mismatch stop
 
