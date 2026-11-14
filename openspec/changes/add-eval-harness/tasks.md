@@ -30,4 +30,4 @@
 - [x] 6.1 下載來源並產生 `r0.lock.json`（只下載約 20 MB 資料，非長時間工作），確認各類 ≥ 50 題後 commit 鎖定檔 / Fetch sources, generate and commit the lock (small download, not a long job)
 - [ ] 6.2 以 `scripts/eval schedule` 排程到 00:00 之後：本機 Qwen3-0.6B-Q8_0、純 CPU、貪婪解碼跑完整 R0；隔天確認排程確實執行並記錄結果（R17 條件） / Schedule a full local R0 run after 00:00 and record results next day
 - [ ] 6.3 經使用者同意後（OQ3），排程到 00:00 之後以雲端基準模型跑 150 題知識題（基準模式），記錄作廢題數、失敗題數與實際模型；有失敗時隔夜以 `--retry-errors` 補跑 / With consent (OQ3), schedule the 150 knowledge items on the cloud baseline after 00:00
-- [ ] 6.4 執行 `openspec validate add-eval-harness --strict` 與完整單元測試，結果記入討論記錄 / Validate the change and run all unit tests; log results
+- [x] 6.4 執行 `openspec validate add-eval-harness --strict` 與完整單元測試，結果記入討論記錄 / Validate the change and run all unit tests; log results
