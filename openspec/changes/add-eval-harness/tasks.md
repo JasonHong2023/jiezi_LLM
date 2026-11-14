@@ -1,6 +1,6 @@
 ## 1. 授權登記 / License registry
 
-- [ ] 1.1 建立 `docs/licenses.md`：逐一讀官方授權檔（C-Eval、CMMLU、Chinese SimpleQA、evalplus、ACEBench、中文維基、繁簡對照表來源、既有的 Qwen3-0.6B），登記來源、授權、商用、訓練、查證日期與來源；二手資料標 ⚠️ / Create `docs/licenses.md` from official license files
+- [x] 1.1 建立 `docs/licenses.md`：逐一讀官方授權檔（C-Eval、CMMLU、Chinese SimpleQA、evalplus、ACEBench、中文維基、繁簡對照表來源、既有的 Qwen3-0.6B），登記來源、授權、商用、訓練、查證日期與來源；二手資料標 ⚠️ / Create `docs/licenses.md` from official license files
 
 ## 2. 題庫 / Question bank
 
