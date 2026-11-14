@@ -1,0 +1,193 @@
+# R0 題庫定義（design D2、D3）/ R0 bank definition (design D2, D3)
+#
+# 只版控來源定義；題目內容在執行時下載並快取於 var/eval/（不進版控）。
+# Only source definitions are versioned; item content is downloaded at run time and cached in var/eval/.
+# 每個來源的 license_key 必須存在於 docs/licenses.md（規則 R18.3）。
+# Every source's license_key must exist in docs/licenses.md (rule R18.3).
+#
+# task:   qa | code | summary | tool（四類任務 / the four task types）
+# group:  knowledge | reasoning（知識題與推理 / 工具題分開報告，R17.5）
+# scorer: multiple_choice | simpleqa_approx | pending_verifier
+# stratify: 依此欄位分層平均抽題 / stratify sampling by this field
+
+name = "r0"
+version = 1
+seed = 20261114
+
+[[source]]
+key = "chinese-simpleqa"
+license_key = "chinese-simpleqa"
+task = "qa"
+group = "knowledge"
+scorer = "simpleqa_approx"
+format = "simpleqa_jsonl"
+count = 50
+stratify = "primary_category"
+
+[[source.file]]
+name = "chinese_simpleqa.jsonl"
+url = "https://huggingface.co/datasets/OpenStellarTeam/Chinese-SimpleQA/resolve/336305fc5f1da8184e3f70aff4473408418383a0/chinese_simpleqa.jsonl"
+sha256 = "c626ca34be9bdd2203a45a70af9fed177d48d9f12ba10ebe9bf10f0c6b1eb484"
+
+[[source]]
+key = "ceval-val"
+license_key = "ceval"
+task = "qa"
+group = "knowledge"
+scorer = "multiple_choice"
+format = "ceval_zip"
+count = 50
+stratify = "subject"
+
+[[source.file]]
+name = "ceval-exam.zip"
+url = "https://huggingface.co/datasets/ceval/ceval-exam/resolve/3923b519fd180e689d0961bf3a032ece929742f3/ceval-exam.zip"
+sha256 = "68786deeea68ff089c56563ee48fab8160da857b77b913437bb504d681fd8e20"
+
+[[source]]
+key = "cmmlu"
+license_key = "cmmlu"
+task = "qa"
+group = "knowledge"
+scorer = "multiple_choice"
+format = "cmmlu_zip"
+count = 50
+stratify = "subject"
+
+[[source.file]]
+name = "cmmlu_v1_0_1.zip"
+url = "https://huggingface.co/datasets/lmlmcat/cmmlu/resolve/efcc940752ea4a1ea94d2727f11f83858d64fc8e/cmmlu_v1_0_1.zip"
+sha256 = "22ecf70b28bef447ee7d8aa5fe144f56996762f901a8537b03b7693773c672a6"
+
+[[source]]
+key = "humanevalplus"
+license_key = "humanevalplus"
+task = "code"
+group = "reasoning"
+scorer = "pending_verifier"
+format = "evalplus_jsonl_gz"
+count = 25
+
+[[source.file]]
+name = "HumanEvalPlus.jsonl.gz"
+url = "https://github.com/evalplus/humanevalplus_release/releases/download/v0.1.10/HumanEvalPlus.jsonl.gz"
+sha256 = "272720b90ac375502c8ed23cd791c2a93dfb22a911641a494da74a426c09f101"
+
+[[source]]
+key = "mbppplus"
+license_key = "mbppplus"
+task = "code"
+group = "reasoning"
+scorer = "pending_verifier"
+format = "evalplus_jsonl_gz"
+count = 25
+
+[[source.file]]
+name = "MbppPlus.jsonl.gz"
+url = "https://github.com/evalplus/mbppplus_release/releases/download/v0.2.0/MbppPlus.jsonl.gz"
+sha256 = "af43697e8791c4c149bdfd6b489d8b5412507551ac20e28a439f650b8225db63"
+
+[[source]]
+key = "acebench-zh"
+license_key = "acebench"
+task = "tool"
+group = "reasoning"
+scorer = "pending_verifier"
+format = "acebench_jsonl"
+count = 50
+stratify = "category"
+
+[[source.file]]
+name = "data_normal_single_turn_single_function.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_single_turn_single_function.json"
+sha256 = "95e8a10c3fc98d706d69a2b47cc7ec1a18449eb24e1dcb616b232b0a8a83aff4"
+
+[[source.file]]
+name = "answer_normal_single_turn_single_function.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_single_turn_single_function.json"
+sha256 = "5e4a4f3268e46095392b6208bec3aefd015467404985d45853155ec6f036edf4"
+
+[[source.file]]
+name = "data_normal_single_turn_parallel_function.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_single_turn_parallel_function.json"
+sha256 = "8479e8739e25a58ae61f18b5d68f3843dc76f22c3ce155353d56036d4778f894"
+
+[[source.file]]
+name = "answer_normal_single_turn_parallel_function.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_single_turn_parallel_function.json"
+sha256 = "0786f04adcc1672ebd7d938fc8f602da674c3312b4c8b5f3d7d990523bc8891a"
+
+[[source.file]]
+name = "data_normal_atom_bool.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_atom_bool.json"
+sha256 = "0b945e4a0d2018875b6e50a28e55359d94609681853c50a87d205a115be55bf8"
+
+[[source.file]]
+name = "answer_normal_atom_bool.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_atom_bool.json"
+sha256 = "c9e9bb15872a71284742de8f9db241ead8621682bb4b0ba1894550cec95be571"
+
+[[source.file]]
+name = "data_normal_atom_enum.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_atom_enum.json"
+sha256 = "806ece8b2753779816185a4060e68667053ab46144bb2b294c434bc3d9116f85"
+
+[[source.file]]
+name = "answer_normal_atom_enum.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_atom_enum.json"
+sha256 = "57a75036ca6901619d7f6ed37371d82063524e1e02dacc58ba1e68c73e3d0888"
+
+[[source.file]]
+name = "data_normal_atom_list.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_atom_list.json"
+sha256 = "da4839021796e66eb149917ebfe839dd25589faf2310e5360e8d04d1c102db88"
+
+[[source.file]]
+name = "answer_normal_atom_list.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_atom_list.json"
+sha256 = "586834aabc928c93df20af270656bdf2846ae7761a490daf4fbfd11b51e4f7bf"
+
+[[source.file]]
+name = "data_normal_atom_number.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_atom_number.json"
+sha256 = "924456f46cada50acd4330c8b7f3790ce12837480991d1a6f3098fd73cb8ebb7"
+
+[[source.file]]
+name = "answer_normal_atom_number.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_atom_number.json"
+sha256 = "093288870e5a7d6243d2e598c5ea2ccaa7a84e95a523af70b17a5b43bef11cd7"
+
+[[source.file]]
+name = "data_normal_atom_object_short.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_atom_object_short.json"
+sha256 = "1c7107737f539243629cbbf118a83138428c05da5574658caf6c8ff8ed0a252d"
+
+[[source.file]]
+name = "answer_normal_atom_object_short.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_atom_object_short.json"
+sha256 = "e4cd896db9292b7eb350d2551d8ce63a60d537b66dd28b13c64e2118afad3483"
+
+[[source.file]]
+name = "data_normal_atom_object_deep.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_atom_object_deep.json"
+sha256 = "7d59db54e4d486fb29e985bfccc752afac92fe67a739c0f3ea2303dfd89f87af"
+
+[[source.file]]
+name = "answer_normal_atom_object_deep.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_atom_object_deep.json"
+sha256 = "15bd565c36852d3d93e68f4dee5189b6b0a87dfd9947544dda82759d46b67eb9"
+
+[[source]]
+key = "zhwiki-featured"
+license_key = "zh-wikipedia"
+task = "summary"
+group = "reasoning"
+scorer = "pending_verifier"
+format = "wiki_featured"
+count = 50
+stratify = "section"
+site = "https://zh.wikipedia.org"
+list_page = "Wikipedia:典范条目"
+list_revid = 95548025
+variant = "zh-tw"
+max_chars = 2000
