@@ -20,7 +20,8 @@ SHA = hashlib.sha256(PAYLOAD).hexdigest()
 def entry(**over):
     e = {"name": "m", "file": "m.gguf", "url": "https://example.invalid/m.gguf", "sha256": SHA,
          "size": len(PAYLOAD), "license": "Apache-2.0", "license_url": "https://example.invalid/LICENSE",
-         "smoke_test": True}
+         "commercial_use": False, "training_use": True, "license_checked": "2026-11-14",
+         "source": "test", "smoke_test": True}
     e.update(over)
     return "[[model]]\n" + "".join(f"{k} = {v!r}\n".replace("True", "true").replace("False", "false")
                                    for k, v in e.items() if v is not None)
@@ -50,9 +51,16 @@ class TestManifest(unittest.TestCase):
         self.assertEqual(models.smoke_model(ms).file, "Qwen3-0.6B-Q8_0.gguf")
 
     def test_missing_license_fields(self):
-        for field in ("license", "license_url"):
+        for field in ("license", "license_url", "commercial_use", "training_use", "license_checked", "source"):
             with self.subTest(field=field), self.assertRaisesRegex(StepError, f"missing {field}"):
                 models.load_manifest(self.write(entry(**{field: None})))
+
+    def test_false_flag_is_not_missing(self):
+        self.assertFalse(models.load_manifest(self.write(entry()))[0].commercial_use)
+
+    def test_flag_must_be_bool(self):
+        with self.assertRaisesRegex(StepError, "true or false"):
+            models.load_manifest(self.write(entry(training_use="yes")))
 
     def test_bad_sha_and_path(self):
         with self.assertRaisesRegex(StepError, "invalid sha256"):

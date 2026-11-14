@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# 芥子一鍵建置入口（design D1）：只檢查 uv，其餘交給 Python 步驟模組。
+# Jiezi one-command entry (design D1): checks for uv only; the Python step module does the rest.
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if ! command -v uv >/dev/null 2>&1; then
+  cat >&2 <<'MSG'
+找不到 uv。請依官方方式安裝後重新執行 / uv not found. Install it the official way, then re-run:
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  （說明 / docs: https://docs.astral.sh/uv/getting-started/installation/）
+MSG
+  exit 1
+fi
+
+cd "$ROOT"
+export PYTHONPATH="$ROOT/scripts${PYTHONPATH:+:$PYTHONPATH}"
+unset VIRTUAL_ENV  # 一律使用專案的 .venv / always use the project .venv
+exec uv run --project "$ROOT" python -m jiezi_bootstrap "$@"

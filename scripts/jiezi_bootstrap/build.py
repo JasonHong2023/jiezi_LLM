@@ -79,23 +79,13 @@ def _tool(name: str, root: Path) -> str:
     return found
 
 
-def plan_build(backend: str, facts: dict, src: Path, root: Path) -> Plan:
-    """產生某後端的 configure / compile 指令（純函式，不執行）。
-    Produce configure / compile commands for one backend (pure; runs nothing)."""
-    cmake, ninja = _tool("cmake", root), _tool("ninja", root)
-    build_dir = root / f"build-{backend}"
-    flags = ["-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={ninja}", *COMMON_FLAGS, *ACCELERATORS.get(backend, [])]
-    notes: list[str] = []
-
-    if backend == "cuda":
-        nvcc = (((facts.get("backends") or {}).get("toolchain") or {}).get("nvcc") or {}).get("path")
-        if not nvcc:
-            raise StepError("cuda selected but facts.json has no backends.toolchain.nvcc.path; re-run hwprobe")
-        flags.append(f"-DCMAKE_CUDA_COMPILER={nvcc}")
-
+def budget_prefix(facts: dict) -> tuple[list[str], int, list[str]]:
+    """依 budgets.cpu 產生 (指令前綴, 執行緒數, 說明)；建置與冒煙測試共用（R18.1、R18.2）。
+    Build (command prefix, thread count, notes) from budgets.cpu; shared by builds and the smoke test."""
     cpu = (facts.get("budgets") or {}).get("cpu") or {}
     jobs = max(1, int(cpu.get("usable_threads") or 1))
     prefix = ["nice", "-n", str(NICE_LEVEL)]
+    notes: list[str] = []
     hint = cpu.get("affinity_hint")
     if hint and shutil.which("taskset"):
         prefix = ["taskset", "-c", hint, *prefix]
@@ -105,7 +95,24 @@ def plan_build(backend: str, facts: dict, src: Path, root: Path) -> Plan:
     else:
         notes.append(f"affinity_hint unavailable ({cpu.get('affinity_reason') or 'no reason given'}); "
                      "CPU pinning skipped, jobs still limited")
-    notes.append(f"-j {jobs} (budgets.cpu.usable_threads), nice {NICE_LEVEL}")
+    notes.append(f"{jobs} threads (budgets.cpu.usable_threads), nice {NICE_LEVEL}")
+    return prefix, jobs, notes
+
+
+def plan_build(backend: str, facts: dict, src: Path, root: Path) -> Plan:
+    """產生某後端的 configure / compile 指令（純函式，不執行）。
+    Produce configure / compile commands for one backend (pure; runs nothing)."""
+    cmake, ninja = _tool("cmake", root), _tool("ninja", root)
+    build_dir = root / f"build-{backend}"
+    flags = ["-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={ninja}", *COMMON_FLAGS, *ACCELERATORS.get(backend, [])]
+
+    if backend == "cuda":
+        nvcc = (((facts.get("backends") or {}).get("toolchain") or {}).get("nvcc") or {}).get("path")
+        if not nvcc:
+            raise StepError("cuda selected but facts.json has no backends.toolchain.nvcc.path; re-run hwprobe")
+        flags.append(f"-DCMAKE_CUDA_COMPILER={nvcc}")
+
+    prefix, jobs, notes = budget_prefix(facts)
 
     return Plan(
         backend=backend,

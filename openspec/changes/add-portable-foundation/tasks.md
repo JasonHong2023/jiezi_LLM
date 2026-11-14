@@ -37,8 +37,8 @@
 ## 7. 模型清單與 bootstrap / Model manifest and bootstrap
 
 - [x] 7.1 建立 `models/manifest.toml`（冒煙測試模型：`Qwen3-0.6B-Q8_0.gguf`，網址、SHA-256、大小依 design 已決 OQ1；先讀官方 LICENSE 確認 Apache 2.0），實作解析、授權欄位檢查、下載與 SHA-256 驗證；以本機假檔案測試「SHA 不符」與「缺授權欄位」 / Add the manifest and its loader with license and SHA-256 checks; test failure cases offline
-- [ ] 7.2 實作 `scripts/bootstrap`（bash 入口）與 Python 步驟模組：前置條件檢查、`.env` 建立、各步驟狀態記錄與續跑 / Implement the bash entry and the Python step module with prerequisite checks, `.env` creation, and resumable state
-- [ ] 7.3 實作冒煙測試：純 CPU、不連雲端，輸出 build、模型、執行緒數與 t/s / Implement the CPU-only, no-cloud smoke test
+- [x] 7.2 實作 `scripts/bootstrap`（bash 入口）與 Python 步驟模組：前置條件檢查、`.env` 建立、各步驟狀態記錄與續跑 / Implement the bash entry and the Python step module with prerequisite checks, `.env` creation, and resumable state
+- [x] 7.3 實作冒煙測試：純 CPU、不連雲端，輸出 build、模型、執行緒數與 t/s / Implement the CPU-only, no-cloud smoke test
 
 ## 8. 驗證（量測與實作分開） / Verification (separate from implementation)
 

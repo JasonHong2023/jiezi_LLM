@@ -11,7 +11,8 @@ from pathlib import Path
 
 from .common import StepError, load_env, project_root
 
-REQUIRED = ("name", "file", "url", "sha256", "size", "license", "license_url")
+REQUIRED = ("name", "file", "url", "sha256", "size", "license", "license_url",
+            "commercial_use", "training_use", "license_checked", "source")
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,10 @@ class Model:
     size: int
     license: str
     license_url: str
+    commercial_use: bool
+    training_use: bool
+    license_checked: str
+    source: str
     smoke_test: bool = False
 
 
@@ -37,7 +42,7 @@ def load_manifest(path: Path | None = None) -> list[Model]:
     models = []
     for i, entry in enumerate(data.get("model") or []):
         label = entry.get("name") or f"entry #{i + 1}"
-        missing = [k for k in REQUIRED if not entry.get(k)]
+        missing = [k for k in REQUIRED if entry.get(k) in (None, "")]  # false 是合法值 / false is a valid value
         if missing:
             raise StepError(f"{path}: {label} is missing {', '.join(missing)} (license fields are mandatory, R18.3)")
         sha = str(entry["sha256"]).lower()
@@ -45,9 +50,14 @@ def load_manifest(path: Path | None = None) -> list[Model]:
             raise StepError(f"{path}: {label} has an invalid sha256")
         if "/" in entry["file"] or entry["file"].startswith("."):
             raise StepError(f"{path}: {label} file must be a plain file name")
+        for k in ("commercial_use", "training_use"):
+            if not isinstance(entry[k], bool):
+                raise StepError(f"{path}: {label} {k} must be true or false")
         models.append(Model(name=entry["name"], file=entry["file"], url=entry["url"], sha256=sha,
-                            size=int(entry["size"]), license=entry["license"],
-                            license_url=entry["license_url"], smoke_test=bool(entry.get("smoke_test", False))))
+                            size=int(entry["size"]), license=entry["license"], license_url=entry["license_url"],
+                            commercial_use=entry["commercial_use"], training_use=entry["training_use"],
+                            license_checked=str(entry["license_checked"]), source=entry["source"],
+                            smoke_test=bool(entry.get("smoke_test", False))))
     if not models:
         raise StepError(f"{path}: no [[model]] entries")
     return models
