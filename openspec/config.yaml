@@ -1,0 +1,29 @@
+schema: spec-driven
+
+# 專案背景，建立 artifact 時提供給 AI / Project context shown to AI when creating artifacts
+context: |
+  Project: 芥子 Jiezi — tiny compressed core LLM + system capabilities on laptop-class hardware.
+  Authoritative rules: reference/rules_20261114.md (R1–R23). Project overview: openspec/project.md.
+  Stack: llama.cpp (commit-pinned), Python via uv (hwprobe = stdlib only), cmake/ninja via uv,
+  Textual (TUI), Tauri 2 + React client-only SPA (desktop), MCP (tools). PHP is banned (R23).
+  Portability is mandatory (R21): detect machine facts at runtime, configuration via .env,
+  no absolute paths / hardcoded endpoints / keys / model aliases / GPU models; CPU-only + no-cloud path must work;
+  engine supports Linux + WSL2, clients support Windows 11 native + Ubuntu.
+  Resources must never be fully consumed; budgets come from facts.json (R18). Local ports 36100–36119, bind 127.0.0.1 (R11).
+  Unit tests must pass without GPU, network, or cloud keys (R21.7).
+
+# 各 artifact 的規則 / Per-artifact rules
+rules:
+  proposal:
+    - 繁體中文與英文逐句 / 逐 bullet 並列（R1） / Traditional Chinese and English side by side, sentence by sentence (R1)
+    - 必須有 Non-Goals 段落 / Must include a Non-Goals section
+  design:
+    - 繁體中文與英文並列（R1） / Bilingual zh-TW + English (R1)
+    - 方向有多種合理選項且選錯代價高時，列入 Open Questions 而非自行決定（R15） / List costly multi-option decisions under Open Questions (R15)
+  specs:
+    - Requirement 使用 SHALL / MUST；每條至少一個 Scenario（R7） / Use SHALL/MUST; at least one Scenario per requirement (R7)
+    - 繁體中文與英文並列（R1） / Bilingual (R1)
+  tasks:
+    - 每個 task 1–3 個檔案、≤ 250 行純邏輯、單一 session 可完成（R8） / Task granularity per R8
+    - 量測與實作拆成不同 task（R8） / Separate measurement tasks from implementation tasks (R8)
+    - 繁體中文與英文並列（R1） / Bilingual (R1)
