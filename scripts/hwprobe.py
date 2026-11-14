@@ -308,10 +308,43 @@ def collect_builds(root: Path | None = None) -> list[dict]:
     return builds
 
 
+def _cuda_version_key(path: Path) -> tuple:
+    # /usr/local/cuda-13.3 → (13, 3)；無法解析者排最後 / unparsable names sort last
+    m = re.search(r"cuda-(\d+)\.(\d+)", str(path))
+    return (int(m.group(1)), int(m.group(2))) if m else (-1, -1)
+
+
+def find_nvcc(env: dict | None = None, local: Path = Path("/usr/local")) -> dict:
+    """依 design D4 順序尋找 nvcc，回傳 {path, version, found_via, checked}。
+    Find nvcc in the design D4 order; return {path, version, found_via, checked}."""
+    env = os.environ if env is None else env
+    checked: list[str] = []
+    candidates: list[tuple[str, Path]] = []
+    on_path = shutil.which("nvcc", path=env.get("PATH"))
+    if on_path:
+        candidates.append(("path", Path(on_path)))
+    checked.append("PATH")
+    for var, via in (("CUDA_HOME", "cuda_home"), ("CUDA_PATH", "cuda_path")):
+        if env.get(var):
+            candidates.append((via, Path(env[var]) / "bin" / "nvcc"))
+        checked.append(f"${var}/bin")
+    candidates.append(("standard_location", local / "cuda" / "bin" / "nvcc"))
+    for d in sorted(local.glob("cuda-*"), key=_cuda_version_key, reverse=True):
+        candidates.append(("standard_location", d / "bin" / "nvcc"))
+    checked.append(f"{local}/cuda/bin, {local}/cuda-*/bin")
+    for via, cand in candidates:
+        if cand.is_file() and os.access(cand, os.X_OK):
+            ok, out, err = run([str(cand), "--version"])
+            m = re.search(r"release (\d+\.\d+)", out or err or "")
+            return {"path": str(cand), "version": m.group(1) if m else None, "found_via": via, "checked": checked}
+    return {"path": None, "version": None, "found_via": None, "checked": checked}
+
+
 def collect_backends() -> dict:
     gcc = shutil.which("gcc")
     gxx = shutil.which("g++")
-    nvcc = shutil.which("nvcc")
+    nvcc_info = find_nvcc()
+    nvcc = nvcc_info["path"]
     # 以專案根目錄定位 .venv，不依賴目前工作目錄 / Locate .venv from the project root, not the cwd
     cmake = venv_tool("cmake")
     ninja = venv_tool("ninja")
@@ -343,7 +376,7 @@ def collect_backends() -> dict:
         if not has_nvidia:
             missing.append("nvidia driver")
         if not nvcc:
-            missing.append("nvcc (cuda-toolkit)")
+            missing.append("nvcc (cuda-toolkit; checked: " + "; ".join(nvcc_info["checked"]) + ")")
         if not gcc:
             missing.append("gcc")
         buildable["cuda"] = {"ok": False, "reason": "missing: " + ", ".join(missing)}
@@ -394,7 +427,7 @@ def collect_backends() -> dict:
             "g++": gxx,
             "cmake": cmake,
             "ninja": ninja,
-            "nvcc": nvcc,
+            "nvcc": nvcc_info,
         },
         "vulkan_icds": icds,
     }
