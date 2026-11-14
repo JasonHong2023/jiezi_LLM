@@ -19,3 +19,4 @@ build-*/
 # 模型權重（由 models/manifest.toml 下載）/ Model weights (downloaded from models/manifest.toml)
 models/*.gguf
 models/*.safetensors
+models/*.part
