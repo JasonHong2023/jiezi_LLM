@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .common import StepError, project_root
+from jiezi.budget import NICE_LEVEL, budget_prefix  # noqa: F401  (budget_prefix re-exported)
 
 # 加速後端 → 額外的 CMake 旗標 / Accelerator backend → extra CMake flags
 ACCELERATORS = {
@@ -38,7 +39,6 @@ COMMON_FLAGS = [
     "-DLLAMA_BUILD_TESTS=ON",  # 保留 test-backend-ops 供後端驗證 / keep test-backend-ops
 ]
 
-NICE_LEVEL = 10
 
 
 @dataclass
@@ -79,26 +79,6 @@ def _tool(name: str, root: Path) -> str:
     if not found:
         raise StepError(f"{name} not found (run `uv sync` to install the dev tools)")
     return found
-
-
-def budget_prefix(facts: dict) -> tuple[list[str], int, list[str]]:
-    """依 budgets.cpu 產生 (指令前綴, 執行緒數, 說明)；建置與冒煙測試共用（R18.1、R18.2）。
-    Build (command prefix, thread count, notes) from budgets.cpu; shared by builds and the smoke test."""
-    cpu = (facts.get("budgets") or {}).get("cpu") or {}
-    jobs = max(1, int(cpu.get("usable_threads") or 1))
-    prefix = ["nice", "-n", str(NICE_LEVEL)]
-    notes: list[str] = []
-    hint = cpu.get("affinity_hint")
-    if hint and shutil.which("taskset"):
-        prefix = ["taskset", "-c", hint, *prefix]
-        notes.append(f"pinned to CPUs {hint}")
-    elif hint:
-        notes.append("taskset not found; CPU pinning skipped, jobs still limited")
-    else:
-        notes.append(f"affinity_hint unavailable ({cpu.get('affinity_reason') or 'no reason given'}); "
-                     "CPU pinning skipped, jobs still limited")
-    notes.append(f"{jobs} threads (budgets.cpu.usable_threads), nice {NICE_LEVEL}")
-    return prefix, jobs, notes
 
 
 def plan_build(backend: str, facts: dict, src: Path, root: Path) -> Plan:
