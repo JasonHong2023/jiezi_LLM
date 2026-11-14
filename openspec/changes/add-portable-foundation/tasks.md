@@ -8,7 +8,7 @@
 ## 2. 遷入 hwprobe（不改行為） / Migrate hwprobe (no behaviour change)
 
 - [x] 2.1 從 `hetero-llm` 原樣複製 `scripts/hwprobe.py` 與 `tests/test_budgets.py`、`tests/test_backend_parse.py`，單獨 commit / Copy hwprobe and tests verbatim from `hetero-llm` in their own commit
-- [ ] 2.2 執行 `uv run python -m unittest discover -s tests`，確認 21 個測試全部通過並記錄結果 / Run the test suite and confirm all 21 tests pass
+- [x] 2.2 執行 `uv run python -m unittest discover -s tests`，確認 21 個測試全部通過並記錄結果 / Run the test suite and confirm all 21 tests pass
 
 ## 3. hwprobe 可攜性修正 / hwprobe portability fixes
 
