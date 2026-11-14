@@ -50,6 +50,49 @@ class FakeGet:
         return HTML
 
 
+class FakeResp:
+    def __init__(self, body):
+        self.body = body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def read(self):
+        return self.body.encode()
+
+
+def opener_with(outcomes):
+    """outcomes：依序為 HTTP 狀態碼（拋錯）或字串（成功）。 / HTTP codes (raise) or strings (succeed), in order."""
+    import urllib.error
+    seq = list(outcomes)
+
+    def op(req, timeout=None):
+        o = seq.pop(0)
+        if isinstance(o, int):
+            raise urllib.error.HTTPError(req.full_url, o, "x", {}, None)
+        return FakeResp(o)
+    return op
+
+
+class TestGet(unittest.TestCase):
+    def test_retries_504_then_succeeds(self):
+        sleeps = []
+        text = wiki._get("https://x.invalid/a", sleep=sleeps.append, opener=opener_with([504, "ok"]))
+        self.assertEqual(text, "ok")
+        self.assertEqual(sleeps, [5, wiki.REQUEST_GAP_S])
+
+    def test_gives_up_with_eval_error(self):
+        with self.assertRaisesRegex(EvalError, "HTTP 504"):
+            wiki._get("https://x.invalid/a", sleep=lambda _: None, opener=opener_with([504, 504, 504]))
+
+    def test_404_not_retried(self):
+        with self.assertRaisesRegex(EvalError, "HTTP 404"):
+            wiki._get("https://x.invalid/a", sleep=lambda _: None, opener=opener_with([404]))
+
+
 class TestWiki(unittest.TestCase):
     def test_list_titles_sections_and_filters(self):
         rows = wiki.list_titles(LIST)
