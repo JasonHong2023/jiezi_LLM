@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# 安裝 CUDA toolkit（ubuntu；不含驅動）/ Install the CUDA toolkit (ubuntu; no driver)
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+cd "$ROOT/scripts"
+exec uv run --project "$ROOT" python -m jiezi_bootstrap.cuda_setup --platform ubuntu "$@"
