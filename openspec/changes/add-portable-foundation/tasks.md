@@ -15,7 +15,7 @@
 - [x] 3.1 專案根目錄改由腳本位置推得（可由 `JIEZI_HOME` 覆寫），`.venv`、`build-*`、預設輸出位置都相對於根目錄；新增「從其他目錄執行」的測試 / Derive the project root from the script location (overridable by `JIEZI_HOME`); add a run-from-elsewhere test
 - [x] 3.2 依 design D4 實作 `nvcc` 偵測順序與 `backends.toolchain.nvcc`（路徑、版本、`found_via`）；以假檔案系統測試「不在 PATH」與「完全沒有」兩種情境 / Implement the D4 `nvcc` discovery order; test "not on PATH" and "absent" with a fake filesystem
 - [x] 3.3 依 design D6 新增 `fingerprint` 區塊與 `fingerprint.id`；測試「動態數值改變時 id 不變」與「硬體不同時 id 改變」 / Add the D6 `fingerprint` block; test id stability and change
-- [ ] 3.4 確認非 Linux 平台的優雅降級：以模擬「沒有 `/proc/cpuinfo`」的測試驗證 JSON 結構完整、exit code 為 0 / Verify graceful degradation off Linux with a simulated missing `/proc/cpuinfo`
+- [x] 3.4 確認非 Linux 平台的優雅降級：以模擬「沒有 `/proc/cpuinfo`」的測試驗證 JSON 結構完整、exit code 為 0 / Verify graceful degradation off Linux with a simulated missing `/proc/cpuinfo`
 
 ## 4. 可攜性守門 / Portability guard
 
