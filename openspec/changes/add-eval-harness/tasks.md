@@ -23,7 +23,7 @@
 ## 5. 夜間時段與 CLI / Night window and CLI
 
 - [x] 5.1 `src/jiezi/eval/night.py`：解析 `JIEZI_NIGHT_WINDOW`（含跨午夜）、判斷是否在時段內、計算下一個開始時間、`systemd-run --user` 一次性排程與背景程序後備、`var/eval/schedule/` 狀態；以注入的時鐘與假 `systemd-run` 測試 / Night window and scheduling; test with an injected clock and a fake `systemd-run`
-- [ ] 5.2 `scripts/eval` 與 `src/jiezi/eval/__main__.py`：`bank fetch|lock|verify`、`run`（時段檢查、`--now`、時段結尾停止）、`report`、`schedule [--list]`；`.env.example` 加入 `JIEZI_NIGHT_WINDOW` / CLI entry and subcommands; add `JIEZI_NIGHT_WINDOW` to `.env.example`
+- [x] 5.2 `scripts/eval` 與 `src/jiezi/eval/__main__.py`：`bank fetch|lock|verify`、`run`（時段檢查、`--now`、時段結尾停止）、`report`、`schedule [--list]`；`.env.example` 加入 `JIEZI_NIGHT_WINDOW` / CLI entry and subcommands; add `JIEZI_NIGHT_WINDOW` to `.env.example`
 
 ## 6. 驗證（量測與實作分開；長時間工作一律 00:00 之後）/ Verification (measurement separate; long jobs after 00:00)
 

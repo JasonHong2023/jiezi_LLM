@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# 芥子評測入口（規格 eval）：長時間執行只在夜間時段（R18.2a）。
+# Jiezi evaluation entry (spec eval): long runs only in the night window (R18.2a).
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! command -v uv >/dev/null 2>&1; then
+  echo "找不到 uv，請先執行 scripts/bootstrap / uv not found; run scripts/bootstrap first" >&2
+  exit 1
+fi
+export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+unset VIRTUAL_ENV  # 一律使用專案的 .venv / always use the project .venv
+exec uv run --project "$ROOT" python -m jiezi.eval "$@"
