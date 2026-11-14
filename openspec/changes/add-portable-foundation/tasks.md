@@ -42,7 +42,7 @@
 
 ## 8. 驗證（量測與實作分開） / Verification (separate from implementation)
 
-- [ ] 8.1 在開發機上執行 `scripts/bootstrap`，確認重複執行時會略過已完成的步驟，並記錄結果（R17 條件） / Run bootstrap on the dev box, confirm skip-on-rerun, and record results with R17 conditions
-- [ ] 8.2 經使用者同意後，建立全新的 Ubuntu 24.04 WSL distro，只裝 git 與編譯器，clone 後執行 `scripts/bootstrap` 並通過冒煙測試（R21.8，design 已決 OQ2），結果記入討論記錄 / With consent, create a fresh Ubuntu 24.04 WSL distro, install only git and a compiler, run bootstrap, and pass the smoke test
-- [ ] 8.3 **必做**：在原生 Ubuntu（實體機或虛擬機）上重複 8.2，驗證 `ubuntu` 平台路徑；通過後本變更才可歸檔 / **Mandatory**: repeat 8.2 on native Ubuntu (bare metal or VM) for the `ubuntu` platform path; required before archiving
+- [ ] 8.1 在開發機上執行 `scripts/bootstrap`，確認重複執行時會略過已完成的步驟，並記錄結果（R17 條件）；另在本環境 clone 一份全新 repo 從零執行一次，確認不依賴開發目錄中既有的檔案 / Run bootstrap on the dev box, confirm skip-on-rerun, record results with R17 conditions; also run it from a fresh clone in this environment
+- [ ] 8.2 由使用者自行建立乾淨的 Ubuntu 24.04 WSL 環境，只裝 git、編譯器與 OpenSSL 標頭，clone 後執行 `scripts/bootstrap` 並通過冒煙測試（R21.8；使用者決定 2026-11-14：不由 Claude 建立 distro），結果記入討論記錄 / The user builds a clean Ubuntu 24.04 WSL environment (git, compiler, OpenSSL headers only), runs bootstrap, and passes the smoke test (user decision: Claude does not create the distro)
+- [ ] 8.3 **必做**：由使用者在原生 Ubuntu（實體機或虛擬機）上重複 8.2，驗證 `ubuntu` 平台路徑；通過後本變更才可歸檔 / **Mandatory**: the user repeats 8.2 on native Ubuntu (bare metal or VM) for the `ubuntu` platform path; required before archiving
 - [ ] 8.4 執行 `openspec validate add-portable-foundation --strict` 與完整單元測試；更新 R5 能力表加入 `bootstrap`（R14） / Validate the change, run all tests, and add `bootstrap` to the R5 capability table (R14)

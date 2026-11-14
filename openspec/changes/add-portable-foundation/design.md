@@ -144,7 +144,7 @@ Reuses the approach proven in Phase 0.2, choosing the window by platform: WSL2 �
 
 使用者決定：「換一台乾淨的電腦也能重建」的驗證環境**必須是 Ubuntu**。 / The user decided the clean-rebuild verification environment **must be Ubuntu**.
 
-- **主要做法**：在 Windows 端另建一個**全新的 Ubuntu 24.04 WSL distro**（官方映像，與目前使用中的 distro 分開），只裝 git 與編譯器後 clone repo 執行 `scripts/bootstrap`。建立 distro 會改動 Windows 端設定，執行前依 R4 取得同意；distro 名稱於執行時決定，不寫進 repo（R6.13）。
-  **Primary**: create a **brand-new Ubuntu 24.04 WSL distro** on Windows (official image, separate from the distro in use), install only git and a compiler, clone, and run `scripts/bootstrap`. Creating a distro changes Windows-side settings, so consent is obtained first per R4; the distro name is chosen at run time and never committed (R6.13).
+- **做法（使用者 2026-11-14 修訂）**：Claude **不建立** WSL distro。先在目前的開發環境驗證（含另外 clone 一份 repo 從零執行 bootstrap）；乾淨的 Ubuntu 24.04 WSL 環境由使用者自行建立，只裝 git、編譯器與 OpenSSL 標頭後 clone repo 執行 `scripts/bootstrap`。環境名稱不寫進 repo（R6.13）。
+  **Approach (revised by the user, 2026-11-14)**: Claude does **not** create a WSL distro. Verification first runs in the current dev environment (including bootstrap from a fresh clone); the user builds the clean Ubuntu 24.04 WSL environment, installs only git, a compiler, and the OpenSSL headers, then clones and runs `scripts/bootstrap`. Environment names are never committed (R6.13).
 - **原生 Ubuntu 為必做**（使用者 2026-11-14 確認）：WSL distro 只驗證 `wsl2` 平台路徑；**原生 Ubuntu**（實體機或虛擬機）的 `ubuntu` 平台路徑**也必須驗證通過**，本變更才可歸檔。結果記入討論記錄（R21.8）。
-  **Native Ubuntu is mandatory** (user-confirmed 2026-11-14): a WSL distro only verifies the `wsl2` path; the **native Ubuntu** (bare metal or VM) `ubuntu` path **must also pass** before this change can be archived. Results are logged (R21.8).
+  **Native Ubuntu is mandatory** (user-confirmed 2026-11-14): a WSL distro only verifies the `wsl2` path; the **native Ubuntu** (bare metal or VM) `ubuntu` path **must also pass** before this change can be archived; the user also prepares that environment. Results are logged (R21.8).
