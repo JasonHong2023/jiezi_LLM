@@ -3,7 +3,7 @@
 - [x] 1.1 建立 `.gitignore`（`.venv/`、`.env`、`facts.json`、`var/`、`vendor/`、`build-*/`、`models/*.gguf`、`__pycache__/`）與 `.python-version`（3.13） / Add `.gitignore` and `.python-version` (3.13)
 - [x] 1.2 建立 `pyproject.toml`：執行期依賴為空，`cmake`、`ninja` 列為 dev dependency group；執行 `uv sync` 產生 `uv.lock` / Add `pyproject.toml` (no runtime deps; `cmake`, `ninja` as a dev group) and generate `uv.lock` with `uv sync`
 - [x] 1.3 建立 `.env.example`：列出 R21.3 的所有 `JIEZI_*` 變數、用途與範例值，不含真實金鑰 / Add `.env.example` listing every `JIEZI_*` variable from R21.3 with purpose and example values, no real keys
-- [ ] 1.4 建立 `openspec/specs/stack.md`：鎖定 llama.cpp 完整 hash `93cf736a8d1d46aa922e27eb64aa712bcd5ebc30`、Python 3.13、uv、cmake、ninja 版本，並記錄 R23 的資安查證結果 / Add `openspec/specs/stack.md` pinning versions and recording the R23 security check
+- [x] 1.4 建立 `openspec/specs/stack.md`：鎖定 llama.cpp 完整 hash `93cf736a8d1d46aa922e27eb64aa712bcd5ebc30`、Python 3.13、uv、cmake、ninja 版本，並記錄 R23 的資安查證結果 / Add `openspec/specs/stack.md` pinning versions and recording the R23 security check
 
 ## 2. 遷入 hwprobe（不改行為） / Migrate hwprobe (no behaviour change)
 
