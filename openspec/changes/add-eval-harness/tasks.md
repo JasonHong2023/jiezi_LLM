@@ -11,7 +11,7 @@
 
 ## 3. 後端 / Backends
 
-- [ ] 3.1 `src/jiezi/eval/client.py`：OpenAI 相容客戶端（`urllib`），基準模式帶 `disable_fallbacks` 並核對 `model`，記錄 usage、延遲、`timings`；逾時與有限重試（D11）；以本機假伺服器測試（含卡住、429、5xx） / OpenAI-compatible client with the baseline guard, timeouts and bounded retries (D11); test hangs, 429 and 5xx against a local fake server
+- [x] 3.1 `src/jiezi/eval/client.py`：OpenAI 相容客戶端（`urllib`），基準模式帶 `disable_fallbacks` 並核對 `model`，記錄 usage、延遲、`timings`；逾時與有限重試（D11）；以本機假伺服器測試（含卡住、429、5xx） / OpenAI-compatible client with the baseline guard, timeouts and bounded retries (D11); test hangs, 429 and 5xx against a local fake server
 - [ ] 3.2 `src/jiezi/eval/engine.py`：啟動與關閉 `llama-server`（`127.0.0.1`、實驗區段 port、預算執行緒、`nice` / `taskset`、`-ngl`、ctx），等待 `/health`，取樣峰值 RAM / VRAM；以假執行檔測試 port 被占用與中斷 / Local engine lifecycle and peak-memory sampling; test port conflicts and interruption with a fake binary
 
 ## 4. 評分、執行、報表 / Scoring, runs, reports

@@ -79,6 +79,9 @@ The population is the featured-articles list page at a fixed revision; 50 articl
 本機（`llama-server` 的 `/v1/chat/completions`）與雲端都用同一個 `urllib` 客戶端。雲端端點、金鑰、模型名稱只來自 `.env`（R21.3）。基準模式（`--baseline`）一律帶 `"disable_fallbacks": true`，並在每題核對回應的 `model` 欄位；不符就把該題標為作廢（R17.1）。記錄 `usage`（token 數）與回應時間；本機另讀 `timings.predicted_per_second`。
 Local (`llama-server` `/v1/chat/completions`) and cloud share one `urllib` client. Endpoint, key, and model name come only from `.env` (R21.3). Baseline mode (`--baseline`) always sends `"disable_fallbacks": true` and checks each response's `model`; a mismatch voids that item (R17.1). `usage` (tokens) and latency are recorded; locally `timings.predicted_per_second` is also read.
 
+- **核對方式（實作時確認）**：LiteLLM 回應的 `model` 是供應商的完整模型名稱（例如別名 `nvidia-nemotron-3-ultra` 對應 `nvidia/nemotron-3-ultra-550b-a55b`），且同一別名可有多個部署，因此不與別名直接比對。`.env` 設定 `JIEZI_BASELINE_MODEL_MATCH` 時，實際模型必須包含該字串（不分大小寫）；未設定時，以本次執行第一個成功回應的模型為準，之後不同就作廢。
+  **How the check works (settled during implementation)**: LiteLLM reports the provider's full model name (e.g. alias `nvidia-nemotron-3-ultra` maps to `nvidia/nemotron-3-ultra-550b-a55b`), and one alias can have several deployments, so the alias is never compared directly. With `JIEZI_BASELINE_MODEL_MATCH` in `.env`, the actual model must contain that string (case-insensitive); without it, the run locks onto the first successful response's model and voids any later difference.
+
 ### D6 — 本機引擎管理 / Local engine management
 
 評測時由框架啟動 `llama-server`：`--host 127.0.0.1`、port 為 `JIEZI_PORT_BASE + 10`（被占用就往後找，最多到 `+19`）、`-t` 取 `budgets.cpu.usable_threads`、`nice` 與 `taskset`（沿用 bootstrap 的 `budget_prefix`）、`-ngl` 依參數（預設 0 = 純 CPU）、`--ctx-size` 預設 4096。等待 `/health` 後開始；結束或中斷時一定關閉。每秒取樣 `/proc/<pid>/status` 的 `VmHWM` 與（有 GPU 時）`nvidia-smi` 的程序 VRAM，記錄峰值。
