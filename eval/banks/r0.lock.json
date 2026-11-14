@@ -1,0 +1,1355 @@
+{
+ "bank": "r0",
+ "version": 1,
+ "seed": 20261114,
+ "definition_sha256": "a3a24cd84ea9c1983c039e9f935f7d672465b7aac7370647172d0d2ba87eaf07",
+ "created": "2026-11-14",
+ "sources": [
+  {
+   "key": "chinese-simpleqa",
+   "items": [
+    {
+     "id": "9e25804b6e5546eda5179126c2e59479",
+     "sha256": "2eb2e38cffc3cdd5661d96855af5200c3a4f6a58b2e06b69d25ce161de645fb9"
+    },
+    {
+     "id": "9cdf5efe6f3f4e06a75e946bd63e4bc6",
+     "sha256": "b96f97b75724911ad9eaaea6954c278c8f683cd4c5453d25dbc3f688b210e695"
+    },
+    {
+     "id": "b69acbee7d384cfbaf2a39bf3be17483",
+     "sha256": "05cf66ad285d2f11349b479aa626c62f5059a2e54e45827b322e737233aea1f1"
+    },
+    {
+     "id": "036ffc72393243fca658d9b86a592569",
+     "sha256": "f0e6e39a8fbcf5f8b44febeffac5ee7a51b6efc2bc943cd69dd403081e5d333a"
+    },
+    {
+     "id": "f91be43d298e414db19b19c59d7623c4",
+     "sha256": "9b28f7274550fb07a6369f7ab4e1b206aba14eedae4a1e75c3ac368846bd2eea"
+    },
+    {
+     "id": "0035128bd46c4580b82e36ee034e875b",
+     "sha256": "56cb86ae912eb50c822bba837ecd73263f291100e76bc438b96b13d544b1759c"
+    },
+    {
+     "id": "34930233f8504c95a7c2e2d0243e2d7f",
+     "sha256": "fc416c9b5cfd91c725d353cfbe0268f910afdeac12da09453aa470e8d74bf716"
+    },
+    {
+     "id": "354e2ccbc79d41d99b462c7a8040d108",
+     "sha256": "a4c790927b769506ba8ee3d862244a6c6172c9980740d194d5bd811b99dde249"
+    },
+    {
+     "id": "f570f47a198d4e0583ccb1980acbcd51",
+     "sha256": "a6696985a1fc626fbab1f9caab1e59b61002f5ccb83bbd6d3f4938b8c78e6021"
+    },
+    {
+     "id": "7712b9b5b0d74313bce5fa4a6f8901cc",
+     "sha256": "9a271ade315d93f1b6d385f577502be947c5ab5198d000af1132edb747337b3f"
+    },
+    {
+     "id": "f7d6e5e45a864f2ba6acd0f7b753c3e3",
+     "sha256": "fa256ce34b2d00f731a72ea3f90ae11edb5918f9ae1d3b871f28692482009ed4"
+    },
+    {
+     "id": "36de77de8bbf4c4a9cd6e3f9249a61cc",
+     "sha256": "d8437aec9750b22683cdc8addb8e3fb9c087ece1197b47343df41975fa268800"
+    },
+    {
+     "id": "d12cdc4c436144ff987d4cd5476aca0c",
+     "sha256": "e75107dba48900115f7e4453d23289a86ff6d833ffa403b4443649bd90e5fea2"
+    },
+    {
+     "id": "3a35e6befc7d49ecb4022fc481c2c955",
+     "sha256": "217e035a1f23e8369cc67bad44cbe8e2f270cbd659c0a503326850965ddf91af"
+    },
+    {
+     "id": "cae7b83067c342fab157f09be412c6a4",
+     "sha256": "d978c6d73f5a08b25989db431c35aed761fccafc106c929bbcaa86687c42c7be"
+    },
+    {
+     "id": "196a975baa2d495a887809fb7aaeacfb",
+     "sha256": "b81dd6d1540e10bd8c496ed5653713ae5ba2962aa0ec63a262ba85900a8835ef"
+    },
+    {
+     "id": "75adf58ca8da437cb679ad57f7434d23",
+     "sha256": "8b937f7518970564db5999e4022335c27d699e0563a3627fc56dc39c2865d074"
+    },
+    {
+     "id": "df9a8ff7747b419abebf44ee33861025",
+     "sha256": "438f32ab096a3b21928846a952b73bf7230fc78b03e461d38ca4d6590283831f"
+    },
+    {
+     "id": "7f9e071627bb48319b307452e30b18d4",
+     "sha256": "46c383a1831d2a78c28e33999d7225f2f786dcae024eedcf65beb3e0dd221270"
+    },
+    {
+     "id": "6279df9c2cbc40a99f8cf3d294abeb21",
+     "sha256": "e8cc2d948304db947d581dcc3d4374d877a7394f9876c41144c61f76151946f4"
+    },
+    {
+     "id": "5ff8f811d34e4415985cfa948cd78fd3",
+     "sha256": "3e50ddd67ae3ddef120236c6c3e78f4fc6c01c8180332ed1c7ecf189a3e1934e"
+    },
+    {
+     "id": "d5b0f3a9948d431198ccac1656cd10cf",
+     "sha256": "7dc944d65527f46548842c40e7702ff27adbfaae0d81090e8a80e6a346fa0584"
+    },
+    {
+     "id": "ffebf6f03bb64cf086e36896bd596818",
+     "sha256": "8bed9e9368b219c85aefd74279fa7f1aa8cd549e2afb9b72ac5f176e5f324c00"
+    },
+    {
+     "id": "417d964d53454f22a5d4a3dd8c970de0",
+     "sha256": "59d8e296ca31d4348689aafcc59f54a1e85c7561368efb30b65588a84295e50d"
+    },
+    {
+     "id": "a7ba2089aa6d4efcb34c43f152229360",
+     "sha256": "44bfc070514990f3d59e1d0555bd90bad7c9de19e353c52ce6ee6418e1f2ffe1"
+    },
+    {
+     "id": "62eebda976bf442eb4462e005089caff",
+     "sha256": "e174190e53ff462ec6f825b199f2989b41f2fb7b762bc661ad615363eef702d5"
+    },
+    {
+     "id": "8296955ba09543338f59b807c6a2b5b3",
+     "sha256": "6a7fcc513d6ab9ce472a463e5a8cf19b72ecb63110ac92927fabc50f749f52f1"
+    },
+    {
+     "id": "ff8d1031ea3f46f3a5f90e4a9ae0e17a",
+     "sha256": "142fd055e3dc08abe37d64ca86c5a54bbb5f73e3cd4854c397ad3947e593ce82"
+    },
+    {
+     "id": "d5d3bb2e8bfe42d08d644bcac4451762",
+     "sha256": "eb012a7a712fb52bf6507d3d094afaac58a128468a4f4b271059867b4f3b0b4e"
+    },
+    {
+     "id": "5ff327f5fc004854b4da3a298f269103",
+     "sha256": "d4f441a179adb275d2af102113901a3a19901f976b269e3472181f5126e16c23"
+    },
+    {
+     "id": "83079897b08f4ffeb652789203d6a955",
+     "sha256": "057cba504689227b4858578f4780e5e66706afeebd485753e5606a215fe31423"
+    },
+    {
+     "id": "58bf4d242c25465a852e286d4cfaab5a",
+     "sha256": "582902101565b01f5eae1f7a0b040bd2ba88e845ee7a3ed0911dc7c44779ac9e"
+    },
+    {
+     "id": "ac0689c5602c4be5979e186ff0feac26",
+     "sha256": "be3d3de935e68dfee7a936ff71d3f1fb77791fbbb89224e83bbaf961f26faab0"
+    },
+    {
+     "id": "2bf6daf9f66c4b379448ea954105b0f7",
+     "sha256": "0328ae4d087ff8bc4cff037479ab12e9baa10d386ac83eab7f303f330f8bb8ea"
+    },
+    {
+     "id": "2fa19dd9a4b642d5862da1d16693d623",
+     "sha256": "f4140d7d07a574da876a3b79d06794ceef818bc237c3ba16e7a5d191bf69ea3c"
+    },
+    {
+     "id": "05934686449f47d98369453f98bd60ba",
+     "sha256": "4fbb89331fe13f8e509ac20e1093e3433162f87a721046f349b32d85361b7cac"
+    },
+    {
+     "id": "be64c3d32b9f4364a928e811c3be0512",
+     "sha256": "0555020590fec4c06206fe0679a9a4eb8b88b4fcdde6d3e6e2dbcc28d441c715"
+    },
+    {
+     "id": "39e2f777dae9400c805ea0f34383ea49",
+     "sha256": "505aa2461fd23d0091c747e189be12e47316e8e90eb9ec78dddebe7fd054052d"
+    },
+    {
+     "id": "8c35732c64b94719941690d077f1f6d7",
+     "sha256": "8174472d509319ce5de8df011bbdea5646e6d30adbf9db97eaa1eb4d7ff23358"
+    },
+    {
+     "id": "bfb97c2b577b4e2587661efe9f5fd1d6",
+     "sha256": "aa7be6de60296ab5e6f7801c4dbbb4120f1867cd919ab9d7855983ac32f7c708"
+    },
+    {
+     "id": "b68a46df3af04132a19bf8b4b69e7f6a",
+     "sha256": "1f96994f54c467f4e282c4bb1bf072b5f56fab78e6bc8a06401bb0bc58e38c9e"
+    },
+    {
+     "id": "ecc8abf429794c19be43e91a5a0120de",
+     "sha256": "32cd25c8b021e5e128a29c5d3c0328b0398b21bcc7c2c33081502841f8986fd7"
+    },
+    {
+     "id": "5999bff4333a4e9ba4a00a4a6f0b058c",
+     "sha256": "4a40127e8836b4439babbe5f769f175cb9ac2388f1b6b9f8163b53fa6916313e"
+    },
+    {
+     "id": "7d1689b581d844dfb25e69eec0292bab",
+     "sha256": "71d29f68bc0082c499bfd0a6e6502ccd5bb7e87213b6637cb1a6f230420bcf33"
+    },
+    {
+     "id": "a0c276820433458386a8ced865632eac",
+     "sha256": "7e84e01927c8d0d8992f7821746ed1f357c3d42f83a7df871ac9086e08049f86"
+    },
+    {
+     "id": "65503cc6806f4630b3972d7ea85f125a",
+     "sha256": "724565d3e613ba390f0edc14fa310ecddb45f1053e0dd2c5e6df083222fe6630"
+    },
+    {
+     "id": "f081ccb0911e47a9a07b405164e9b0f4",
+     "sha256": "d6717fe119c9ada228b520e90b01cb88c42c4273529d80ae0009e2d65deb33b8"
+    },
+    {
+     "id": "35c56e3a8f2d40539e4efc27d43b9b91",
+     "sha256": "63687e62e5a2a83cae658b6e1476dcd70b3ad8f0efa67c2aeecfafa36a60c574"
+    },
+    {
+     "id": "16abdd9b3d5f4cd6a53bfa8bd550301d",
+     "sha256": "3616ecfb44c48425c3d06774045b8c347d70ae3b46fefe892ac6384c87268008"
+    },
+    {
+     "id": "cff1555db6d144eda63e9634a0097940",
+     "sha256": "b77709ea99401bc78da9cb9df93b4d6edf5d271c4e23f33540174d7f2f41af3d"
+    }
+   ]
+  },
+  {
+   "key": "ceval-val",
+   "items": [
+    {
+     "id": "college_economics/0",
+     "sha256": "416a8e5c6b3b0a0ebd8e490cba9d509407cc776b516d443d3992002ad2f3ad2c"
+    },
+    {
+     "id": "high_school_chinese/5",
+     "sha256": "d3dd3fa8d6a4324cbe230b5c000aae1687dae87f22b54ee8e6f4c6b2f865da52"
+    },
+    {
+     "id": "middle_school_history/7",
+     "sha256": "0f79a956803029109c3a7e8bd4194d00d22b30a4c599dae01694dcf58eb31809"
+    },
+    {
+     "id": "environmental_impact_assessment_engineer/3",
+     "sha256": "4f1d9a089b81e60c300bcce706ee2e78e915e45e9fc0728e79b16ca1934b5c81"
+    },
+    {
+     "id": "law/17",
+     "sha256": "d34004cbf7b504b1d659c77b5f08e6ee9146d4db851828fbe515dc818185f294"
+    },
+    {
+     "id": "plant_protection/17",
+     "sha256": "852816e51556f2fb207a9d3d319699b99d89b7facb67e7ab9b5f8ac23aaa678c"
+    },
+    {
+     "id": "modern_chinese_history/13",
+     "sha256": "58e264e7bdb2a1633ecbba18cfb41de8f4399fddd11b3464a3f155e15edbbc7a"
+    },
+    {
+     "id": "mao_zedong_thought/2",
+     "sha256": "1fd1bad174b40e0216093cfc03abf60204ee893891263f0235d04bdb91d18c34"
+    },
+    {
+     "id": "urban_and_rural_planner/15",
+     "sha256": "027317a8276ea70b16111c87be01e82c9d90e57f6aa94dfbafce4f3d43fd7f69"
+    },
+    {
+     "id": "probability_and_statistics/11",
+     "sha256": "cb8e9002c5c750f4afc6961f772990c1a2e82353cc19f6740956c070693d4de4"
+    },
+    {
+     "id": "middle_school_biology/3",
+     "sha256": "be6f544d22647e6d33fba7f7e20943d7890f19d9b4bc0b7445a1ef58312f1604"
+    },
+    {
+     "id": "education_science/5",
+     "sha256": "164a4be2039cd97d33c617ba1fcb9a24275ab1b41268f40176bd899346761bb1"
+    },
+    {
+     "id": "high_school_geography/17",
+     "sha256": "6fbf9795bc673f220f6349dbaa25da6d6499d4c41f1f887bd00c19dd55545b9a"
+    },
+    {
+     "id": "legal_professional/15",
+     "sha256": "71301b75ae61681fca22eccc6e8068975fd462ac4462722eab8130661bdf54d4"
+    },
+    {
+     "id": "middle_school_geography/2",
+     "sha256": "4cb40b463c0f76c7476f5ddf53c658f119fe0c0fc172ee1b740d68da7a7b3efc"
+    },
+    {
+     "id": "middle_school_mathematics/14",
+     "sha256": "269e9e2f9f6d1e9fd7cfa2d2d2fb5bcc4d6a23aed1df342a00504b19479ccbdb"
+    },
+    {
+     "id": "college_physics/1",
+     "sha256": "fa78a50f848173ab3180cc1fda1e014338af4c9d0112ccf13b9d1bfe75864a36"
+    },
+    {
+     "id": "computer_architecture/9",
+     "sha256": "9a65c12a3241cddf2a77d71166b016f108fa96ee672656ef61248069789887a9"
+    },
+    {
+     "id": "teacher_qualification/2",
+     "sha256": "f5094c100e4640b65676ebe22096b60d628edbb0441798c4412dfc510d4a6355"
+    },
+    {
+     "id": "civil_servant/1",
+     "sha256": "3ac931e6f2dde3e50b5ed5bfd33d719496b7ef817a7ddf371a12c526a7a775f7"
+    },
+    {
+     "id": "logic/3",
+     "sha256": "2f5c5869d5ef208576eee09bf647c2fa54c278e0bf40739e48a765c1420f939e"
+    },
+    {
+     "id": "electrical_engineer/8",
+     "sha256": "67b496f5ac18a884136aa52053e572d7be7391cd9c077a8ed03a0930c727029d"
+    },
+    {
+     "id": "computer_network/5",
+     "sha256": "ebeebb546b82b468c4997bc6faa651543f8a144879a98013f0683a35d918a917"
+    },
+    {
+     "id": "middle_school_physics/6",
+     "sha256": "bddec0889ab4295f7bd7ccd518deb54e92cc9498e287bf28f08f8a71116aa962"
+    },
+    {
+     "id": "sports_science/15",
+     "sha256": "c50b62c690bb16442a4d90bebda8e4bf9c75828b1f3bfec707f09339768440e0"
+    },
+    {
+     "id": "art_studies/3",
+     "sha256": "f97d52293a32659f16ee40786a3caffe154a52f2c31929747b67457273cec71a"
+    },
+    {
+     "id": "middle_school_chemistry/12",
+     "sha256": "bafb260e1125b29e321ee544856b428634da4f28604e7834938ad65a3bde7eb4"
+    },
+    {
+     "id": "high_school_mathematics/2",
+     "sha256": "55c80e9679e06b19a99ab42e58cfb80ec38f732b4afde0dc5663fa1a31bc3ae6"
+    },
+    {
+     "id": "high_school_chemistry/9",
+     "sha256": "6addada759271e3862416e78a02810ad2bdbb9ef8e7a8808607a6a551aa61302"
+    },
+    {
+     "id": "fire_engineer/10",
+     "sha256": "3c1092ad134825bf47fc48c895e468510bdc88aac1b54246bb10bd8d3ec00b50"
+    },
+    {
+     "id": "clinical_medicine/9",
+     "sha256": "3de4b572936c5a08d427be838ba76414c1f5d379fb779509b35aca74257dec57"
+    },
+    {
+     "id": "middle_school_politics/6",
+     "sha256": "7d5f71ae0670551282ff86b7453a239417a17aa15653825576fe26cfc4b35f36"
+    },
+    {
+     "id": "college_chemistry/9",
+     "sha256": "1f6cbaa31f0785e0ec90251ff8a363ac4bb1472603088695f6410926edff2c51"
+    },
+    {
+     "id": "chinese_language_and_literature/0",
+     "sha256": "0e9ea9da54d6f34dbd7aa51ecdbf4de011ad5a043c39f13da3eecf5f9984328f"
+    },
+    {
+     "id": "high_school_physics/11",
+     "sha256": "a4297f6e7ed3a9e93ee39c201e084ace1aeb762f6d7125323791118ccb8090d8"
+    },
+    {
+     "id": "physician/21",
+     "sha256": "ac18f27256abe5b0be60d49dcc32ceed2c4c3c030b81f563b22ebdd2074c4d66"
+    },
+    {
+     "id": "accountant/22",
+     "sha256": "7ea7140b49ef2465a2f11baa0564c03a8acaa123615c1692b6314ee59fce3fe3"
+    },
+    {
+     "id": "operating_system/16",
+     "sha256": "b7f00a6e877f80074b991a32439127e58649f250f4b24c608ed63555c8731b39"
+    },
+    {
+     "id": "tax_accountant/20",
+     "sha256": "d5908c7c6cd75422774f75ae1c91f8c47761eb9050457390930a8ffdd08ddf6e"
+    },
+    {
+     "id": "business_administration/23",
+     "sha256": "e6e9b9da8c7e027742ab5e53032bf2c1fe7ba46642965fa4ac9037ee57a1f201"
+    },
+    {
+     "id": "metrology_engineer/11",
+     "sha256": "61079368914e6c7de106b0b3da72eb289bc0993d2b077eabe625260ad984e245"
+    },
+    {
+     "id": "marxism/12",
+     "sha256": "817fdef87c8f5b8b56596e08faa6b50e11dbf2daa35f7e0a7595c7870360a86e"
+    },
+    {
+     "id": "ideological_and_moral_cultivation/5",
+     "sha256": "70ffa3a96addc7c29709c259b4e41eb7fbc049b67d72169ed9d10dac413f1db2"
+    },
+    {
+     "id": "college_programming/7",
+     "sha256": "0d181ad664041a30c54adbc37b230862bd5d628b2e76e6d8552eea53b0d3427e"
+    },
+    {
+     "id": "high_school_politics/14",
+     "sha256": "e57d3ecc8e51ec1261a7ef6571c0da1c54124ab8bac7186325eb20579a28b73c"
+    },
+    {
+     "id": "advanced_mathematics/4",
+     "sha256": "33931085a8f4e8593250943166ff2b341f230dd5e4a795550140da93005a4ad5"
+    },
+    {
+     "id": "high_school_history/2",
+     "sha256": "f1a08f2bde3d6aea98c2515d5f73f9419e84e20d6fc0fb8e4dde8412ccbe0989"
+    },
+    {
+     "id": "veterinary_medicine/9",
+     "sha256": "88794999ea270acd6309c5b7d73a6f9bb883e2b8bdf6fbd3d1961302db0da995"
+    },
+    {
+     "id": "basic_medicine/15",
+     "sha256": "149b393808a3298bf12c116f997de81564c352814028466834d70098cfa6fa85"
+    },
+    {
+     "id": "high_school_biology/8",
+     "sha256": "20325a898cfa92516593ed62d7189b1fbdf01de677cef17635a3820e035ce6f5"
+    }
+   ]
+  },
+  {
+   "key": "cmmlu",
+   "items": [
+    {
+     "id": "conceptual_physics/73",
+     "sha256": "62ab8f53aad1055dfe4f6d8a5c065117a05a4f7e232bffe434c5ec289f2749e8"
+    },
+    {
+     "id": "professional_psychology/15",
+     "sha256": "790183a484f2c855c2149aa9dbfd66cd07ce3fb5ab44a8adebc07a0c75e7b41b"
+    },
+    {
+     "id": "clinical_knowledge/5",
+     "sha256": "313ecaa65f7feaae321dd97118388b6b541e92b69392869ced106ed90abf090d"
+    },
+    {
+     "id": "chinese_foreign_policy/55",
+     "sha256": "c88b739c812a17542f5e33c44804e286456e70de57a666007d12a1c70bf8b603"
+    },
+    {
+     "id": "computer_security/112",
+     "sha256": "95134d5314bc43b651f76301b040ec74a26c40ca9a4579d39076f2fa54c8a99e"
+    },
+    {
+     "id": "modern_chinese/53",
+     "sha256": "106e342de40008e2da2cec6b75fdb06a9e63f2e89a68a787072556b884e2f4cd"
+    },
+    {
+     "id": "astronomy/39",
+     "sha256": "fe507970c685c4946d535861494fcf37c09076e30b2fcc296fcf40717cc6dcfc"
+    },
+    {
+     "id": "chinese_literature/15",
+     "sha256": "0d776d59574c206884dc16dae57473091c8a334d230d3b6bd80bb7f5c92a66b7"
+    },
+    {
+     "id": "arts/100",
+     "sha256": "63fac77d1a444e0c9707a9b5b91bb12a423cc930af8cb35ad6ad3582cb91fac3"
+    },
+    {
+     "id": "traditional_chinese_medicine/3",
+     "sha256": "c0844a779ddba3e3975d4b044f8d23cf4338351e39b26e712ef3dfa51741a58d"
+    },
+    {
+     "id": "college_engineering_hydrology/33",
+     "sha256": "1e733272798b21d1ba97bcf3faa431dfe30564a4fe0601c78359ffe6e164bb33"
+    },
+    {
+     "id": "chinese_food_culture/19",
+     "sha256": "2b88b20dc41d3fc5485d7dda29dae6bc456db0fc3b9d57562a666ddbee095fa2"
+    },
+    {
+     "id": "high_school_physics/36",
+     "sha256": "f14bb19e18f41bf4a8cf6b7e04c6955714e910c6b1e0ebb1606c2b8d2a14896d"
+    },
+    {
+     "id": "construction_project_management/20",
+     "sha256": "6544858810a4a6a07b6fc7162c1bdd3a0bab78239ee83ab4ff630ff326bc08e5"
+    },
+    {
+     "id": "college_medical_statistics/39",
+     "sha256": "416418c2e06985d1bb1b14a8f4e2bc1dac077c408a9d2d570c5c2d9d65b405ec"
+    },
+    {
+     "id": "chinese_history/120",
+     "sha256": "7118e91dd04f39f3ae5d8af4c98a4cd8da786c71d589e92582cd7e90b24360a2"
+    },
+    {
+     "id": "education/42",
+     "sha256": "f0b28f5d1a7df46f47e079a97153915d64daff1c07f79fc8801450f3c09af4c2"
+    },
+    {
+     "id": "professional_law/169",
+     "sha256": "d01fa73ec1ea020cd18928260e6dc27cf1c177cad17262bcb98a128ccf0646f1"
+    },
+    {
+     "id": "high_school_geography/25",
+     "sha256": "48013c400dd5f5698a531fdfa58c95c7b36cbb817f5bc409191ff69b48ab345e"
+    },
+    {
+     "id": "economics/46",
+     "sha256": "56555be3b4118cf0a89aae335b85ed26773e0debf7cd8e5506ff0f91a9bc7311"
+    },
+    {
+     "id": "genetics/85",
+     "sha256": "c104c6b20b905053e1a130f8464ec1111aca494be4403255e08e91f5ee950279"
+    },
+    {
+     "id": "college_law/19",
+     "sha256": "2f59e259bdbd884d231cc47c5fe9ddd4f735aa5b528c8914f3ea39492161a6ae"
+    },
+    {
+     "id": "world_history/30",
+     "sha256": "dc5c11584ae8dc1da200abaccd85a1b900311884e1883e26a23e0dce965a47da"
+    },
+    {
+     "id": "elementary_mathematics/0",
+     "sha256": "76add0b14359d28402b5ed6c4197e3ac1a4937b566270446acc378cfa9da78fc"
+    },
+    {
+     "id": "chinese_civil_service_exam/118",
+     "sha256": "79ee23c91937f05bed5c49d43ecf4892dc0453cdaf130d4c8ed262267b92dadb"
+    },
+    {
+     "id": "ethnology/3",
+     "sha256": "425e70b05375a0ddd4a93d53cfc6d921d62b3cc88f3e776d70c869c3a5d55a03"
+    },
+    {
+     "id": "college_actuarial_science/56",
+     "sha256": "186e821454179f0c6bd46c6098ac3d62a74bb3b63ccda705924bf7ad430fe06b"
+    },
+    {
+     "id": "food_science/25",
+     "sha256": "13eb8f4bd11ed2a042e7b837b5ca8d49723f53aa18bc91880528b8a780acbcd8"
+    },
+    {
+     "id": "professional_accounting/60",
+     "sha256": "a404bd994e7ca6208fc13203f97a8fd14d3ba6c56fbb2b295a0de60ed7197806"
+    },
+    {
+     "id": "anatomy/34",
+     "sha256": "f73db122a5910b7c2c9abc8e8fc2c40ab9a8700c35c6b678588b180b9655bae4"
+    },
+    {
+     "id": "electrical_engineering/3",
+     "sha256": "34e8ef76d7d36139502636bb8ea411b903040c53cc8edfb49205b6b63c37f2dd"
+    },
+    {
+     "id": "elementary_commonsense/117",
+     "sha256": "5ad62be398df0a5a3f7f6a71bfc7bbded332186141430c1958ba5c9f6d2ccc52"
+    },
+    {
+     "id": "public_relations/109",
+     "sha256": "853f6ca3dc934154c46ad2b954e1ca79769d3def62f77e4fc06a1b594b4f2813"
+    },
+    {
+     "id": "elementary_chinese/73",
+     "sha256": "09ab4aca231d7aa3cebb7d583b9f39a15b59d51f32ad65e08bc50a92346e3357"
+    },
+    {
+     "id": "logical/10",
+     "sha256": "cb185e17a822889b88b783055606470284fa5522a9946b339c05b5bb02bb96eb"
+    },
+    {
+     "id": "college_medicine/270",
+     "sha256": "85dc4e3029f28df319039f6b037e751cf773f9b48a780d529fbd2a0c9010f83c"
+    },
+    {
+     "id": "high_school_mathematics/107",
+     "sha256": "b631510bb30bb76dc6d0d187359b7136bf5b4d4e76953dbf891964a5ebd4549e"
+    },
+    {
+     "id": "elementary_information_and_technology/56",
+     "sha256": "b4f9182189f0c2e83724f8cf0d21d888257aaa8a1707205cffee38bfccf18121"
+    },
+    {
+     "id": "machine_learning/30",
+     "sha256": "dbbc3ba7f2a4d7f18c1df7672c16f7698e6cb48d1a74ca8cbef9fda4ef4b36b7"
+    },
+    {
+     "id": "jurisprudence/327",
+     "sha256": "4bc200b66ae343c9e400866c53f4fb24fe46574e40f58517cc700b8f029678c5"
+    },
+    {
+     "id": "marketing/117",
+     "sha256": "9e7061b14890a9a8ba3e20d26c365c81debb8115f14bf55b170a8c0cf2e2aea8"
+    },
+    {
+     "id": "nutrition/45",
+     "sha256": "9ef9d9f2a918c7ffe49efd7aaf61486de538ba6ed89309af0f4e2cb8967204f8"
+    },
+    {
+     "id": "marxist_theory/180",
+     "sha256": "5dee5027cdd614d17a3e8b5dfa20188b0de193d93163df2cce4119d5cc830c2e"
+    },
+    {
+     "id": "high_school_chemistry/98",
+     "sha256": "af7ea80b02fbab363974fb10aabe51b7fed4ac198a616ee86ce8133f12214cc7"
+    },
+    {
+     "id": "international_law/138",
+     "sha256": "8619049f92e3ce11bef8c2b633a62e664a75a3728bda435ea9787d6cc880e894"
+    },
+    {
+     "id": "global_facts/110",
+     "sha256": "7c5d5ae6e9922db21b7fa3967c0dd25a622ad04249843dc85250d74224500e67"
+    },
+    {
+     "id": "chinese_driving_rule/92",
+     "sha256": "017f3ecaef2d48111a3b323ca20d343453690fe0f39e3b6e23a75e56c18dc66c"
+    },
+    {
+     "id": "high_school_biology/9",
+     "sha256": "54dfc446aa97f9f5d3f794a968e4af13a84a249f40b2aca95daa732fd0ac0c64"
+    },
+    {
+     "id": "journalism/5",
+     "sha256": "517966142732a0e2c376e9a38f581e8b457697b8fafcb40b9f339c79a2921d1d"
+    },
+    {
+     "id": "legal_and_moral_basis/6",
+     "sha256": "4d40ed436ca44d29bf470e9333dd7005fbd7687c477cf8d9264ea3c2dd1b101f"
+    }
+   ]
+  },
+  {
+   "key": "humanevalplus",
+   "items": [
+    {
+     "id": "HumanEval/24",
+     "sha256": "aea134abd6b410bba761e6a37b8fea3b2738531e9e02e8c631030b2de32509cc"
+    },
+    {
+     "id": "HumanEval/67",
+     "sha256": "7ad4ef23661fa4f7a7a95dd200de4dfae7691ca8a5dbae7b7834ff542f8449f9"
+    },
+    {
+     "id": "HumanEval/86",
+     "sha256": "5a12040e9782034745182ea7fd750bababb2eda5c6a18417521b50e24d45dc82"
+    },
+    {
+     "id": "HumanEval/83",
+     "sha256": "187a8d86a1f51ee536cdf11b08841774b3878b63e07b48a26c7d10397df2ddda"
+    },
+    {
+     "id": "HumanEval/100",
+     "sha256": "675613ba92d65a6f370450f9fdd6813ab6349d883e17001c3943c358bb4d336b"
+    },
+    {
+     "id": "HumanEval/89",
+     "sha256": "949a4dbcd52922596067d4f70cab04605674fc478ac5e33a156d83404d00fce3"
+    },
+    {
+     "id": "HumanEval/106",
+     "sha256": "a98a026decc14f949bd8572f9a1c441ed08093dd0f495e9174c5ee4eba8dca15"
+    },
+    {
+     "id": "HumanEval/58",
+     "sha256": "d5c914e51345042c6147482d90cacf8c8208dcab231ac963f09c9b397f07bc4e"
+    },
+    {
+     "id": "HumanEval/55",
+     "sha256": "2c6d4c2d03b8a2420fa92d5e2b99ea6388552c8e54683a45f4bda1ebdc45dea9"
+    },
+    {
+     "id": "HumanEval/5",
+     "sha256": "2c1f35258a88fa4897a9d51197b104eee65c1e6900f6a5012c317ebb1c678cba"
+    },
+    {
+     "id": "HumanEval/20",
+     "sha256": "7567b608d692afd69ad7ccffcc07a4bb5a60b3beb755997094e999f1a010bbbd"
+    },
+    {
+     "id": "HumanEval/41",
+     "sha256": "3f2bf2c0ff53562b53d0a1078865deea683404d8c307e3f4890979b8f709a7ab"
+    },
+    {
+     "id": "HumanEval/129",
+     "sha256": "63e3b304c1716f60b01c490cb6bbe87a46a6a925e51c3c865f8e8f5a0c5fe1bb"
+    },
+    {
+     "id": "HumanEval/93",
+     "sha256": "639812729ae3e7fb7e22fd6ce1af0cbd09e2121f36246a883af17349b9d25236"
+    },
+    {
+     "id": "HumanEval/42",
+     "sha256": "0d80b467613f7e182bee883da26f0244ea46698a081637662c70a34db06765c0"
+    },
+    {
+     "id": "HumanEval/114",
+     "sha256": "e8706ceff7ef00f0f4ab86bc8d828efb476c811fe2db5e4d457a46baf8d31a49"
+    },
+    {
+     "id": "HumanEval/144",
+     "sha256": "fa9036abfe3647bf0c6a971a31d941f84d88d59b37b397097af749428190f4b1"
+    },
+    {
+     "id": "HumanEval/94",
+     "sha256": "d86ad79be4bf8009145a0e024130464bd8536468d71321fc76722e401dc9789e"
+    },
+    {
+     "id": "HumanEval/51",
+     "sha256": "37c0e3fd84501a3435ebc13f551b32a3f10f34c04e147e2b93745256c6351b39"
+    },
+    {
+     "id": "HumanEval/142",
+     "sha256": "0a872d6aaeff329f0c8a54ae2c6d1d849209635bb314e313996e87bd9aa6a7bf"
+    },
+    {
+     "id": "HumanEval/65",
+     "sha256": "b15487f7192e83bb75a72bbfcec714bdaa8e24f296f8c7d1153475feb875fa4a"
+    },
+    {
+     "id": "HumanEval/133",
+     "sha256": "e2698a49435d3af4ef9d7605cac933175430f6d306dfda386a8e5d06d718400a"
+    },
+    {
+     "id": "HumanEval/56",
+     "sha256": "3f24dec0dc9a10fbb9e65aa130d7135c17679e5961b875428b2d7d2666a791bf"
+    },
+    {
+     "id": "HumanEval/125",
+     "sha256": "a228ed31aea0762e7e5bebce1b1401289ea62e09d3e63f61674ef0585c038a19"
+    },
+    {
+     "id": "HumanEval/140",
+     "sha256": "401c261f299761307c09b928236b710fb756d8700707ce79f74972047eee3f84"
+    }
+   ]
+  },
+  {
+   "key": "mbppplus",
+   "items": [
+    {
+     "id": "Mbpp/301",
+     "sha256": "a2632cbf95b8edca7cf515628fb59bf395dd0488bb0a34adef24b69726679ba8"
+    },
+    {
+     "id": "Mbpp/633",
+     "sha256": "fd7ed2d8dacfef33d2794a11c29c1a47a89dc8c8e8348e83a10ee7b77b99afb4"
+    },
+    {
+     "id": "Mbpp/286",
+     "sha256": "6b11977f74ca0d1586a0ec9159864bd0fd0e69d16c3bd4e87e4dc15214b6618f"
+    },
+    {
+     "id": "Mbpp/594",
+     "sha256": "6474337b12c6aaff8fd30d1dafed43381648ffbb76aa2b0d40e8667392542939"
+    },
+    {
+     "id": "Mbpp/306",
+     "sha256": "976e68e0c357a923a1a3e82d2868d0563d1224128d1e90fddaeec3ab7e5ee64b"
+    },
+    {
+     "id": "Mbpp/566",
+     "sha256": "cce3f9136f97256c6494cf30b7d6d5e971a129a9d194aa1a3e028700d98c68e8"
+    },
+    {
+     "id": "Mbpp/113",
+     "sha256": "6ff2f52a15284da840e3149e6f9748ef830c2b86ca56b1a9e20a10792a446e4a"
+    },
+    {
+     "id": "Mbpp/292",
+     "sha256": "2eecdd470828b8668ca9eaf646eceba5e10516a6a2170f55a2e23e6d19bf7f89"
+    },
+    {
+     "id": "Mbpp/126",
+     "sha256": "9f980c9253b32bd622c88fb556ce0815c6872da38e486cdfe3a7dbbf9a2990b1"
+    },
+    {
+     "id": "Mbpp/586",
+     "sha256": "6bb7c2b456a145bac7a1c62cac379c902e3a9f420f878133f293b5e185b0668e"
+    },
+    {
+     "id": "Mbpp/745",
+     "sha256": "6512482a55fa7873317508d59a5ebbf80f3dc711119c48a39b3c80818557fbcc"
+    },
+    {
+     "id": "Mbpp/56",
+     "sha256": "dbcfad9d2e2a7b77af6d97618c699a2435a10c0fbf530c3d363522c1579900cc"
+    },
+    {
+     "id": "Mbpp/77",
+     "sha256": "8f85fcd5057f4d00410cd05b95595161abb49b8ab3fe7269e51e2749837745a9"
+    },
+    {
+     "id": "Mbpp/131",
+     "sha256": "231232abadd7c434cd9df8af28fe8a908fc444946051f8d4191d7c7ba8692d44"
+    },
+    {
+     "id": "Mbpp/471",
+     "sha256": "a114014cce09acc7d5b7dc20301cf6b7161148918ba1160b77cca85dc7471447"
+    },
+    {
+     "id": "Mbpp/463",
+     "sha256": "7684af41a47cc524feebda6e36e69b9c793b5224a76c7e32b084787d42eda223"
+    },
+    {
+     "id": "Mbpp/620",
+     "sha256": "0be9cf51aa95a3b4b222a4103a7676efe2576ecd591f1ab6d4f25b57884d55db"
+    },
+    {
+     "id": "Mbpp/4",
+     "sha256": "b3b6895661190944018d72c393993db3caa152e7632badfdca3bc6f62c318318"
+    },
+    {
+     "id": "Mbpp/455",
+     "sha256": "a91be1eb849f1566221640eac97000b5c803366cf674edcfaeb95f8cf27b7d38"
+    },
+    {
+     "id": "Mbpp/788",
+     "sha256": "a858214811663213758013a26e7196847b406ae62d43885985ad7ebb8d3d3f20"
+    },
+    {
+     "id": "Mbpp/476",
+     "sha256": "0a0652b7bb09b6402c7f4b696a7323aff3f93aeb2d89808a4296280e194ccbd5"
+    },
+    {
+     "id": "Mbpp/785",
+     "sha256": "80fba80f5a8e9359d0ab4ed7e9780d0ea972fae597aec0f06982592c538349cd"
+    },
+    {
+     "id": "Mbpp/269",
+     "sha256": "b5e04016dbf4eee69aa19ce7b4c853a1fd20c418eee74ff18fbeeb91aaa7a4c4"
+    },
+    {
+     "id": "Mbpp/119",
+     "sha256": "bc3750478c2f00c16d7b0a75ffa8154c7a4042984e0b6c86c34175ef51858579"
+    },
+    {
+     "id": "Mbpp/86",
+     "sha256": "3369aa838382f4a078bf5e3bc9ffaa44870544fe524d0da984621d85ae7391e4"
+    }
+   ]
+  },
+  {
+   "key": "acebench-zh",
+   "items": [
+    {
+     "id": "normal_atom_enum_8",
+     "sha256": "6db84a0f58edd8fed8fb97b331b98e2c9373b0923eac41de9e839304777f58d0"
+    },
+    {
+     "id": "normal_atom_bool_36",
+     "sha256": "4ff4ce70d603e265f3480b9a611ee697edeea150ef0ac5b9076cf28500519dff"
+    },
+    {
+     "id": "normal_atom_number_33",
+     "sha256": "9c2a3177c9ab68e32128a783d722b1a4e5f0a7382db660efbb4740c775feeb4b"
+    },
+    {
+     "id": "normal_atom_list_7",
+     "sha256": "50753d0a1f1726cbd0ca9fedcbe0c3f9279d35d9dc0333f2528e543e634d3a62"
+    },
+    {
+     "id": "normal_atom_object_deep_31",
+     "sha256": "e3ea542cc5ce15ac0c5ab6c0597da38c0a35fed91ef4c23371b44c6d2d87c73d"
+    },
+    {
+     "id": "normal_single_turn_single_function_96",
+     "sha256": "bd17b2ef06f5d0b752552ba91e0ce9ae6b20b4a564c3183c2a8cf0f9851e6168"
+    },
+    {
+     "id": "normal_atom_object_short_4",
+     "sha256": "7cd7fadf1bdedd130994396026bd78b75da850a68bae9e545b45d6aba0d00963"
+    },
+    {
+     "id": "normal_single_turn_parallel_function_32",
+     "sha256": "73f11cb2f9deb124b237cf2b4e1d8b50440ca69fcb8255bd82f5d5a38069b0fb"
+    },
+    {
+     "id": "normal_atom_enum_30",
+     "sha256": "dde26e01f124ede9212d34d8f87c87727a29f5564f520ce72d2645c23b3262b6"
+    },
+    {
+     "id": "normal_atom_bool_21",
+     "sha256": "b54b87bf885a12761cf6d5226d9f4a5097187b7dd8cef7756d35ca02b500f142"
+    },
+    {
+     "id": "normal_atom_number_13",
+     "sha256": "0336fb335ba2ec2fc22d739e3ca783e1854501a451afaec0de9d3e1356cbf53a"
+    },
+    {
+     "id": "normal_atom_list_1",
+     "sha256": "bc58925666123a18911242581b18742d8ca64d6c4c0c2a73b8820f304657c06c"
+    },
+    {
+     "id": "normal_atom_object_deep_40",
+     "sha256": "90099daa4339083c2be1d7e4696679b3e757d9b954e8ffd191fba42f3bd6926d"
+    },
+    {
+     "id": "normal_single_turn_single_function_85",
+     "sha256": "f61ba81a205a7067a839bee70c22667573cfe4baf3a249bb5f034418b6890306"
+    },
+    {
+     "id": "normal_atom_object_short_28",
+     "sha256": "8b764698e6868aa8f57e01f94778a05d434781c06f56a7f97a1e748ea9c616a7"
+    },
+    {
+     "id": "normal_single_turn_parallel_function_73",
+     "sha256": "734b9d22d345efe0dd370322d683788f31b76941e99331c2a64a218b92bc4b20"
+    },
+    {
+     "id": "normal_atom_enum_22",
+     "sha256": "fb71833c45add14dcc9b2dc9104cc60518ad554522d4776c4b6824ba2344b095"
+    },
+    {
+     "id": "normal_atom_bool_41",
+     "sha256": "e703938aea42609a2702526722d907f20b3d6d1f71c95eff70e436cd36c09c29"
+    },
+    {
+     "id": "normal_atom_number_2",
+     "sha256": "dacab01763ec7d9f9c6ebaf7da4ee1edcda630f045f32120bada3f2fdec63256"
+    },
+    {
+     "id": "normal_atom_list_32",
+     "sha256": "577a580a5cf4a715c93e500d21c655e5a55ab5383b28dbc07adfe2ae493115bd"
+    },
+    {
+     "id": "normal_atom_object_deep_32",
+     "sha256": "d6177bda3e2817cb67d3f5cfe69ecee710190c9a606bd1a16b3d71dd08202b14"
+    },
+    {
+     "id": "normal_single_turn_single_function_34",
+     "sha256": "fad3a91e201e74c81fb33697a564b7f4d3e272d931340f4cb8e97b8f57ba2bc0"
+    },
+    {
+     "id": "normal_atom_object_short_26",
+     "sha256": "83cfc7655a347e7acc0545dd341a4816e1adbd213259afc1bd689cfc56cb9b22"
+    },
+    {
+     "id": "normal_single_turn_parallel_function_79",
+     "sha256": "fe215044060c77c5aadb85b224757de5044d459665c1bd4b1d36d6ca49ff4e0f"
+    },
+    {
+     "id": "normal_atom_enum_34",
+     "sha256": "c84482db78dbe539dd0b7b9ee23b64c00040a1e35258a813d9737922f199d8dd"
+    },
+    {
+     "id": "normal_atom_bool_32",
+     "sha256": "0f070f4deb7a302ed0a56d7b0d8dd0124c5ecbc45e4f3fb5df76dd612419111e"
+    },
+    {
+     "id": "normal_atom_number_35",
+     "sha256": "82829fd8c7ff91d8df2eab780987373662b52753ee15723f4787bfc1d0c82bc2"
+    },
+    {
+     "id": "normal_atom_list_45",
+     "sha256": "0225e3ec25c9a2853bf8f04984b0e033e783eccb56ac501dcb0b7768f2782132"
+    },
+    {
+     "id": "normal_atom_object_deep_11",
+     "sha256": "111c0fcd4993c461f4f3ccbba566458ca3a2f0f63b9e98a2d57ed91acf41c8b5"
+    },
+    {
+     "id": "normal_single_turn_single_function_78",
+     "sha256": "d7decfd2d384f50cd72f84bf5695452e7a286dcb36fef10b33be2f70a0e9bfae"
+    },
+    {
+     "id": "normal_atom_object_short_10",
+     "sha256": "c7135b16cf438d71c7b027fdd2eb782b97079053c9f29c1a008484acb37c818e"
+    },
+    {
+     "id": "normal_single_turn_parallel_function_66",
+     "sha256": "785ea3ac1270ae979cb2e0a7e9d564f880f5671ab0b622508c45d7f4a5e91a16"
+    },
+    {
+     "id": "normal_atom_enum_10",
+     "sha256": "05c702141ed34764f67e7f882a63ff16f8fd79641abd2d852d9a21312de95b11"
+    },
+    {
+     "id": "normal_atom_bool_38",
+     "sha256": "f2c5f68a4118d1b0c1cc0884253c15b36b5c8d79c5f0ae2b0b1ece3b09c3f26d"
+    },
+    {
+     "id": "normal_atom_number_6",
+     "sha256": "12efca9dccd2eaf507183a7b417a35c925eb65ec0df59358a6fd94057955d257"
+    },
+    {
+     "id": "normal_atom_list_23",
+     "sha256": "f640d74c2d4b0c892cc6b9c9bb7eca457878e247c342b15a3feb1eda5f5ea720"
+    },
+    {
+     "id": "normal_atom_object_deep_42",
+     "sha256": "d8471a70b5f8368538c86483a02ac68b5714669b5da4b57c6a8c011f06777048"
+    },
+    {
+     "id": "normal_single_turn_single_function_76",
+     "sha256": "ed467833b4d2d7013f1f6fbaaacfe04796ed9c2d8d3cd7873ccaaada4ea0b0d2"
+    },
+    {
+     "id": "normal_atom_object_short_29",
+     "sha256": "93003c2a8491d3a182d7ffb0645a2804f9629fa59caed595ec36e4c956d9fef8"
+    },
+    {
+     "id": "normal_single_turn_parallel_function_25",
+     "sha256": "ae6142bdecbbba631eafdf48268a30c730d652fbdceb19799eac938fc4cb6105"
+    },
+    {
+     "id": "normal_atom_enum_14",
+     "sha256": "480147f2904fc2e2926650e3e9c31dd4b349fe364e7c7732c3503b2e48aff66b"
+    },
+    {
+     "id": "normal_atom_bool_20",
+     "sha256": "9a05d97a97551bbdb17abea6672e7e67135862103846447bd8158e68c6c140a8"
+    },
+    {
+     "id": "normal_atom_number_28",
+     "sha256": "b176a338da35c6f0540bd72058bc4a938c036adaf9bdbf103cf1b55a4f898f24"
+    },
+    {
+     "id": "normal_atom_list_42",
+     "sha256": "a4081c8543c115af30ec8e3ab580637a27097e7f45f22856635265a01609db83"
+    },
+    {
+     "id": "normal_atom_object_deep_12",
+     "sha256": "6eb0d4d2c1b00fcf849facdfda41c37850f300a46fa6bd512618cd715eca5880"
+    },
+    {
+     "id": "normal_single_turn_single_function_13",
+     "sha256": "c82800c2bbcf6e0b776fac962ead154740031f5fd380207cbfb5d2a45d7bd518"
+    },
+    {
+     "id": "normal_atom_object_short_30",
+     "sha256": "6fe87e34ca4da9ba17b1cee749fe6674ad8d12e1b4d5e36dcc0b8e0599159ea5"
+    },
+    {
+     "id": "normal_single_turn_parallel_function_64",
+     "sha256": "eda311f8bfac7ece1415939049031ca00b05e3916a1a27105dea4c687a588681"
+    },
+    {
+     "id": "normal_atom_enum_12",
+     "sha256": "334126cb04078a2eebcbd0f1bfd93d1555ae0baabf14b95a7ae16f9a7b1a4972"
+    },
+    {
+     "id": "normal_atom_bool_40",
+     "sha256": "ca1bb046069413f1b2212b5c16a37fb030798b79ab7ba4be76487822dc6ef4d2"
+    }
+   ]
+  },
+  {
+   "key": "zhwiki-featured",
+   "items": [
+    {
+     "id": "2019年司諾克巡迴錦標賽",
+     "revid": 92947124,
+     "stratum": "體育和休閒",
+     "sha256": "cd992022b1d751c7e9dcc9b9d3f3374f36745ad8c4dd07cf7e902d2d3bd26406"
+    },
+    {
+     "id": "格兰特纪念币",
+     "revid": 92958959,
+     "stratum": "商业、经济和金融",
+     "sha256": "2fbef85d50aaefc0339d43555c8f291a5e9e71257a2d9c07f1c9ca4d30c8e4c3"
+    },
+    {
+     "id": "孔子",
+     "revid": 95103203,
+     "stratum": "哲学和心理学",
+     "sha256": "50c6b0cee2c69514015a0846629e22a315b3b779dce83b27e507fe40f6e6c0c1"
+    },
+    {
+     "id": "張伯苓",
+     "revid": 95467183,
+     "stratum": "教育",
+     "sha256": "0bc7f3c7a5fd98bb59c2cf426bd3dda5c0fa65ae222ca382fa06e04062fe58eb"
+    },
+    {
+     "id": "鸮鹦鹉",
+     "revid": 93664572,
+     "stratum": "生物學",
+     "sha256": "06162f79e986787595c0b00e2846e48b491bed30250ef672ed1d5cb06a0a3f9e"
+    },
+    {
+     "id": "第67届奥斯卡金像奖",
+     "revid": 94960269,
+     "stratum": "傳播媒體",
+     "sha256": "1d48023f7ded9e507c7db918f7a11c4647c71ded9e5f974002cba0098aaeb9a7"
+    },
+    {
+     "id": "BAD MODE",
+     "revid": 94983196,
+     "stratum": "音樂",
+     "sha256": "512438f9ba52fa9afbf6487fd30b4804144ba5b6eb48fbbbe0ad0275cbf26e86"
+    },
+    {
+     "id": "U-66号潜艇 (1915年)",
+     "revid": 93162275,
+     "stratum": "軍事",
+     "sha256": "d9544acb944560dac61ccf94ab9ad3a2ce1cf90bda5706c3b51e252d7db5af68"
+    },
+    {
+     "id": "1990－1991年南太平洋气旋季",
+     "revid": 84950974,
+     "stratum": "气象学",
+     "sha256": "3353650437b15081267eb43fb7e5df91330ff24c76086457cf3618ff4828d8de"
+    },
+    {
+     "id": "遜尼派",
+     "revid": 91091834,
+     "stratum": "宗教、玄秘和神话",
+     "sha256": "0d4364409f92cc98e9d4303e49c77a26cd1b7920d63dda04ab51426f51c8beea"
+    },
+    {
+     "id": "春社",
+     "revid": 94875788,
+     "stratum": "文化和社会",
+     "sha256": "8a9efcfc74c85071094e0f0ea0ef81587e5464645dc47c4f7bdf293483cbd984"
+    },
+    {
+     "id": "千禧年大獎難題",
+     "revid": 95130998,
+     "stratum": "数学",
+     "sha256": "b477df6c5d515400d9c5106ca7f9be18c4ed4d10305e347f3f0d96d525d242d9"
+    },
+    {
+     "id": "金星凌日",
+     "revid": 93554078,
+     "stratum": "物理学和天文学",
+     "sha256": "05412c58bd00ce28a9e50e281a950b734ae02548f5febdaac32b7c80fdbc179c"
+    },
+    {
+     "id": "艾伦·谢泼德",
+     "revid": 95073193,
+     "stratum": "工程和技術",
+     "sha256": "639e0f8ea62c26fedd90d116604b6816eff9551ef3d27e71bac9f2004c95968d"
+    },
+    {
+     "id": "稀有气体",
+     "revid": 95445342,
+     "stratum": "化学和矿物学",
+     "sha256": "a5d5bfd0844ab116eaab339a893f601a4bc3df4fbe8c8c7015ad99e84a22404e"
+    },
+    {
+     "id": "锅巴菜",
+     "revid": 94153217,
+     "stratum": "饮食",
+     "sha256": "afed8d60f5b7e1d1080a0bcfcd7a81e76313f6bfff6fb6949df3f01cc3aa24bb"
+    },
+    {
+     "id": "约瑟夫·德沙",
+     "revid": 91973071,
+     "stratum": "政治和政府",
+     "sha256": "9484a2c1428701de1c9787196437122d71abdab180095cce9d77b3de982753a8"
+    },
+    {
+     "id": "信仰自由 (油畫)",
+     "revid": 93377246,
+     "stratum": "藝術和建築",
+     "sha256": "0e18e53e16a73ae01913ae1f846bcf308f2533462119f38a004a9822627eaea3"
+    },
+    {
+     "id": "成昆铁路",
+     "revid": 93281810,
+     "stratum": "交通運輸",
+     "sha256": "7b5c186224e1a20c0c83afa00b51780d5657529d608ece911551cf10b3c76085"
+    },
+    {
+     "id": "长崎市",
+     "revid": 93558814,
+     "stratum": "地理和地方",
+     "sha256": "32760252678db1fdc079b43ab87ce13607f544e920fe9bd51df8be80b1eb7669"
+    },
+    {
+     "id": "薛范",
+     "revid": 93984594,
+     "stratum": "文学和戏剧",
+     "sha256": "1fd748bed297ca1ee0b8a319549074bc4e7b7c21010224a8932797433c1ffc01"
+    },
+    {
+     "id": "反重力赛车3",
+     "revid": 95069710,
+     "stratum": "电子游戏",
+     "sha256": "96b7191eaf69c69faad583575e8a32a144118f92a9af2a97e59a3f34a833bb25"
+    },
+    {
+     "id": "2002年布因扎赫拉地震",
+     "revid": 93198541,
+     "stratum": "地质和地球物理学",
+     "sha256": "9ac2f4075d4a0ff215c3d4c71379abd34eab0c2c2f65f11e34c9ab4889062954"
+    },
+    {
+     "id": "娜塔莉·霍洛威失踪案",
+     "revid": 95587431,
+     "stratum": "法律",
+     "sha256": "91da2040d61b7bb403931d78dbe8fa9f1cd5d9b21c515cfc5afcc6440301bb6e"
+    },
+    {
+     "id": "美国黑人手语",
+     "revid": 92106895,
+     "stratum": "语言和语言学",
+     "sha256": "e60bfc0e1e0f7cb3386a32c8621444e7b36c68938ef53bb3ba311771444186dd"
+    },
+    {
+     "id": "阿仙奴足球會歷史 (1886年至1966年)",
+     "revid": 93007052,
+     "stratum": "體育和休閒",
+     "sha256": "bdba8420cb562605a41458015574867e3fbd7d978a8e82a2361fdd1377bdcde7"
+    },
+    {
+     "id": "弗吉尼亚州诺福克二百周年半美元",
+     "revid": 90296112,
+     "stratum": "商业、经济和金融",
+     "sha256": "cc905408a14ab8d577d3257b0953d28edb49482a0b26ba834e2f2dd86e2c9259"
+    },
+    {
+     "id": "張載 (北宋)",
+     "revid": 95479406,
+     "stratum": "哲学和心理学",
+     "sha256": "c0d6344ab64710634ceb8834369dd5c95a26e52ddc7c03f701df1f52ffe0608b"
+    },
+    {
+     "id": "南开大学经济研究所",
+     "revid": 92856460,
+     "stratum": "教育",
+     "sha256": "5abb80e56a69978331aa5bc0a70b0765b32f3ba3aff55294a6ec6332f0df8110"
+    },
+    {
+     "id": "血管紧张素转化酶2",
+     "revid": 95186127,
+     "stratum": "生物學",
+     "sha256": "fcd17a5c65f3cb82f1c7cfbb21478000aa47e71b3f9f42940b19e942fcc0df68"
+    },
+    {
+     "id": "第65届奥斯卡金像奖",
+     "revid": 94926780,
+     "stratum": "傳播媒體",
+     "sha256": "9551ce92b2f1155f759be099c46b3e650c39144e8cb43001d9a937364bab7867"
+    },
+    {
+     "id": "今天 (碎南瓜乐队歌曲)",
+     "revid": 94899685,
+     "stratum": "音樂",
+     "sha256": "4804aaf88c2c4a3f9035371d92b39877e00f88ce0f361fc0a2ed952680efd805"
+    },
+    {
+     "id": "黑森号战列舰",
+     "revid": 93042055,
+     "stratum": "軍事",
+     "sha256": "9da274175e390d9693128d1355e5eadd388824719e1fbd84b29812399a733e0b"
+    },
+    {
+     "id": "颱風蓓姬 (1986年)",
+     "revid": 90162942,
+     "stratum": "气象学",
+     "sha256": "64b4165975ef65bcda21c65dead4c9526d7082e6390827be863d1f0b1fc5ce18"
+    },
+    {
+     "id": "帕金森氏症",
+     "revid": 95381987,
+     "stratum": "衛生與醫藥",
+     "sha256": "fe39e7f712c65e094ffa7ff563e656d1126fc7ad781f68521b8cc321a301e023"
+    },
+    {
+     "id": "羅教",
+     "revid": 89947432,
+     "stratum": "宗教、玄秘和神话",
+     "sha256": "37f178ec4b2a1a733568c7dcd308832816f958d2471dd510252ef0172bba30a3"
+    },
+    {
+     "id": "米歇尔·阿弗拉克",
+     "revid": 94091598,
+     "stratum": "文化和社会",
+     "sha256": "342fa596b267295dc44fe291559359f79979db0b29dfe2651bc4bdfc8c1542b4"
+    },
+    {
+     "id": "行列式",
+     "revid": 92998383,
+     "stratum": "数学",
+     "sha256": "cbfa69c78ebd09fcc27af39bb7d35005da4b377b03dbeb6fc40fb43063a88a21"
+    },
+    {
+     "id": "格蕾丝·舍伍德",
+     "revid": 94869837,
+     "stratum": "历史",
+     "sha256": "325e22ec8e9a53f379d96723a11641f32869f4f8aae0f1273eae76ae743cd9b6"
+    },
+    {
+     "id": "水星计划七人",
+     "revid": 95232997,
+     "stratum": "物理学和天文学",
+     "sha256": "4888fc339e02399ad8f7f177732868744064a25aeaf567bbd721a83177bf18b3"
+    },
+    {
+     "id": "人群管理特別用途車",
+     "revid": 93578765,
+     "stratum": "工程和技術",
+     "sha256": "65fc012d2d902fcc22ecc37fc4d348c8f7a8dda5cf189350c2a389e91960d7cb"
+    },
+    {
+     "id": "锗",
+     "revid": 93182655,
+     "stratum": "化学和矿物学",
+     "sha256": "84677bcbacd8db1c3a03d05ae476b549965bfacf1a63fa0544c2f1dde37440df"
+    },
+    {
+     "id": "煎饼馃子",
+     "revid": 94153227,
+     "stratum": "饮食",
+     "sha256": "68d44f6608bbc715817909189b696336cb0faee36c873ee3dcbfec262a8d1601"
+    },
+    {
+     "id": "约翰·谢尔曼·库珀",
+     "revid": 92052950,
+     "stratum": "政治和政府",
+     "sha256": "dd76f1a75c64a30f481f6ee54ebe9607ab8a278710da83bcc8c6a206751cf0df"
+    },
+    {
+     "id": "麗莎·喬宮多",
+     "revid": 93323058,
+     "stratum": "藝術和建築",
+     "sha256": "ced3cc5801b02ede84e69131ce28878f27ae4388c718aaeb958eac61fca00cc0"
+    },
+    {
+     "id": "樟宜机场站",
+     "revid": 93391116,
+     "stratum": "交通運輸",
+     "sha256": "ebd95485595e581a98dd3c606cd0a7a47f03a9b17a6cdd501f9d0cec52123844"
+    },
+    {
+     "id": "神奈川縣",
+     "revid": 95286168,
+     "stratum": "地理和地方",
+     "sha256": "ddbeddb189d0a2c467bb5e4bc0dfbd1310ea6c5d64bd10d675866c2dc0958db8"
+    },
+    {
+     "id": "野草 (文學)",
+     "revid": 93242812,
+     "stratum": "文学和戏剧",
+     "sha256": "6c76bf5e28453f7dd1440526bf7291892e2e71e42af3a874462fc27b2ccd3007"
+    },
+    {
+     "id": "黑色洛城",
+     "revid": 94651780,
+     "stratum": "电子游戏",
+     "sha256": "012f83cd7c4d9533cfd4b227d7179e76d555a194256e3b931e18206058a81503"
+    },
+    {
+     "id": "哈利·格里肯",
+     "revid": 94963279,
+     "stratum": "地质和地球物理学",
+     "sha256": "ce8e9d47e34c7a360433a4c3890de4daab35461cfe0459a3f3af34f052e2a55b"
+    }
+   ],
+   "skipped": [
+    {
+     "id": "肝肾综合征",
+     "reason": "wikipedia request failed (HTTP 429): https://zh.wikipedia.org/api/rest_v1/page/html/%E8%82%9D%E8%82%BE%E7%BB%BC%E5%90%88%E5%BE%81/94850419"
+    },
+    {
+     "id": "裕成办馆毒面包案",
+     "reason": "missing"
+    }
+   ]
+  }
+ ],
+ "bank_hash": "2138a26f02db842a2e304d1254fa343f0beaec1a04cdc2582a8920e49deae252"
+}
