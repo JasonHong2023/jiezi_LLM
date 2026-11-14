@@ -35,6 +35,19 @@ class FakeClient:
         return Reply(st, model="other" if st.startswith("void") else None, error="x", attempts=3)
 
 
+class ThinkingClient:
+    """模擬推理模型：上限不夠就只有思考、沒有回答。 / Simulates a reasoning model that needs a larger limit."""
+
+    def __init__(self, needs):
+        self.needs, self.limits = needs, []
+
+    def complete(self, messages, temperature=0.0, max_tokens=0, extra=None):
+        self.limits.append(max_tokens)
+        if max_tokens < self.needs:
+            return Reply("ok", content="", model="m", attempts=1, finish_reason="length")
+        return Reply("ok", content="<think>…</think>答案：B", model="m", attempts=1, finish_reason="stop")
+
+
 ID = {"model": "m", "temperature": 0.0, "bank_hash": "h"}
 
 
@@ -49,6 +62,18 @@ class TestRunner(unittest.TestCase):
 
     def results(self):
         return runner.latest_results(self.dir)
+
+    def test_truncated_reasoning_is_not_wrong(self):
+        s = runner.run([mc(0), mc(1)], ThinkingClient(needs=1000), self.dir, log=QUIET)
+        r = self.results()["s/q0#0"]
+        self.assertEqual((r["status"], r["score"], r["finish_reason"]), ("truncated", None, "length"))
+        self.assertEqual(s["state"], "complete")  # 報表另外標為不完整 / the report marks it incomplete
+
+    def test_reasoning_budget_added_to_answer_budget(self):
+        client = ThinkingClient(needs=1000)
+        runner.run([mc(0)], client, self.dir, reasoning_budget=4096, log=QUIET)
+        self.assertEqual(client.limits, [32 + 4096])
+        self.assertEqual(self.results()["s/q0#0"]["score"], 1)
 
     def test_complete_run(self):
         items = [mc(i) for i in range(3)] + [mc(9, answer="A")]

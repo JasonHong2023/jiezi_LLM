@@ -31,6 +31,7 @@ class Reply:
     latency_s: float = 0.0
     attempts: int = 0
     error: str | None = None
+    finish_reason: str | None = None
 
 
 class ModelGuard:
@@ -123,7 +124,7 @@ class ChatClient:
         msg = choice.get("message") or {}
         reply = Reply("ok", content=msg.get("content") or "", model=data.get("model"),
                       usage=data.get("usage") or {}, timings=data.get("timings") or {},
-                      latency_s=round(latency, 3), attempts=attempts)
+                      latency_s=round(latency, 3), attempts=attempts, finish_reason=choice.get("finish_reason"))
         if self.guard and not self.guard.accept(reply.model):
             reply.status = "void_model_mismatch"
             reply.error = f"response model {reply.model!r} does not match the baseline"

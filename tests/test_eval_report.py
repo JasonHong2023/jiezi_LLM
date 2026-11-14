@@ -65,6 +65,14 @@ class TestReport(unittest.TestCase):
         self.assertEqual((k["scored"], k["errors"], k["void_model_mismatch"]), (1, 1, 1))
         self.assertIn("⚠️", (d / "report.md").read_text())
 
+    def test_truncated_makes_it_incomplete(self):
+        rep, d = self.make([rec("a", "knowledge", "s", "multiple_choice", "correct", 1),
+                            rec("b", "knowledge", "s", "multiple_choice", "truncated", None)])
+        self.assertEqual(rep["completeness"], "incomplete")
+        self.assertEqual(rep["counts"]["truncated"], 1)
+        self.assertEqual(rep["groups"]["knowledge"]["summary"]["scored"], 1)
+        self.assertIn("截斷 / Truncated", (d / "report.md").read_text(encoding="utf-8"))
+
     def test_multi_sample_label(self):
         rep, _ = self.make([rec("a", "knowledge", "ceval", "multiple_choice", "correct", 1)],
                            identity={"samples": 8, "temperature": 0.7})

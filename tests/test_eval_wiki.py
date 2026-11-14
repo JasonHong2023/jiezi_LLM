@@ -64,7 +64,7 @@ class FakeResp:
         return self.body.encode()
 
 
-def opener_with(outcomes):
+def opener_with(outcomes, headers=None):
     """outcomes：依序為 HTTP 狀態碼（拋錯）或字串（成功）。 / HTTP codes (raise) or strings (succeed), in order."""
     import urllib.error
     seq = list(outcomes)
@@ -72,7 +72,7 @@ def opener_with(outcomes):
     def op(req, timeout=None):
         o = seq.pop(0)
         if isinstance(o, int):
-            raise urllib.error.HTTPError(req.full_url, o, "x", {}, None)
+            raise urllib.error.HTTPError(req.full_url, o, "x", headers or {}, None)
         return FakeResp(o)
     return op
 
@@ -86,7 +86,14 @@ class TestGet(unittest.TestCase):
 
     def test_gives_up_with_eval_error(self):
         with self.assertRaisesRegex(EvalError, "HTTP 504"):
-            wiki._get("https://x.invalid/a", sleep=lambda _: None, opener=opener_with([504, 504, 504]))
+            wiki._get("https://x.invalid/a", sleep=lambda _: None, opener=opener_with([504, 504, 504, 504]))
+
+    def test_429_honors_retry_after_with_cap(self):
+        sleeps = []
+        text = wiki._get("https://x.invalid/a", sleep=sleeps.append,
+                         opener=opener_with([429, 429, "ok"], headers={"Retry-After": "600"}))
+        self.assertEqual(text, "ok")
+        self.assertEqual(sleeps, [wiki.RETRY_AFTER_CAP_S, wiki.RETRY_AFTER_CAP_S, wiki.REQUEST_GAP_S])
 
     def test_404_not_retried(self):
         with self.assertRaisesRegex(EvalError, "HTTP 404"):

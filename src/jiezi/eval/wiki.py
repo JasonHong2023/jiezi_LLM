@@ -23,20 +23,24 @@ from .bank import Source
 
 USER_AGENT = "jiezi-eval/0.1 (research)"
 REQUEST_GAP_S = 0.5  # 對維基伺服器保持禮貌 / be polite to Wikimedia servers
-RETRY_DELAYS_S = (5, 15)  # 504 等暫時性錯誤（2026-11-14 實際遇到）/ transient errors such as 504 (seen 2026-11-14)
+RETRY_DELAYS_S = (5, 15, 60)  # 504、429 等暫時性錯誤（2026-11-14、11-15 實際遇到）/ transient 504 / 429 (seen 2026-11-14, 11-15)
+RETRY_AFTER_CAP_S = 120
 
 _HEADING = re.compile(r"^==\s*([^=].*?)\s*==\s*$", re.M)
 _LINK = re.compile(r"\[\[([^\]\|#]+)(?:#[^\]\|]*)?(?:\|[^\]]*)?\]\]")
 
 
 def _get(url: str, headers: dict | None = None, sleep=time.sleep, opener=urllib.request.urlopen) -> str:
-    """GET；5xx、429、逾時、連線錯誤最多重試 2 次，仍失敗就拋出 EvalError。
-    GET with up to two retries on 5xx, 429, timeouts, and connection errors; raise EvalError if it still fails."""
+    """GET；5xx、429、逾時、連線錯誤最多重試 3 次（429 依 Retry-After，上限 120 秒），仍失敗就拋出 EvalError。
+    GET with up to three retries on 5xx, 429 (honoring Retry-After, capped at 120 s), timeouts, and connection
+    errors; raise EvalError if it still fails."""
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, **(headers or {})})
-    last = None
+    last, retry_after = None, None
     for attempt in range(len(RETRY_DELAYS_S) + 1):
         if attempt:
-            sleep(RETRY_DELAYS_S[attempt - 1])
+            delay = RETRY_DELAYS_S[attempt - 1]
+            sleep(max(delay, min(retry_after, RETRY_AFTER_CAP_S)) if retry_after else delay)
+            retry_after = None
         try:
             with opener(req, timeout=60) as r:
                 text = r.read().decode("utf-8", errors="replace")
@@ -46,6 +50,9 @@ def _get(url: str, headers: dict | None = None, sleep=time.sleep, opener=urllib.
             last = f"HTTP {exc.code}"
             if exc.code != 429 and exc.code < 500:
                 break
+            ra = exc.headers.get("Retry-After") if exc.headers else None
+            if ra and ra.strip().isdigit():
+                retry_after = float(ra)
         except (urllib.error.URLError, TimeoutError, socket.timeout, ConnectionError) as exc:
             last = f"{type(exc).__name__}: {getattr(exc, 'reason', exc)}"
     raise EvalError(f"wikipedia request failed ({last}): {url}")

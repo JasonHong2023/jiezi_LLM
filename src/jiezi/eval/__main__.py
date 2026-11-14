@@ -129,6 +129,12 @@ def select(items: list[dict], args) -> list[dict]:
     return out
 
 
+# 推理模型（例如 2026-11-15 的雲端基準 Nemotron）先輸出思考再回答；只給回答所需的 token 會全部用在思考上。
+# Reasoning models (e.g. the 2026-11-15 cloud baseline, Nemotron) think before answering; an answer-sized
+# max_tokens is spent entirely on thinking.
+DEFAULT_REASONING_BUDGET = 4096
+
+
 def cmd_run(args, root: Path) -> int:
     env = load_env(root)
     window = night.parse_window(env.get("JIEZI_NIGHT_WINDOW"))
@@ -140,7 +146,11 @@ def cmd_run(args, root: Path) -> int:
     run_id = args.resume or args.run_id or datetime.now().strftime("%Y%m%d-%H%M%S") + f"-{args.backend}"
     run_dir = root / "var" / "eval" / "runs" / run_id
 
+    reasoning_budget = args.reasoning_budget
+    if reasoning_budget is None:
+        reasoning_budget = DEFAULT_REASONING_BUDGET if (args.backend == "cloud" or args.thinking) else 0
     identity = {"bank": args.bank, "bank_hash": lk["bank_hash"], "template_hash": prompts.template_hash(),
+                "reasoning_budget": reasoning_budget,
                 "backend": args.backend, "temperature": args.temperature, "samples": args.samples,
                 "filters": {"source": sorted(args.source or []), "group": args.group, "limit": args.limit,
                             "only_scorable": args.only_scorable}, "items": len(items)}
@@ -168,7 +178,7 @@ def cmd_run(args, root: Path) -> int:
             eng.start(run_dir / "llama-server.log")
             client = ChatClient(eng.base_url, model.name, timeout_s=args.timeout or 600)
             summary = runner.run(items, client, run_dir, samples=args.samples, temperature=args.temperature,
-                                 extra=extra, retry_errors=args.retry_errors,
+                                 extra=extra, retry_errors=args.retry_errors, reasoning_budget=reasoning_budget,
                                  may_continue=lambda: args.now or window.contains(datetime.now()),
                                  engine_alive=eng.alive)
         (run_dir / "engine.json").write_text(json.dumps({**eng.describe(), "peak_rss_mib": eng.peak_rss_mib,
@@ -184,7 +194,7 @@ def cmd_run(args, root: Path) -> int:
         client = ChatClient(base, model_name, api_key=key, timeout_s=args.timeout or 120, baseline=args.baseline,
                             model_match=env.get("JIEZI_BASELINE_MODEL_MATCH"))
         summary = runner.run(items, client, run_dir, samples=args.samples, temperature=args.temperature,
-                             retry_errors=args.retry_errors,
+                             retry_errors=args.retry_errors, reasoning_budget=reasoning_budget,
                              may_continue=lambda: args.now or window.contains(datetime.now()))
     rep = report.write(run_dir)
     print(f"run {run_id}: {summary['state']} ({summary['recorded']}/{summary['total']}, errors {summary['errors']}); "
@@ -248,6 +258,9 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("--ngl", type=int, default=0, help="GPU layers (0 = CPU only, uses build-cpu)")
     r.add_argument("--ctx", type=int, default=4096)
     r.add_argument("--thinking", action="store_true", help="enable Qwen3 thinking mode (default off, OQ2)")
+    r.add_argument("--reasoning-budget", type=int,
+                   help=f"extra max_tokens for thinking, added to each answer budget "
+                        f"(default {DEFAULT_REASONING_BUDGET} for cloud or --thinking, else 0)")
     r.add_argument("--baseline", action="store_true", help="cloud baseline mode: disable fallbacks, verify model")
     r.add_argument("--samples", type=int, default=1)
     r.add_argument("--temperature", type=float, default=0.0)

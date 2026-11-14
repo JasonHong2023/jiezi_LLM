@@ -29,6 +29,7 @@ def _counts(records: list[dict]) -> dict:
         "correct": correct,
         "accuracy": round(correct / len(scored), 4) if scored else None,
         "unparsed": sum(r["status"] == "unparsed" for r in records),
+        "truncated": sum(r["status"] == "truncated" for r in records),
         "pending_verifier": sum(r["status"] == "pending_verifier" for r in records),
         "void_model_mismatch": sum(r["status"] == "void_model_mismatch" for r in records),
         "errors": sum(r["status"] in ERROR_STATUSES for r in records),
@@ -62,7 +63,8 @@ def build(run_dir: Path) -> dict:
 
     totals = _counts(records)
     samples, temp = int(ident.get("samples", 1)), float(ident.get("temperature", 0.0))
-    complete = state.get("state") == "complete" and totals["errors"] == 0 and totals["void_model_mismatch"] == 0
+    complete = (state.get("state") == "complete" and totals["errors"] == 0 and totals["void_model_mismatch"] == 0
+                and totals["truncated"] == 0)
     ok = [r for r in records if r["status"] not in ERROR_STATUSES]
     usage = defaultdict(int)
     for r in ok:
@@ -75,7 +77,7 @@ def build(run_dir: Path) -> dict:
         "run_state": state.get("state"),
         "expected_records": state.get("total"),
         "groups": groups,
-        "counts": {k: totals[k] for k in ("records", "unparsed", "pending_verifier", "void_model_mismatch", "errors")},
+        "counts": {k: totals[k] for k in ("records", "unparsed", "truncated", "pending_verifier", "void_model_mismatch", "errors")},
         "tokens_per_second": _stats([r["tps"] for r in ok if r.get("tps")]),
         "latency_s": _stats([r["latency_s"] for r in ok if r.get("latency_s")]),
         "tokens": dict(usage),
@@ -104,14 +106,14 @@ def to_markdown(rep: dict) -> str:
     for g, title in GROUP_TITLES.items():
         grp = rep["groups"][g]
         L += [f"## {title}", "",
-              "| 來源 / Source | 評分方式 / Scorer | 已評分 / Scored | 答對 / Correct | 正確率 / Accuracy | 無法解析 / Unparsed | 待驗證器 / Pending | 作廢 / Void | 失敗 / Errors |",
-              "|---|---|---|---|---|---|---|---|---|"]
+              "| 來源 / Source | 評分方式 / Scorer | 已評分 / Scored | 答對 / Correct | 正確率 / Accuracy | 無法解析 / Unparsed | 截斷 / Truncated | 待驗證器 / Pending | 作廢 / Void | 失敗 / Errors |",
+              "|---|---|---|---|---|---|---|---|---|---|"]
         for s, c in grp["sources"].items():
             L.append(f"| {s} | {c['scorer']} | {c['scored']} | {c['correct']} | {_pct(c['accuracy'])} | {c['unparsed']} "
-                     f"| {c['pending_verifier']} | {c['void_model_mismatch']} | {c['errors']} |")
+                     f"| {c['truncated']} | {c['pending_verifier']} | {c['void_model_mismatch']} | {c['errors']} |")
         c = grp["summary"]
         L += [f"| **小計 / Subtotal** | | {c['scored']} | {c['correct']} | **{_pct(c['accuracy'])}** | {c['unparsed']} "
-              f"| {c['pending_verifier']} | {c['void_model_mismatch']} | {c['errors']} |", ""]
+              f"| {c['truncated']} | {c['pending_verifier']} | {c['void_model_mismatch']} | {c['errors']} |", ""]
     L += ["> 知識題與推理 / 工具題分開報告，不提供合併總分（R17.5）。 / Reported separately; no merged score (R17.5).", ""]
     tps, lat, mem = rep["tokens_per_second"], rep["latency_s"], rep["peak_memory"]
     L += ["## 效能 / Performance", "",

@@ -67,6 +67,13 @@ def read_vram_mib(pid: int, run=subprocess.run) -> int | None:
     return None
 
 
+# llama-server 預設 --cache-ram 8192：評測每題提示都不同，快取用不到卻把峰值 RAM 撐到 9.6 GiB
+# （2026-11-15 夜間實測），使峰值記憶體失真並逼近 RAM 預算。評測一律關閉。
+# llama-server defaults to --cache-ram 8192; eval prompts never repeat, so the cache only inflated peak RAM
+# to 9.6 GiB (2026-11-15 night run), distorting the memory figure and nearing the RAM budget. Always off here.
+CACHE_RAM_MIB = 0
+
+
 class LocalEngine:
     """with LocalEngine(...) as eng: eng.base_url —— 離開 with（含例外與 Ctrl-C）時一定關閉。
     with LocalEngine(...) as eng: eng.base_url — always stopped when leaving the block (exceptions and Ctrl-C included)."""
@@ -84,7 +91,8 @@ class LocalEngine:
         prefix, self.threads, self.notes = budget_prefix(facts)
         self.affinity = ((facts.get("budgets") or {}).get("cpu") or {}).get("affinity_hint")
         self.cmd = [*prefix, str(self.binary), "-m", str(model), "--host", HOST, "--port", str(self.port),
-                    "-t", str(self.threads), "-ngl", str(ngl), "-c", str(ctx), "-np", "1"]
+                    "-t", str(self.threads), "-ngl", str(ngl), "-c", str(ctx), "-np", "1",
+                    "--cache-ram", str(CACHE_RAM_MIB)]
         self.base_url = f"http://{HOST}:{self.port}"
         self.health_timeout_s = health_timeout_s
         self.popen, self.vram = popen, vram
@@ -154,7 +162,7 @@ class LocalEngine:
     def describe(self) -> dict:
         return {"binary": str(self.binary.relative_to(self.binary.parents[2])), "host": HOST, "port": self.port,
                 "threads": self.threads, "affinity_hint": self.affinity, "ngl": self.ngl, "ctx": self.ctx,
-                "parallel_slots": 1, "notes": self.notes}
+                "parallel_slots": 1, "cache_ram_mib": CACHE_RAM_MIB, "notes": self.notes}
 
     def __enter__(self):
         return self

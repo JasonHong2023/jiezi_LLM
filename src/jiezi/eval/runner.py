@@ -70,8 +70,13 @@ def _tps(reply) -> float | None:
     return round(toks / reply.latency_s, 2) if toks and reply.latency_s else None
 
 
+def is_truncated(reply) -> bool:
+    """因長度上限停止，且去掉思考內容後沒有任何回答。 / Stopped by the length limit with no answer left after removing thinking."""
+    return reply.finish_reason == "length" and not scoring.strip_thinking(reply.content)
+
+
 def run(items: list[dict], client: ChatClient, run_dir: Path, *, samples: int = 1, temperature: float = 0.0,
-        extra: dict | None = None, retry_errors: bool = False,
+        extra: dict | None = None, retry_errors: bool = False, reasoning_budget: int = 0,
         may_continue: Callable[[], bool] = lambda: True, engine_alive: Callable[[], bool] = lambda: True,
         log: Callable[[str], None] = print) -> dict:
     """執行（或續跑）所有題目與樣本；回傳並寫出 run_state.json。
@@ -98,12 +103,19 @@ def run(items: list[dict], client: ChatClient, run_dir: Path, *, samples: int = 
             log("local engine is not running; stopping")
             break
         messages, max_tokens = prompts.render(it)
-        reply = client.complete(messages, temperature=temperature, max_tokens=max_tokens, extra=extra)
+        reply = client.complete(messages, temperature=temperature, max_tokens=max_tokens + reasoning_budget,
+                                extra=extra)
         rec = {"key": k, "source": it["source"], "id": it["id"], "task": it["task"], "group": it["group"],
                "scorer": it["scorer"], "sample": s, "status": reply.status, "score": None, "extracted": None,
                "content": reply.content, "model": reply.model, "usage": reply.usage, "latency_s": reply.latency_s,
-               "tps": _tps(reply), "attempts": reply.attempts, "error": reply.error, "at": now()}
-        if reply.status == "ok":
+               "tps": _tps(reply), "attempts": reply.attempts, "error": reply.error,
+               "finish_reason": reply.finish_reason, "at": now()}
+        if reply.status == "ok" and is_truncated(reply):
+            # 推理模型把 token 上限用在思考上，沒有留下回答：不是答錯，不計分（2026-11-15 夜間實測）。
+            # A reasoning model spent the token limit thinking and left no answer: not wrong, unscored.
+            rec["status"] = "truncated"
+            consecutive = 0
+        elif reply.status == "ok":
             rec.update(scoring.score(it, reply.content))
             consecutive = 0
         elif reply.status in ERROR_STATUSES:

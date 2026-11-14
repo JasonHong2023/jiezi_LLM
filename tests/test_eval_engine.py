@@ -56,6 +56,7 @@ class TestEngine(unittest.TestCase):
         self.assertEqual(cmd[cmd.index("-t") + 1], "3")
         self.assertEqual(cmd[cmd.index("--port") + 1], "36110")
         self.assertIn("nice", cmd)
+        self.assertEqual(cmd[cmd.index("--cache-ram") + 1], "0")  # 提示快取關閉 / prompt cache off
         self.assertEqual(e.describe()["binary"], "build-cpu/bin/llama-server")
 
     def test_start_health_and_stop(self):
