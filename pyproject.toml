@@ -1,0 +1,21 @@
+# 芥子（Jiezi）專案設定 / Jiezi project configuration
+# 執行期依賴刻意為空：hwprobe 與 bootstrap 只用標準函式庫（R9、R23）
+# Runtime dependencies are intentionally empty: hwprobe and bootstrap use the standard library only (R9, R23)
+[project]
+name = "jiezi"
+version = "0.1.0"
+description = "芥子納須彌 — tiny compressed core LLM plus system capabilities on laptop-class hardware"
+readme = "openspec/project.md"
+requires-python = ">=3.13,<3.14"
+dependencies = []
+
+# 建置工具以 uv 安裝到 .venv，不需要 sudo / Build tools installed into .venv by uv, no sudo needed
+[dependency-groups]
+dev = [
+    "cmake==4.4.4",
+    "ninja==1.13.2",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+package = false
