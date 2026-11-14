@@ -1,0 +1,21 @@
+# Python 環境與快取 / Python environment and caches
+.venv/
+__pycache__/
+*.pyc
+
+# 本機設定與機密（只版控 .env.example）/ Local config and secrets (only .env.example is versioned)
+.env
+
+# 機器產物：每台電腦各自產生（R6.4、R21）/ Machine artifacts, generated per machine (R6.4, R21)
+facts.json
+bench.json
+plan.json
+var/
+
+# 上游原始碼與建置輸出 / Upstream sources and build outputs
+vendor/
+build-*/
+
+# 模型權重（由 models/manifest.toml 下載）/ Model weights (downloaded from models/manifest.toml)
+models/*.gguf
+models/*.safetensors
