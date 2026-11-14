@@ -22,6 +22,24 @@ from pathlib import Path
 
 SCHEMA_VERSION = "1.0"
 
+
+def project_root() -> Path:
+    """專案根目錄：預設由本檔位置推得，可由 JIEZI_HOME 覆寫（規則 R21.3、R21.5）。
+    Project root: derived from this file's location, overridable by JIEZI_HOME (rules R21.3, R21.5).
+    與目前工作目錄無關。 / Independent of the current working directory."""
+    env = os.environ.get("JIEZI_HOME", "").strip()
+    return Path(env).expanduser().resolve() if env else Path(__file__).resolve().parent.parent
+
+
+def venv_tool(name: str) -> str | None:
+    """先找 PATH，再找專案 .venv 內的工具；都沒有則回傳 None。
+    Look on PATH first, then in the project's .venv; return None if absent."""
+    found = shutil.which(name)
+    if found:
+        return found
+    candidate = project_root() / ".venv" / "bin" / name
+    return str(candidate) if candidate.exists() else None
+
 # /proc/cpuinfo 的 flags 名稱 → facts 中的標準名稱
 ISA_MAP = {
     "sse4_2": "sse4_2",
@@ -260,7 +278,7 @@ DEVICE_LINE = re.compile(r"^\s+(\S+?):\s+(.*?)\s+\((\d+)\s+MiB,\s+(\d+)\s+MiB fr
 
 
 def collect_builds(root: Path | None = None) -> list[dict]:
-    root = root or Path(__file__).resolve().parent.parent
+    root = root or project_root()
     builds = []
     for binary in sorted(root.glob("build-*/bin/llama-cli")):
         ok_ver, ver_out, ver_err = run([str(binary), "--version"])
@@ -294,12 +312,9 @@ def collect_backends() -> dict:
     gcc = shutil.which("gcc")
     gxx = shutil.which("g++")
     nvcc = shutil.which("nvcc")
-    cmake = shutil.which("cmake") or str(Path(".venv/bin/cmake").resolve())
-    if not Path(cmake).exists():
-        cmake = None
-    ninja = shutil.which("ninja") or str(Path(".venv/bin/ninja").resolve())
-    if not Path(ninja).exists():
-        ninja = None
+    # 以專案根目錄定位 .venv，不依賴目前工作目錄 / Locate .venv from the project root, not the cwd
+    cmake = venv_tool("cmake")
+    ninja = venv_tool("ninja")
 
     _, nvsmi, _ = run(["nvidia-smi", "-L"])
     has_nvidia = bool(nvsmi)
@@ -554,7 +569,11 @@ def build_verdict(gpus: dict, npus: dict, backends: dict, cpu: dict, mem: dict, 
 # ---------------------------------------------------------------- main
 def main() -> int:
     ap = argparse.ArgumentParser(description="Read-only hardware probe → facts.json")
-    ap.add_argument("--out", default="facts.json", help="output path (default: facts.json)")
+    ap.add_argument(
+        "--out",
+        default=None,
+        help="output path (default: <project root>/facts.json)",
+    )
     ap.add_argument("--pretty", action="store_true", help="pretty-print JSON")
     ap.add_argument("--quiet", action="store_true", help="do not print the JSON to stdout")
     args = ap.parse_args()
@@ -607,7 +626,7 @@ def main() -> int:
         "probe_failures": failures,
     }
 
-    out = Path(args.out)
+    out = Path(args.out) if args.out else project_root() / "facts.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(facts, indent=2 if args.pretty else None, ensure_ascii=False)
     out.write_text(text + "\n")
