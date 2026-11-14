@@ -42,6 +42,8 @@ Dev-box reference values (never in code, R21): CUDA toolkit 13.3 (`nvcc` V13.3.7
 | `GGML_RPC` | **`OFF`（明確指定，不依賴預設值）** | 見 §4 的 CVE-2026-34159；本專案不需要 RPC 後端 |
 | `GGML_NATIVE` | `ON` | 由編譯器偵測 CPU 指令集，不寫死型號 |
 | `CMAKE_BUILD_TYPE` | `Release` | — |
+| `LLAMA_OPENSSL` | `OFF` | 模型由 bootstrap 下載與驗證，llama.cpp 不需 HTTPS；避免結果隨機器是否裝有 libssl-dev 而不同 / Models are downloaded and verified by bootstrap; keeps builds identical whether or not libssl-dev is present |
+| `LLAMA_BUILD_TESTS` | `ON` | 保留 `test-backend-ops` 供後端正確性驗證 / Keeps `test-backend-ops` for backend correctness checks |
 
 **禁止 / Prohibited**：建置或執行 `rpc-server`；將任何 llama.cpp 服務綁定 `127.0.0.1` 以外的位址（R6.12）。
 Building or running `rpc-server`; binding any llama.cpp service to anything other than `127.0.0.1` (R6.12).

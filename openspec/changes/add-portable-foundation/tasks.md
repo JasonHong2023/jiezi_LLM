@@ -25,8 +25,8 @@
 ## 5. llama.cpp 建置 / llama.cpp build
 
 - [x] 5.1 實作取得原始碼：依 `stack.md` 的 hash 以 `git fetch --depth 1` 取得（失敗時退回完整 fetch），驗證 `HEAD`；commit 不符或有未提交改動時停止 / Implement pinned fetch with fallback and the stop conditions
-- [ ] 5.2 實作後端選擇：依 `facts.json` 的 `backends.buildable` 決定建置 CPU（一律）與其他後端；以假 facts 測試「有 CUDA」與「沒有 GPU」 / Implement facts-driven backend selection; test with fake facts
-- [ ] 5.3 實作受預算限制的建置與建置紀錄（`var/`）：`-j` 取 `usable_threads`、`nice`、`taskset`（`affinity_hint` 可得時）、旗標不含硬體型號 / Implement budget-bounded builds and the build record
+- [x] 5.2 實作後端選擇：依 `facts.json` 的 `backends.buildable` 決定建置 CPU（一律）與其他後端；以假 facts 測試「有 CUDA」與「沒有 GPU」 / Implement facts-driven backend selection; test with fake facts
+- [x] 5.3 實作受預算限制的建置與建置紀錄（`var/`）：`-j` 取 `usable_threads`、`nice`、`taskset`（`affinity_hint` 可得時）、旗標不含硬體型號 / Implement budget-bounded builds and the build record
 
 ## 6. 平台安裝步驟 / Platform setup
 
