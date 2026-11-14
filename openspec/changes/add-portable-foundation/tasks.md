@@ -20,7 +20,7 @@
 ## 4. 可攜性守門 / Portability guard
 
 - [x] 4.1 新增 `tests/test_portability.py`（design D9）：掃描 `git ls-files`，動態比對目前使用者家目錄路徑與 `WSL_DISTRO_NAME`，並檢查 `*.php` 與金鑰樣式 / Add the D9 portability test using values obtained at test time
-- [ ] 4.2 對現有所有版控檔案執行守門測試，修正發現的問題 / Run the guard on all versioned files and fix any findings
+- [x] 4.2 對現有所有版控檔案執行守門測試，修正發現的問題 / Run the guard on all versioned files and fix any findings
 
 ## 5. llama.cpp 建置 / llama.cpp build
 
