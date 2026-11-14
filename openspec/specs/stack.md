@@ -29,10 +29,11 @@
 |---|---|
 | CUDA toolkit | 依驅動支援的 CUDA 版本挑選不超過上限的最新版；WSL2 用 `wsl-ubuntu` 套件庫，原生 Ubuntu 用對應版本的套件庫（design D8） |
 | C/C++ 編譯器 / Compiler | 系統提供；須為 CUDA toolkit 支援的版本 |
+| OpenSSL | 系統提供（≥ 3.0；Ubuntu 套件 `libssl-dev`），由發行版提供資安更新 / System-provided (≥ 3.0), patched by the distribution |
 | 建置的後端 / Backends built | 依 `facts.json` 的 `backends.buildable`；CPU 一律建置 |
 | CUDA 架構 / CUDA architectures | `-DCMAKE_CUDA_ARCHITECTURES=native` |
 
-開發機參考值（不得寫進程式，R21）：CUDA toolkit 13.3（`nvcc` V13.3.73）、gcc 13.3。
+開發機參考值（不得寫進程式，R21）：CUDA toolkit 13.3（`nvcc` V13.3.73）、gcc 13.3、OpenSSL 3.0.13（`3.0.13-0ubuntu3.16`）。
 Dev-box reference values (never in code, R21): CUDA toolkit 13.3 (`nvcc` V13.3.73), gcc 13.3.
 
 ## 3. 強制建置旗標 / Mandatory build flags
@@ -42,7 +43,8 @@ Dev-box reference values (never in code, R21): CUDA toolkit 13.3 (`nvcc` V13.3.7
 | `GGML_RPC` | **`OFF`（明確指定，不依賴預設值）** | 見 §4 的 CVE-2026-34159；本專案不需要 RPC 後端 |
 | `GGML_NATIVE` | `ON` | 由編譯器偵測 CPU 指令集，不寫死型號 |
 | `CMAKE_BUILD_TYPE` | `Release` | — |
-| `LLAMA_OPENSSL` | `OFF` | 模型由 bootstrap 下載與驗證，llama.cpp 不需 HTTPS；避免結果隨機器是否裝有 libssl-dev 而不同 / Models are downloaded and verified by bootstrap; keeps builds identical whether or not libssl-dev is present |
+| `LLAMA_OPENSSL` | `ON`（configure 後核對 `OPENSSL_VERSION_SUPPORTED=1`，否則建置失敗） | 保留 HTTPS 對外連線能力（使用者決定，2026-11-14）。上游找不到 OpenSSL 時只警告並默默停用，故必須核對；前置條件要求 OpenSSL ≥ 3.0 標頭（Ubuntu：`libssl-dev`） / Keeps HTTPS for outbound connections (user decision). Upstream silently disables it when OpenSSL is missing, so the result is verified; OpenSSL ≥ 3.0 headers are a prerequisite |
+| `LLAMA_BUILD_BORINGSSL`、`LLAMA_BUILD_LIBRESSL` | `OFF` | 使用系統 OpenSSL（隨發行版資安更新）；不在建置時下載未鎖定版本的 TLS 函式庫 / Use the system OpenSSL (patched by the distro); never download an unpinned TLS library at build time |
 | `LLAMA_BUILD_TESTS` | `ON` | 保留 `test-backend-ops` 供後端正確性驗證 / Keeps `test-backend-ops` for backend correctness checks |
 
 **禁止 / Prohibited**：建置或執行 `rpc-server`；將任何 llama.cpp 服務綁定 `127.0.0.1` 以外的位址（R6.12）。
@@ -58,6 +60,7 @@ Building or running `rpc-server`; binding any llama.cpp service to anything othe
 | ninja 1.13.2（PyPI） | OSV API | 0 個已知漏洞 [實測查詢] |
 | llama.cpp | GitHub Security Advisories（`ggml-org/llama.cpp`） | 13 則公告；除下列一則外，受影響範圍都早於鎖定的 commit（2026-11-12） |
 | **llama.cpp RPC 後端** | **GHSA-j8rj-fmpv-wcxw / CVE-2026-34159（Critical）** | 未授權遠端執行程式碼（RPC `deserialize_tensor()` 在 `buffer == 0` 時跳過邊界檢查）。公告範圍 `<= b7991`、未列修正版本。**[本機查證]** 鎖定 commit 的 `ggml/src/ggml-rpc/ggml-rpc.cpp` 中，`buffer == 0` 時仍直接採用遠端傳入的 `data`，此函式內未見修正；是否在其他位置修正無法確認。**緩解：`GGML_RPC=OFF` 且不執行 `rpc-server`（§3）** |
+| OpenSSL 3.0.13（Ubuntu 24.04 `3.0.13-0ubuntu3.16`） | OSV API（`Ubuntu:24.04:LTS`） | 5 則未修補：CVE-2026-107496（`CMS_encrypt` 無限迴圈）、CVE-2026-88822、CVE-2026-95691（QUIC）、CVE-2026-88823、CVE-2026-95692（AES-GCM-SIV）。**[本機查證]** 本機 3.0.13 的 `libssl` 沒有 QUIC 符號，`openssl list -cipher-algorithms` 沒有 AES-GCM-SIV；llama.cpp 使用的 cpp-httplib 原始碼不含 CMS、QUIC、GCM-SIV 呼叫 → 判定 HTTPS 用途不會觸及這 5 則。OpenSSL 本身已是系統元件（`libssl3t64` 已安裝），`libssl-dev` 只增加標頭。每個決策關卡複查（R23.5） |
 | Python 3.13 | — | 由 uv 取得官方版本；每次決策關卡以 `pip-audit` 複查（R23.5） |
 
 ## 5. 已選定、尚未鎖定版本 / Chosen but not yet pinned

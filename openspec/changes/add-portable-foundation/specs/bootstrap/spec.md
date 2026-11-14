@@ -30,8 +30,8 @@ The system SHALL provide `scripts/bootstrap`, which on a clean Linux / WSL2 mach
 
 ### Requirement: Prerequisite Check
 
-bootstrap SHALL 先檢查前置條件（git、C/C++ 編譯器、uv、網路），缺少時列出每一項與對應平台的安裝方式後停止，不得自行安裝需要 sudo 的系統套件。
-Bootstrap SHALL first check prerequisites (git, a C/C++ compiler, uv, network) and, if any is missing, list each one with platform-specific install instructions and stop, never installing sudo-requiring system packages on its own.
+bootstrap SHALL 先檢查前置條件（git、C/C++ 編譯器、OpenSSL ≥ 3.0 開發標頭、uv、網路），缺少時列出每一項與對應平台的安裝方式後停止，不得自行安裝需要 sudo 的系統套件。
+Bootstrap SHALL first check prerequisites (git, a C/C++ compiler, OpenSSL ≥ 3.0 development headers, uv, network) and, if any is missing, list each one with platform-specific install instructions and stop, never installing sudo-requiring system packages on its own.
 
 #### Scenario: 缺少 uv / uv missing
 

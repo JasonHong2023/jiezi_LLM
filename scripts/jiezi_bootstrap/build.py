@@ -32,7 +32,9 @@ COMMON_FLAGS = [
     "-DCMAKE_BUILD_TYPE=Release",
     "-DGGML_NATIVE=ON",
     "-DGGML_RPC=OFF",  # CVE-2026-34159，見 stack.md §4 / see stack.md §4
-    "-DLLAMA_OPENSSL=OFF",  # 模型由 bootstrap 下載，llama.cpp 不需 HTTPS；各機器結果一致
+    "-DLLAMA_OPENSSL=ON",  # 使用系統 OpenSSL 支援 HTTPS 對外連線；configure 後核對確實啟用（verify_configure）
+    "-DLLAMA_BUILD_BORINGSSL=OFF",  # 不在建置時下載未鎖定版本的 TLS 函式庫 / never download an unpinned TLS library
+    "-DLLAMA_BUILD_LIBRESSL=OFF",
     "-DLLAMA_BUILD_TESTS=ON",  # 保留 test-backend-ops 供後端驗證 / keep test-backend-ops
 ]
 
@@ -158,6 +160,38 @@ def is_current(plan: Plan, commit: str, facts: dict, root: Path) -> bool:
     return same and rec.get("result") == "success" and (plan.build_dir / "bin" / "llama-cli").exists()
 
 
+# configure 後必須成立的條件：上游在條件不成立時只會警告並默默停用功能
+# Conditions that must hold after configure; upstream only warns and silently disables the feature
+REQUIRED_CACHE = {
+    "OPENSSL_VERSION_SUPPORTED": ("1", "HTTPS support (system OpenSSL >= 3.0) was not enabled; "
+                                      "install the OpenSSL headers (Ubuntu: sudo apt install libssl-dev) "
+                                      "and remove the build directory"),
+    "GGML_RPC": ("OFF", "GGML_RPC must be OFF (stack.md §3, CVE-2026-34159)"),
+}
+
+
+def read_cache(build_dir: Path) -> dict:
+    cache = {}
+    try:
+        for line in (build_dir / "CMakeCache.txt").read_text(errors="replace").splitlines():
+            if "=" in line and ":" in line.split("=", 1)[0] and not line.startswith(("//", "#")):
+                key, value = line.split("=", 1)
+                cache[key.split(":", 1)[0]] = value
+    except OSError:
+        pass
+    return cache
+
+
+def verify_configure(build_dir: Path) -> str | None:
+    """回傳第一個不成立的條件說明；全部成立回傳 None。
+    Return the first failed condition's message, or None when all hold."""
+    cache = read_cache(build_dir)
+    for key, (want, message) in REQUIRED_CACHE.items():
+        if cache.get(key) != want:
+            return f"{message} (CMakeCache {key}={cache.get(key)!r})"
+    return None
+
+
 def run_plan(plan: Plan, commit: str, facts: dict, root: Path, log=print) -> dict:
     """執行建置並寫出建置紀錄（成功或失敗都寫）。
     Run the build and write the record (on success and on failure)."""
@@ -168,6 +202,7 @@ def run_plan(plan: Plan, commit: str, facts: dict, root: Path, log=print) -> dic
         "compile": plan.compile,
         "notes": plan.notes,
         "compiler": _first_line(["c++", "--version"]),
+        "openssl": _first_line(["openssl", "version"]),
         "cuda_version": nvcc.get("version") if plan.backend == "cuda" else None,
         "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
@@ -182,6 +217,12 @@ def run_plan(plan: Plan, commit: str, facts: dict, root: Path, log=print) -> dic
             if subprocess.run(cmd, stdout=fh, stderr=subprocess.STDOUT).returncode != 0:
                 result, failed_stage = "failure", stage
                 break
+            if stage == "configure":
+                problem = verify_configure(plan.build_dir)
+                if problem:
+                    fh.write(f"jiezi: {problem}\n")
+                    result, failed_stage = "failure", "configure-check"
+                    break
     record.update(
         result=result,
         failed_stage=failed_stage,
@@ -213,5 +254,8 @@ def build_all(facts: dict, src: Path, commit: str, root: Path | None = None, log
         log(f"[build] {d.backend}: {rec['result']} in {rec['duration_s']} s (log: {rec['log']})")
         summary.append({"backend": d.backend, "result": rec["result"]})
         if rec["result"] != "success":
-            raise StepError(f"build-{d.backend} failed at {rec['failed_stage']}; see {rec['log']}")
+            detail = ""
+            if rec["failed_stage"] == "configure-check":
+                detail = "\n  " + (verify_configure(plan.build_dir) or "")
+            raise StepError(f"build-{d.backend} failed at {rec['failed_stage']}; see {rec['log']}{detail}")
     return summary

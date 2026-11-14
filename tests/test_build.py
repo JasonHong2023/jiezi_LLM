@@ -34,7 +34,7 @@ def facts(cuda_ok=True, hint="2-13", threads=12):
     }
 
 
-def fake_root(d: Path, cmake_exit: int = 0) -> Path:
+def fake_root(d: Path, cmake_exit: int = 0, openssl: str = "1") -> Path:
     """建立帶假 cmake / ninja 的專案根目錄；假 cmake 在 --build 時產生 bin/llama-cli。
     A project root with fake cmake / ninja; the fake cmake creates bin/llama-cli on --build."""
     bin_dir = d / ".venv" / "bin"
@@ -43,7 +43,11 @@ def fake_root(d: Path, cmake_exit: int = 0) -> Path:
     (bin_dir / "cmake").write_text(
         "#!/bin/sh\n"
         f"[ {cmake_exit} -ne 0 ] && exit {cmake_exit}\n"
-        'if [ "$1" = "--build" ]; then mkdir -p "$2/bin" && : > "$2/bin/llama-cli"; fi\n'
+        'if [ "$1" = "--build" ]; then mkdir -p "$2/bin" && : > "$2/bin/llama-cli"; exit 0; fi\n'
+        # configure：在 -B 指定的目錄寫出 CMakeCache / configure: write a CMakeCache into the -B dir
+        'while [ $# -gt 0 ]; do [ "$1" = "-B" ] && B="$2"; shift; done\n'
+        'mkdir -p "$B" && printf "GGML_RPC:BOOL=OFF\\nOPENSSL_VERSION_SUPPORTED:INTERNAL=%s\\n" '
+        f'"{openssl}" > "$B/CMakeCache.txt"\n'
         "exit 0\n"
     )
     for f in bin_dir.iterdir():
@@ -108,6 +112,21 @@ class TestPlan(unittest.TestCase):
 
 
 class TestRunAndRecord(unittest.TestCase):
+    def test_https_silently_disabled_fails_the_build(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = fake_root(Path(d), openssl="")
+            with self.assertRaisesRegex(StepError, "(?s)configure-check.*libssl-dev"):
+                build.build_all(facts(cuda_ok=False), Path("/src"), "a" * 40, root, log=lambda *_: None)
+            rec = json.loads(build.record_path(root, "cpu").read_text())
+            self.assertEqual((rec["result"], rec["failed_stage"]), ("failure", "configure-check"))
+
+    def test_openssl_flags(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = build.plan_build("cpu", facts(), Path("/src"), fake_root(Path(d)))
+        self.assertIn("-DLLAMA_OPENSSL=ON", p.configure)
+        self.assertIn("-DLLAMA_BUILD_BORINGSSL=OFF", p.configure)
+        self.assertIn("-DLLAMA_BUILD_LIBRESSL=OFF", p.configure)
+
     def test_record_and_skip_on_rerun(self):
         with tempfile.TemporaryDirectory() as d:
             root = fake_root(Path(d))

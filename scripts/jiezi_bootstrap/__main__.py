@@ -25,7 +25,18 @@ INSTALL_HINTS = {
     "git": "sudo apt install git",
     "cc": "sudo apt install build-essential",
     "c++": "sudo apt install build-essential",
+    "openssl-headers": "sudo apt install libssl-dev",
 }
+
+
+def has_openssl_headers(cc: str = "cc") -> bool:
+    """以編譯器前處理器確認找得到 OpenSSL 3.x 標頭（HTTPS 對外連線所需）。
+    Ask the compiler's preprocessor whether OpenSSL 3.x headers are available (needed for HTTPS)."""
+    if not shutil.which(cc):
+        return False
+    src = "#include <openssl/opensslv.h>\n#if OPENSSL_VERSION_NUMBER < 0x30000000L\n#error old\n#endif\n"
+    p = subprocess.run([cc, "-E", "-x", "c", "-"], input=src, capture_output=True, text=True)
+    return p.returncode == 0
 NETWORK_PROBES = ("https://github.com", "https://huggingface.co")
 
 
@@ -48,6 +59,8 @@ def step_prereqs(ctx: Ctx) -> str:
     missing = [t for t in ("git", "cc", "c++") if not shutil.which(t)]
     if not shutil.which("uv"):  # bash 入口已檢查，這裡防直接呼叫 / guarded by the bash entry too
         missing.append("uv")
+    if "cc" not in missing and not has_openssl_headers():
+        missing.append("openssl-headers")
     if missing:
         platform = sudo_window.detect_platform()
         lines = [f"  - {t}: {INSTALL_HINTS.get(t, 'https://docs.astral.sh/uv/getting-started/installation/')}"
@@ -62,8 +75,8 @@ def step_prereqs(ctx: Ctx) -> str:
                                                               headers={"User-Agent": "jiezi-bootstrap"}), timeout=15)
             except Exception as exc:  # noqa: BLE001
                 raise StepError(f"network check failed for {url}: {exc}") from exc
-        return "git, compiler, uv, network ok"
-    return "git, compiler, uv ok (network not needed: sources and model already present)"
+        return "git, compiler, uv, OpenSSL headers, network ok"
+    return "git, compiler, uv, OpenSSL headers ok (network not needed: sources and model already present)"
 
 
 def _smoke_model_present(ctx: Ctx) -> bool:

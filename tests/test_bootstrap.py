@@ -72,6 +72,17 @@ class TestRunner(unittest.TestCase):
         self.assertIn("127.0.0.1", (self.root / ".env").read_text())
 
 
+class TestPrereqs(unittest.TestCase):
+    def test_missing_openssl_headers_stops_with_hint(self):
+        ctx = bs.Ctx(Path("/nonexistent"), offer_setup=False)
+        with mock.patch.object(bs, "has_openssl_headers", return_value=False):
+            with self.assertRaisesRegex(StepError, "(?s)openssl-headers.*libssl-dev"):
+                bs.step_prereqs(ctx)
+
+    def test_header_probe_with_fake_compiler(self):
+        self.assertFalse(bs.has_openssl_headers("definitely-not-a-compiler"))
+
+
 class TestCudaDecision(unittest.TestCase):
     def ctx(self, cuda, offer=True):
         c = bs.Ctx(Path("/nonexistent"), offer_setup=offer)
