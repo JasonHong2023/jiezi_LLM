@@ -116,6 +116,15 @@ class TestCli(unittest.TestCase):
         self.assertEqual(rc, 2)
         self.assertIn("JIEZI_CLOUD_BASE_URL", out)
 
+    def test_parse_jobs(self):
+        ns = lambda **kw: SimpleNamespace(**{"job": None, "run_args": [], **kw})  # noqa: E731
+        self.assertEqual(cli.parse_jobs(ns(job=["bank verify", "run --model tiny"])),
+                         [["bank", "verify"], ["run", "--model", "tiny"]])
+        self.assertEqual(cli.parse_jobs(ns(run_args=["--", "--model", "tiny"])), [["run", "--model", "tiny"]])
+        for bad in (ns(), ns(job=["rm -rf x"]), ns(job=["run --now"])):
+            with self.assertRaises(cli.EvalError):
+                cli.parse_jobs(bad)
+
     def test_select_filters(self):
         items = [dict(mc(i, "B"), source=s) for i, s in enumerate(["a", "a", "b"])]
         items.append({**mc(9, "B"), "source": "c", "scorer": "pending_verifier", "group": "reasoning"})

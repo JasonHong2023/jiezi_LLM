@@ -60,7 +60,7 @@ class TestSchedule(unittest.TestCase):
         def run(cmd, **kw):
             calls.append(cmd)
             return SimpleNamespace(returncode=0, stdout="", stderr="")
-        rec = night.schedule(self.root, ["run", "--bank", "r0"], datetime(2026, 11, 15, 0, 5), run=run, use_systemd=True)
+        rec = night.schedule(self.root, [["run", "--bank", "r0"]], datetime(2026, 11, 15, 0, 5), run=run, use_systemd=True)
         cmd = calls[0]
         self.assertEqual(cmd[:3], ["systemd-run", "--user", "--collect"])
         self.assertIn("--on-calendar=2026-11-15 00:05:00", cmd)
@@ -68,17 +68,20 @@ class TestSchedule(unittest.TestCase):
         listed = night.list_schedules(self.root)
         self.assertTrue(listed[0]["state"].startswith("waiting"))
 
-    def test_launcher_records_done_and_failed(self):
-        for args, want in ((["run"], "done"), (["fail"], "failed:4")):
-            rec = night.schedule(self.root, args, datetime(2026, 11, 15, 0, 5),
-                                 run=lambda *a, **k: SimpleNamespace(returncode=0, stdout="", stderr=""),
-                                 use_systemd=True)
-            script = night.schedule_dir(self.root) / f"{rec['id']}.sh"
-            subprocess.run(["/bin/bash", str(script)], check=True)
-            state = (night.schedule_dir(self.root) / f"{rec['id']}.state").read_text()
-            self.assertTrue(state.startswith(want), state)
-            log = (night.schedule_dir(self.root) / f"{rec['id']}.log").read_text()
-            self.assertIn(f"args: {args[0]}", log)
+    def test_launcher_runs_jobs_in_order_and_records(self):
+        ok = lambda *a, **k: SimpleNamespace(returncode=0, stdout="", stderr="")  # noqa: E731
+        for jobs, want in (([["run", "a"], ["bank", "verify"]], "done job1=0 job2=0"),
+                           ([["fail"], ["run", "b"]], "failed job1=4 job2=0")):
+            rec = night.schedule(self.root, jobs, datetime(2026, 11, 15, 0, 5), run=ok, use_systemd=True)
+            d = night.schedule_dir(self.root)
+            subprocess.run(["/bin/bash", str(d / f"{rec['id']}.sh")], check=True)
+            self.assertTrue((d / f"{rec['id']}.state").read_text().startswith(want))
+            log = (d / f"{rec['id']}.log").read_text()
+            self.assertLess(log.index(f"args: {jobs[0][0]}"), log.index(f"args: {jobs[1][0]}"))  # 依序 / in order
+
+    def test_empty_jobs(self):
+        with self.assertRaises(EvalError):
+            night.schedule(self.root, [], T(23), use_systemd=True)
 
     def test_detached_fallback(self):
         started = {}
@@ -86,7 +89,7 @@ class TestSchedule(unittest.TestCase):
         def popen(cmd, **kw):
             started.update(cmd=cmd, kw=kw)
             return SimpleNamespace(pid=1234)
-        rec = night.schedule(self.root, ["run"], datetime(2026, 11, 15, 0, 5), popen=popen, use_systemd=False,
+        rec = night.schedule(self.root, [["run"]], datetime(2026, 11, 15, 0, 5), popen=popen, use_systemd=False,
                              now=T(20, 5))
         self.assertEqual(rec["method"], "detached-process")
         self.assertTrue(started["kw"]["start_new_session"])
@@ -95,7 +98,7 @@ class TestSchedule(unittest.TestCase):
     def test_systemd_failure(self):
         bad = lambda *a, **k: SimpleNamespace(returncode=1, stdout="", stderr="no bus")  # noqa: E731
         with self.assertRaisesRegex(EvalError, "no bus"):
-            night.schedule(self.root, ["run"], T(23), run=bad, use_systemd=True)
+            night.schedule(self.root, [["run"]], T(23), run=bad, use_systemd=True)
 
 
 if __name__ == "__main__":

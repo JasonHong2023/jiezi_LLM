@@ -176,8 +176,8 @@ Long runs SHALL start new items only inside `JIEZI_NIGHT_WINDOW` (local time, de
 
 ### Requirement: Night Scheduling
 
-`scripts/eval schedule` SHALL 建立一次性排程，在下一個夜間時段開始後自動執行指定的評測；有使用者層級 systemd 時用 `systemd-run --user`，否則用與終端機脫離的背景程序；排程內容與狀態 SHALL 寫入 `var/eval/schedule/`，且不需要 sudo。
-`scripts/eval schedule` SHALL create a one-shot schedule that runs the given evaluation after the next night window opens, using `systemd-run --user` when user-level systemd exists and a terminal-detached background process otherwise; schedule details and state SHALL be written to `var/eval/schedule/`, without sudo.
+`scripts/eval schedule` SHALL 建立一次性排程，在下一個夜間時段開始後自動執行指定的評測；一個排程可含多個工作，SHALL 依序執行（前一個失敗也繼續）並逐一記錄結果；有使用者層級 systemd 時用 `systemd-run --user`，否則用與終端機脫離的背景程序；排程內容與狀態 SHALL 寫入 `var/eval/schedule/`，且不需要 sudo。
+`scripts/eval schedule` SHALL create a one-shot schedule that runs the given evaluation after the next night window opens; one schedule may hold several jobs, which SHALL run in order (continuing after a failure) with each result recorded; using `systemd-run --user` when user-level systemd exists and a terminal-detached background process otherwise; schedule details and state SHALL be written to `var/eval/schedule/`, without sudo.
 
 #### Scenario: 排程後查看 / Inspecting a schedule
 

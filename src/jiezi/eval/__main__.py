@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import shlex
 import subprocess
 import sys
 import time
@@ -191,21 +192,38 @@ def cmd_run(args, root: Path) -> int:
     return 0 if summary["state"] == "complete" else 3
 
 
+SCHEDULABLE = {"run", "bank", "report"}
+
+
+def parse_jobs(args) -> list[list[str]]:
+    """--job "run --model x" 可重複；或 `-- <run 參數>` 單一 run 工作。
+    --job "run --model x" is repeatable; or `-- <run options>` for a single run job."""
+    jobs = [shlex.split(j) for j in (args.job or [])]
+    rest = [a for a in (args.run_args or []) if a != "--"]
+    if rest:
+        jobs.append(["run", *rest])
+    if not jobs:
+        raise EvalError('usage: scripts/eval schedule --job "run …" [--job "…"] | scripts/eval schedule -- <run options>')
+    for j in jobs:
+        if j[0] not in SCHEDULABLE:
+            raise EvalError(f"jobs must start with one of {', '.join(sorted(SCHEDULABLE))}: {' '.join(j)}")
+        if "--now" in j:
+            raise EvalError("--now makes no sense in a schedule")
+    return jobs
+
+
 def cmd_schedule(args, root: Path) -> int:
     if args.list:
         for s in night.list_schedules(root):
-            print(f"{s['id']}  {s['when']}  {s['state']:<28}  {s['method']}  run {' '.join(s['args'][1:])}")
+            jobs = " ; ".join(" ".join(j) for j in s.get("jobs") or [])
+            print(f"{s['id']}  {s['when']}  {s['state']:<40}  {s['method']}  {jobs}")
         return 0
-    if not args.run_args:
-        raise EvalError("usage: scripts/eval schedule -- <run options>")
-    run_args = [a for a in args.run_args if a != "--"]
-    if "--now" in run_args:
-        raise EvalError("--now makes no sense in a schedule")
+    jobs = parse_jobs(args)
     env = load_env(root)
     window = night.parse_window(env.get("JIEZI_NIGHT_WINDOW"))
     when = night.planned_time(window, datetime.now())
-    rec = night.schedule(root, ["run", *run_args], when)
-    print(f"scheduled {rec['id']} at {rec['when']} via {rec['method']}")
+    rec = night.schedule(root, jobs, when)
+    print(f"scheduled {rec['id']} at {rec['when']} via {rec['method']}: {len(jobs)} job(s), run in order")
     note = night.linger_note()
     if note:
         print(note)
@@ -248,6 +266,7 @@ def parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("schedule", help="schedule a run into the next night window")
     s.add_argument("--list", action="store_true")
+    s.add_argument("--job", action="append", help='one job, e.g. "run --model qwen3-0.6b-q8_0" (repeatable, run in order)')
     s.add_argument("run_args", nargs=argparse.REMAINDER)
     return ap
 

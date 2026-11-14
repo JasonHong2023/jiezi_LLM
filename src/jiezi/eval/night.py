@@ -63,22 +63,34 @@ def schedule_dir(root: Path) -> Path:
     return root / "var" / "eval" / "schedule"
 
 
-def _launcher(root: Path, sid: str, args: list[str], uv: str) -> str:
-    """產生的啟動腳本（只存在 var/，不進版控）；記錄狀態並以絕對路徑呼叫 uv。
-    The generated launcher (lives only in var/, never committed); records state and calls uv by absolute path."""
+def _launcher(root: Path, sid: str, jobs: list[list[str]], uv: str) -> str:
+    """產生的啟動腳本（只存在 var/，不進版控）：依序執行各工作（前一個失敗也繼續），逐一記錄狀態；
+    以絕對路徑呼叫 uv，因為使用者層級 systemd 沒有終端機的 PATH。
+    The generated launcher (only in var/, never committed): runs jobs in order (continuing after a
+    failure) and records each state; uv is called by absolute path because user systemd lacks the shell PATH."""
     d = schedule_dir(root)
     state = shlex.quote(str(d / f"{sid}.state"))
     log = shlex.quote(str(d / f"{sid}.log"))
-    cmd = " ".join(shlex.quote(a) for a in [str(root / "scripts" / "eval"), *args])
-    return f"""#!/usr/bin/env bash
-# jiezi eval 排程 {sid}（自動產生）/ jiezi eval schedule {sid} (generated)
-export PATH={shlex.quote(str(Path(uv).parent))}:"$PATH"
-cd {shlex.quote(str(root))}
-echo "running $(date -Iseconds)" > {state}
-{cmd} >> {log} 2>&1
-rc=$?
-if [ $rc -eq 0 ]; then echo "done $(date -Iseconds)" > {state}; else echo "failed:$rc $(date -Iseconds)" > {state}; fi
-"""
+    lines = [
+        "#!/usr/bin/env bash",
+        f"# jiezi eval 排程 {sid}（自動產生）/ jiezi eval schedule {sid} (generated)",
+        f"export PATH={shlex.quote(str(Path(uv).parent))}:\"$PATH\"",
+        f"cd {shlex.quote(str(root))}",
+        "results=()",
+    ]
+    for i, args in enumerate(jobs, 1):
+        cmd = " ".join(shlex.quote(a) for a in [str(root / "scripts" / "eval"), *args])
+        lines += [
+            f'echo "running job {i}/{len(jobs)} $(date -Iseconds)" > {state}',
+            f'echo "=== job {i}/{len(jobs)}: {" ".join(args)} ($(date -Iseconds))" >> {log}',
+            f"{cmd} >> {log} 2>&1",
+            f'results+=("job{i}=$?")',
+        ]
+    lines += [
+        'if printf "%s\\n" "${results[@]}" | grep -qv "=0$"; then status=failed; else status=done; fi',
+        f'echo "$status ${{results[*]}} $(date -Iseconds)" > {state}',
+    ]
+    return "\n".join(lines) + "\n"
 
 
 def has_user_systemd(run=subprocess.run) -> bool:
@@ -91,9 +103,12 @@ def has_user_systemd(run=subprocess.run) -> bool:
     return p.stdout.strip() in {"running", "degraded"}
 
 
-def schedule(root: Path, args: list[str], when: datetime, run=subprocess.run, popen=subprocess.Popen,
+def schedule(root: Path, jobs: list[list[str]], when: datetime, run=subprocess.run, popen=subprocess.Popen,
              use_systemd: bool | None = None, now: datetime | None = None) -> dict:
-    """建立一次性排程並寫出紀錄。 / Create a one-shot schedule and write its record."""
+    """建立一次性排程（可含多個依序執行的工作）並寫出紀錄。
+    Create a one-shot schedule (possibly several sequential jobs) and write its record."""
+    if not jobs or not all(jobs):
+        raise EvalError("a schedule needs at least one non-empty job")
     uv = shutil.which("uv")
     if not uv:
         raise EvalError("uv not found on PATH; cannot schedule")
@@ -101,7 +116,7 @@ def schedule(root: Path, args: list[str], when: datetime, run=subprocess.run, po
     d.mkdir(parents=True, exist_ok=True)
     sid = when.strftime("%Y%m%d-%H%M") + "-" + os.urandom(3).hex()
     script = d / f"{sid}.sh"
-    script.write_text(_launcher(root, sid, args, uv), encoding="utf-8")
+    script.write_text(_launcher(root, sid, jobs, uv), encoding="utf-8")
     script.chmod(0o755)
     (d / f"{sid}.state").write_text(f"waiting {when.isoformat(timespec='minutes')}\n")
     use_systemd = has_user_systemd(run) if use_systemd is None else use_systemd
@@ -119,7 +134,7 @@ def schedule(root: Path, args: list[str], when: datetime, run=subprocess.run, po
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                      start_new_session=True)
         method = {"method": "detached-process", "pid": proc.pid}
-    record = {"id": sid, "when": when.isoformat(timespec="minutes"), "args": args, **method}
+    record = {"id": sid, "when": when.isoformat(timespec="minutes"), "jobs": jobs, **method}
     (d / f"{sid}.json").write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return record
 
