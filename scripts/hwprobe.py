@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -433,6 +434,34 @@ def collect_backends() -> dict:
     }
 
 
+# ---------------------------------------------------------------- fingerprint
+def compute_fingerprint(host: dict, cpu: dict, mem: dict, gpus: dict) -> dict:
+    """機器指紋：只取靜態欄位，供量測結果標示來源機器（design D6、規則 R21.6）。
+    Machine fingerprint from static fields only, so measurements can name their source machine (design D6, rule R21.6).
+    RAM 四捨五入到 GiB，吸收核心保留記憶體的小幅浮動；驅動版本刻意納入（會影響效能）。
+    RAM is rounded to GiB to absorb small kernel-reserved fluctuations; the driver version is included on purpose (it affects performance)."""
+    if host.get("is_wsl"):
+        platform = "wsl2"
+    else:
+        platform = sys.platform  # "linux" / "darwin" / ...
+    total_mib = mem.get("total_mib")
+    gpu_list = [
+        {"name": g.get("name"), "vram_total_mib": g.get("vram_total_mib"), "driver": g.get("driver")}
+        for g in (gpus.get("gpus") or [])
+    ]
+    static = {
+        "platform": platform,
+        "arch": host.get("arch"),
+        "cpu_model": cpu.get("model"),
+        "physical_cores": cpu.get("physical_cores"),
+        "logical_cores": cpu.get("logical_cores"),
+        "ram_total_gib": round(total_mib / 1024) if isinstance(total_mib, (int, float)) else None,
+        "gpus": sorted(gpu_list, key=lambda g: json.dumps(g, sort_keys=True)),
+    }
+    digest = hashlib.sha256(json.dumps(static, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    return {"id": digest[:16], "source": "derived from host/cpu/memory/gpus (static fields only)", **static}
+
+
 # ---------------------------------------------------------------- verdict
 BUDGET_POLICY = {
     "cpu_reserve_cores": 2,
@@ -645,9 +674,16 @@ def main() -> int:
         {"primary_device": "cpu", "reason": "verdict failed"},
     )
 
+    fingerprint = safe(
+        "fingerprint",
+        lambda: compute_fingerprint(host, cpu, mem, gpus),
+        {"id": None, "reason": "fingerprint computation failed"},
+    )
+
     facts = {
         "schema_version": SCHEMA_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "fingerprint": fingerprint,
         "host": host,
         "cpu": cpu,
         "memory": mem,
