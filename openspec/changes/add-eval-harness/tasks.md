@@ -28,6 +28,15 @@
 ## 6. 驗證（量測與實作分開；長時間工作一律 00:00 之後）/ Verification (measurement separate; long jobs after 00:00)
 
 - [x] 6.1 下載來源並產生 `r0.lock.json`（只下載約 20 MB 資料，非長時間工作），確認各類 ≥ 50 題後 commit 鎖定檔 / Fetch sources, generate and commit the lock (small download, not a long job)
-- [ ] 6.2 以 `scripts/eval schedule` 排程到 00:00 之後：本機 Qwen3-0.6B-Q8_0、純 CPU、貪婪解碼跑完整 R0；隔天確認排程確實執行並記錄結果（R17 條件） / Schedule a full local R0 run after 00:00 and record results next day
+- [x] 6.2 以 `scripts/eval schedule` 排程到 00:00 之後：本機 Qwen3-0.6B-Q8_0、純 CPU、貪婪解碼跑完整 R0；隔天確認排程確實執行並記錄結果（R17 條件） / Schedule a full local R0 run after 00:00 and record results next day
 - [ ] 6.3 經使用者同意後（OQ3），排程到 00:00 之後以雲端基準模型跑 150 題知識題（基準模式），記錄作廢題數、失敗題數與實際模型；有失敗時隔夜以 `--retry-errors` 補跑 / With consent (OQ3), schedule the 150 knowledge items on the cloud baseline after 00:00
 - [x] 6.4 執行 `openspec validate add-eval-harness --strict` 與完整單元測試，結果記入討論記錄 / Validate the change and run all unit tests; log results
+
+### 6.2 / 6.3 結果記錄 / Result notes（2026-11-15）
+
+- 6.2 ✅ 排程於 00:05 準時執行。本機 `20261115-r0-local-qwen3-0.6b-q8_0-cpu-nocache`（修正後重跑，00:48–01:17）：C-Eval 34.0%、CMMLU 28.0%、SimpleQA 近似 4.0%；39.21 t/s；峰值 RAM 1166 MiB。第一次執行的峰值 9652 MiB 來自 llama-server 預設的 8 GiB 提示快取，已改為 `--cache-ram 0`（commit dba5416）。兩次的 300 題回答中有 297 題完全相同。
+  6.2 done: the scheduled job fired at 00:05; the rerun after the fix gives the figures above.
+- 6.3 ⏳ 雲端基準執行無效：Nemotron 是推理模型，32 / 64 token 的上限全部用在思考，選擇題 100 題、SimpleQA 11 題沒有回答。已新增 `truncated` 狀態與 `--reasoning-budget`（預設 4096）。重跑需要使用者再次同意（約 150 次呼叫）。
+  6.3 pending: the cloud baseline run is void (reasoning ate the token limit); a rerun needs fresh user consent.
+- 第 1 步 `bank verify` 遇到維基 429 失敗；已改為依 Retry-After 重試。00:44 重跑通過（300 題，bank_hash 2138a26f02db842a）。
+  Job 1 failed on a Wikipedia 429; retries now honor Retry-After; the 00:44 rerun passed.
