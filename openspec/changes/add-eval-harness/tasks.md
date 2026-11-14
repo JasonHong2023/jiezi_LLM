@@ -18,7 +18,7 @@
 
 - [x] 4.1 `src/jiezi/eval/prompts.py` 與 `scoring.py`：各題型提示模板（含雜湊）、選擇題字母擷取、SimpleQA 近似比對（含繁簡正規化）、`pending_verifier`；測試各種回答格式 / Prompt templates, MC extraction, approximate SimpleQA matching; test answer formats
 - [x] 4.2 `src/jiezi/eval/runner.py`：逐題執行與寫入、`conditions.json`（R17.1）、`--resume` 與條件比對、`errors.jsonl`、連續 5 題失敗暫停、`--retry-errors`、`--samples N`；以假後端測試續跑、條件不符與暫停 / Per-item runner with conditions, resume, failure pause and `--retry-errors`; test with a fake backend
-- [ ] 4.3 `src/jiezi/eval/report.py`：`report.json` / `report.md`，分組、貪婪與多樣本分開、未評分與作廢分列、t/s、峰值記憶體、token；測試不會產生單一總分 / Reports with R17.5 grouping; test that no single overall score is produced
+- [x] 4.3 `src/jiezi/eval/report.py`：`report.json` / `report.md`，分組、貪婪與多樣本分開、未評分與作廢分列、t/s、峰值記憶體、token；測試不會產生單一總分 / Reports with R17.5 grouping; test that no single overall score is produced
 
 ## 5. 夜間時段與 CLI / Night window and CLI
 
