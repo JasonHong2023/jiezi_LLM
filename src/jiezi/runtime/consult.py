@@ -2,8 +2,8 @@
 Consulting Claude (add-gateway design D9; requested by the user on 2026-11-15).
 
 以無頭模式呼叫本機已登入的 Claude Code CLI（`claude -p`），使用使用者自己的帳號與用量額度。
-安全設定：關閉所有工具（`--tools ""`）、不載入 MCP 與設定檔、不保存工作階段、在空的暫存目錄執行，
-所以 Claude 只能回答文字，不能讀寫檔案或執行指令。
+安全設定：預設只開放讀網頁與網路搜尋（`JIEZI_CONSULT_WEB`，使用者 2026-11-15 同意），其他工具全部關閉；
+不載入 MCP 與設定檔、不保存工作階段、在空的暫存目錄執行，所以 Claude 不能讀寫檔案或執行指令。
 Calls the locally logged-in Claude Code CLI headlessly (`claude -p`) with the user's own account and usage
 allowance. Safety: all tools off (`--tools ""`), no MCP or settings loaded, no session persistence, run in an
 empty scratch directory, so Claude can only answer in text and cannot read, write or run anything.
@@ -23,8 +23,22 @@ import anyio
 from ..errors import JieziError
 
 TRAINING_USE = False
-ARGS = ["-p", "--output-format", "json", "--tools", "", "--strict-mcp-config", "--mcp-config",
-        '{"mcpServers":{}}', "--no-session-persistence", "--setting-sources", ""]
+# 只開放讀網頁與網路搜尋（使用者 2026-11-15 同意）；不能讀寫檔案、不能執行指令。
+# Only web reading and web search (approved by the user on 2026-11-15); no file access, no commands.
+WEB_TOOLS = "WebFetch,WebSearch"
+BASE_ARGS = ["-p", "--output-format", "json", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
+             "--no-session-persistence", "--setting-sources", ""]
+
+
+def build_args(web: bool) -> list[str]:
+    """工具清單：web=True 時只有 WebFetch、WebSearch 並預先允許（無頭模式無法互動確認）；否則全部關閉。
+    Tools: with web, only WebFetch and WebSearch, pre-approved (headless mode cannot ask); otherwise none."""
+    if web:
+        return [*BASE_ARGS, "--tools", WEB_TOOLS, "--allowedTools", WEB_TOOLS]
+    return [*BASE_ARGS, "--tools", ""]
+
+
+ARGS = build_args(False)  # 相容：不含網路的參數 / compatibility: the no-web arguments
 
 
 class ConsultError(JieziError):
@@ -52,8 +66,8 @@ def render_prompt(body: dict) -> str:
 
 class ClaudeCliConsultant:
     def __init__(self, workdir: Path, timeout_s: float = 300, model: str | None = None, binary: str | None = None,
-                 run_process=None):
-        self.workdir, self.timeout_s, self.model = workdir, timeout_s, model
+                 run_process=None, web: bool = False):
+        self.workdir, self.timeout_s, self.model, self.web = workdir, timeout_s, model, web
         self.binary = binary or shutil.which("claude")
         self.run_process = run_process or anyio.run_process
         self._limit = anyio.Semaphore(1)  # 同時只請教一個問題 / one consultation at a time
@@ -65,7 +79,7 @@ class ClaudeCliConsultant:
         if not self.binary:
             raise ConsultError("the `claude` CLI was not found in PATH")
         self.workdir.mkdir(parents=True, exist_ok=True)
-        cmd = [self.binary, *ARGS] + (["--model", self.model] if self.model else [])
+        cmd = [self.binary, *build_args(self.web)] + (["--model", self.model] if self.model else [])
         async with self._limit:
             try:
                 with anyio.fail_after(self.timeout_s):

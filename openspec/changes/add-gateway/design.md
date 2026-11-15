@@ -127,6 +127,9 @@ Options (checked with OSV on 2026-11-15; none of these latest versions has known
 - 夜間評測直接呼叫引擎，不經過 gateway，量測條件不受影響。
   Night evaluations call the engine directly, not through the gateway, so measurement conditions are unaffected.
 
+- **請教時可上網（使用者 2026-11-15 同意「開放」）**：使用者貼網址時，Claude 因工具全關而無法讀取。改為只開放 `WebFetch`、`WebSearch`（以 `--allowedTools` 預先允許，因為無頭模式無法互動確認），其他工具仍全部關閉；`JIEZI_CONSULT_WEB=off` 可恢復全關。風險：網頁可能含有對 AI 的指令（prompt injection），但 Claude 沒有任何能動手的工具，影響只限於回答內容。實測：讀取教育部教育百科頁面成功，無權限拒絕。
+  **Web access when consulting (user approved on 2026-11-15)**: with all tools off Claude could not read a pasted URL. Now only `WebFetch` and `WebSearch` are enabled (pre-approved via `--allowedTools`, since headless mode cannot ask); everything else stays off, and `JIEZI_CONSULT_WEB=off` restores none. Risk: pages may carry prompt injection, but Claude has no tool that can act, so the impact is limited to the answer text. Measured: reading the Ministry of Education page succeeded with no permission denials.
+
 ## Risks / Trade-offs
 
 - **0.6B 暫代核心的品質很低**：第 1 層重試與雲端轉交會很常觸發。→ 這正好是驗證骨架的好情境；軌跡也會記錄轉交率，作為 G2 的基準。

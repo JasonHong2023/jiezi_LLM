@@ -63,7 +63,8 @@ class Gateway:
         self.consultant = consultant
         if consultant is None and settings.consult == "claude-cli":
             self.consultant = consult_mod.ClaudeCliConsultant(settings.var / "runtime" / "consult-cwd",
-                                                              settings.consult_timeout_s, settings.consult_model)
+                                                              settings.consult_timeout_s, settings.consult_model,
+                                                              web=settings.consult_web)
         self.consult_cap = escalation.DailyCap(settings.var / "runtime" / "consult", settings.consult_daily_max) \
             if settings.consult_daily_max else None
         timeout = httpx.Timeout(settings.request_timeout_s, connect=10.0)

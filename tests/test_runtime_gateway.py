@@ -446,6 +446,10 @@ class TestConsult(unittest.TestCase):
         self.assertEqual(consult.ARGS[consult.ARGS.index("--tools") + 1], "")
         for flag in ("--strict-mcp-config", "--no-session-persistence", "--setting-sources"):
             self.assertIn(flag, consult.ARGS)
+        web = consult.build_args(True)
+        self.assertEqual(web[web.index("--tools") + 1], "WebFetch,WebSearch")  # 只有網路工具 / web tools only
+        self.assertEqual(web[web.index("--allowedTools") + 1], "WebFetch,WebSearch")
+        self.assertNotIn("Bash", " ".join(web))
         p = consult.render_prompt({"messages": [{"role": "system", "content": "s"}, {"role": "user", "content": "q"}],
                                    "tools": TOOLS})
         self.assertIn("q", p)
