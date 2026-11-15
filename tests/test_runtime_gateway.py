@@ -624,5 +624,19 @@ class TestSystemPrompt(unittest.TestCase):
                                                      "JIEZI_SYSTEM_PROMPT_FILE": "off"}).system_prompt)
 
 
+class TestConsultModelPick(unittest.TestCase):
+    def test_costliest_model_wins(self):
+        from jiezi.runtime.consult import ClaudeCliConsultant
+        out = {"type": "result", "is_error": False, "result": "ok", "usage": {},
+               "modelUsage": {"claude-haiku-5-5": {"outputTokens": 900, "costUSD": 0.001},
+                              "claude-fable-5-2": {"outputTokens": 200, "costUSD": 0.05}}}
+
+        async def run(cmd, input=None, cwd=None, check=False):
+            return FakeProc(out)
+        with tempfile.TemporaryDirectory() as d:
+            c = ClaudeCliConsultant(Path(d), binary="/usr/bin/claude", run_process=run)
+            self.assertEqual(anyio.run(c.ask, {"messages": []})["model"], "claude-fable-5-2")
+
+
 if __name__ == "__main__":
     unittest.main()

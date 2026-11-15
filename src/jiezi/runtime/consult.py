@@ -94,8 +94,11 @@ class ClaudeCliConsultant:
         if data.get("is_error") or p.returncode != 0:
             raise ConsultError(f"Claude could not answer: {str(data.get('result') or data.get('subtype'))[:300]}")
         mu = data.get("modelUsage") or {}
-        # 有多個模型（例如輔助模型）時，取輸出最多的那個 / with several models, take the one with the most output
-        models = sorted(mu, key=lambda k: (mu[k] or {}).get("outputTokens") or 0, reverse=True)
+        # 有多個模型時取花費最高的主模型：讀網頁時 Haiku 會先整理頁面，輸出量可能比主模型的回答還多
+        # With several models, take the costliest (the main one): when reading pages Haiku summarizes them
+        # first and may emit more tokens than the main answer
+        models = sorted(mu, key=lambda k: ((mu[k] or {}).get("costUSD") or 0,
+                                           (mu[k] or {}).get("outputTokens") or 0), reverse=True)
         usage = data.get("usage") or {}
         return {"content": data.get("result") or "", "model": models[0] if models else "claude",
                 "usage": {"prompt_tokens": (usage.get("input_tokens") or 0) + (usage.get("cache_read_input_tokens") or 0)
