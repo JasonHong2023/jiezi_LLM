@@ -28,7 +28,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
-from ..textconv import to_traditional
+from ..textconv import TaiwanStream, to_taiwan, to_traditional
 from . import consult as consult_mod
 from . import escalation
 from .settings import POLICIES, Settings
@@ -141,7 +141,7 @@ class Gateway:
         data = r.json()
         for ch in data.get("choices") or []:  # 本機輸出的純簡體字轉繁體 / Simplified-only chars → Traditional
             msg = ch.get("message") or {}
-            msg["content"] = to_traditional(msg.get("content"))
+            msg["content"] = (to_taiwan if self.s.tw_phrases else to_traditional)(msg.get("content"))
         return data
 
     async def _cloud_once(self, body: dict) -> tuple[dict, dict]:
@@ -237,6 +237,7 @@ class Gateway:
             content, sources, trainable, appendix = g
             body["messages"].insert(idx, {"role": "system", "content": content})
             idx += 1
+            rec["grounding_text"] = (rec.get("grounding_text") or "") + "\n" + content
             rec["sources"] = (rec.get("sources") or []) + sources
             rec["dict_appendix"] = (rec.get("dict_appendix") or "") + appendix
             if not trainable:
@@ -246,6 +247,16 @@ class Gateway:
             if w:  # 只附連結，不給模型內文 / links only; no article text reaches the model
                 rec["sources"] = (rec.get("sources") or []) + w[1]
                 rec["dict_appendix"] = (rec.get("dict_appendix") or "") + w[0]
+
+    @staticmethod
+    def _grounding(body: dict, rec: dict) -> str | None:
+        """查核用的依據：附上的資料加上使用者說過的話；沒有附資料就不查。
+        What the grounded check accepts: the attached data plus the user's own words; no data, no check."""
+        if not rec.get("grounding_text"):
+            return None
+        said = "\n".join(m["content"] for m in body["messages"]
+                          if m.get("role") == "user" and isinstance(m.get("content"), str))
+        return rec["grounding_text"] + "\n" + said
 
     # ── 端點 / Endpoints ──
     async def models(self, request: Request) -> Response:
@@ -325,7 +336,7 @@ class Gateway:
             resp = await self._local_once(base, body)
         except httpx.HTTPError as exc:
             return self._finish_error(rec, 502, f"local engine error: {exc}", "engine_error")
-        ver = escalation.verify(body, _message(resp))
+        ver = escalation.verify(body, _message(resp), self._grounding(body, rec))
         rec["tiers"].append({"tier": 0, "answer": _message(resp), "verification": ver, "model": resp.get("model"),
                              "tps": _tps(resp), "usage": resp.get("usage")})
         final, tier, escalate_reason = resp, 0, None
@@ -340,7 +351,7 @@ class Gateway:
             msgs = escalation.retry_messages(body["messages"], _message(resp), ver["error"])
             try:
                 resp1 = await self._local_once(base, body, msgs)
-                ver1 = escalation.verify(body, _message(resp1))
+                ver1 = escalation.verify(body, _message(resp1), self._grounding(body, rec))
                 rec["tiers"].append({"tier": 1, "answer": _message(resp1), "verification": ver1,
                                      "model": resp1.get("model"), "tps": _tps(resp1), "usage": resp1.get("usage")})
                 final, tier, ver = resp1, 1, ver1
@@ -458,6 +469,7 @@ class Gateway:
         Relay the local stream; cancel upstream on disconnect. If the local model could not answer (design D9),
         append Claude's (or the cloud's) answer to the same stream."""
         content, last, status, finish, released = [], {}, "ok", None, False
+        conv = TaiwanStream() if self.s.tw_phrases else None
         try:
             async with self.local.stream("POST", f"{base}/v1/chat/completions",
                                          json=self._local_body(body, stream=True)) as r:
@@ -480,15 +492,32 @@ class Gateway:
                     for ch in chunk.get("choices") or []:
                         delta = ch.get("delta") or {}
                         if delta.get("content"):
-                            delta["content"] = to_traditional(delta["content"])
+                            delta["content"] = conv.feed(delta["content"]) if conv else to_traditional(delta["content"])
+                        if conv and ch.get("finish_reason"):  # 結束前送出暫留的字 / release held text before finishing
+                            delta["content"] = (delta.get("content") or "") + conv.flush()
+                            ch["delta"] = delta
                         content.append(delta.get("content") or "")
                         finish = ch.get("finish_reason") or finish
                     yield _sse(chunk)
+            rest = conv.flush() if conv else ""
+            if rest:
+                content.append(rest)
+                yield _sse({"id": last.get("id"), "object": "chat.completion.chunk", "created": int(time.time()),
+                            "model": last.get("model"),
+                            "choices": [{"index": 0, "delta": {"content": rest}, "finish_reason": None}]})
             self.sup.release()
             released = True
             text = "".join(content)
-            ver = escalation.verify(body, {"content": text})
+            ver = escalation.verify(body, {"content": text}, self._grounding(body, rec))
             help_reason = escalation.needs_help({"content": text}, finish)
+            grounded = next((c for c in ver.get("checks") or [] if c["check"] == "grounded"), {})
+            if grounded.get("status") == "fail":
+                # 串流已送出，無法重答：附上提醒，並在 jiezi 策略下自動請教 / already streamed: warn, then consult
+                help_reason = help_reason or "unsupported_claims"
+                yield _sse({"id": last.get("id"), "object": "chat.completion.chunk", "created": int(time.time()),
+                            "model": last.get("model"), "choices": [{"index": 0, "delta": {
+                                "content": "\n\n［查核：" + "、".join(grounded["unsupported"][:6])
+                                           + " 在附上的資料裡找不到，請小心］"}, "finish_reason": None}]})
             rec["tiers"].append({"tier": 0, "answer": {"role": "assistant", "content": text}, "verification": ver,
                                  "model": last.get("model"), "tps": _tps(last), "needs_help": help_reason})
             if rec.get("dict_appendix"):

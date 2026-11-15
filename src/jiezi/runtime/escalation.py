@@ -109,13 +109,76 @@ def verify_code(content: str) -> dict:
     return {"check": "code_syntax", "status": "pass", "blocks": len(blocks)}
 
 
-def verify(request: dict, message: dict) -> dict:
+# ── 答案查核：回答裡的數字與「」引用要出現在附上的資料或使用者的話裡（使用者 2026-11-15）──
+# Grounded check: numbers and quoted terms in the answer must appear in the attached data or the user's words.
+_FW = str.maketrans("０１２３４５６７８９．，", "0123456789.,")
+_NUM = re.compile(r"\d+(?:[.,]\d+)*")
+_LIST = re.compile(r"^\s*\d{1,2}[.、)）]\s*", flags=re.M)        # 清單編號 / list numbering
+_QUOTE = re.compile(r"[「『]([^」』\n]{2,20})[」』]")
+_CN_DIGIT = {c: i for i, c in enumerate("零一二三四五六七八九")} | {"〇": 0, "兩": 2}
+_CN_UNIT = {"十": 10, "百": 100, "千": 1000, "萬": 10000, "億": 100000000}
+_CN_RUN = re.compile(r"[零〇一二兩三四五六七八九十百千萬億]{1,12}")
+MAX_UNSUPPORTED_SHOWN = 6
+
+
+def _cn_value(run: str) -> list[str]:
+    """中文數字 → 阿拉伯數字（「一九二七」→1927、「七十」→70、「一百五十」→150）。 / Chinese numerals → digits."""
+    if all(c in _CN_DIGIT for c in run):
+        return ["".join(str(_CN_DIGIT[c]) for c in run)] if len(run) >= 2 else [str(_CN_DIGIT[run])]
+    total, section, num = 0, 0, 0
+    for c in run:
+        if c in _CN_DIGIT:
+            num = _CN_DIGIT[c]
+        elif c in ("萬", "億"):
+            total += (section + num) * _CN_UNIT[c]
+            section, num = 0, 0
+        else:
+            section += (num or 1) * _CN_UNIT[c]
+            num = 0
+    return [str(total + section + num)]
+
+
+def _numbers(text: str, chinese: bool = False) -> set[str]:
+    text = text.translate(_FW)
+    out = {n.replace(",", "") for n in _NUM.findall(text)}
+    if chinese:
+        for run in _CN_RUN.findall(text):
+            out.update(_cn_value(run))
+    return out
+
+
+def verify_grounded(message: dict, grounding: str | None) -> dict:
+    """有附資料時才檢查；10 以下的整數與清單編號不算。 / Only with attached data; small integers and list numbers skip."""
+    if not grounding:
+        return {"check": "grounded", "status": "not_applicable"}
+    answer = _LIST.sub("", (message.get("content") or "").split("\n---\n")[0])
+    known = _numbers(grounding, chinese=True)
+    plain = grounding.translate(_FW)
+    missing = []
+    for n in sorted(_numbers(answer), key=answer.translate(_FW).find):
+        try:
+            small = float(n) < 10 and "." not in n
+        except ValueError:
+            small = False
+        if not small and n not in known and n not in plain:
+            missing.append(n)
+    missing += [f"「{q}」" for q in dict.fromkeys(_QUOTE.findall(answer)) if q not in grounding]
+    if not missing:
+        return {"check": "grounded", "status": "pass"}
+    shown = "、".join(missing[:MAX_UNSUPPORTED_SHOWN])
+    return {"check": "grounded", "status": "fail", "unsupported": missing,
+            "error": f"回答中的 {shown} 在提供的資料裡找不到；請只根據資料回答，資料沒有提到的數字、年份和名稱不要寫"
+                     f" / not found in the provided data: {shown}"}
+
+
+def verify(request: dict, message: dict, grounding: str | None = None) -> dict:
     """合併各項檢查：有任何失敗就是 fail；都不適用就是 not_applicable。
     Combine checks: any failure is fail; none applicable is not_applicable."""
     checks = []
     if request.get("tools"):
         checks.append(verify_tools(request["tools"], message))
     checks.append(verify_code(message.get("content") or ""))
+    checks.append(verify_grounded(message, grounding))
     applicable = [c for c in checks if c["status"] != "not_applicable"]
     if not applicable:
         return {"status": "not_applicable", "checks": checks}

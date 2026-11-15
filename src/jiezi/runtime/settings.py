@@ -59,6 +59,7 @@ class Settings:
     system_prompt: str | None = None   # 請求沒有 system 訊息時加上（design D10）/ added when a request has none
     consult_web: bool = True        # 請教時可讀網頁與搜尋（使用者 2026-11-15）/ web reading and search when consulting
     dictionary: bool = True         # 詞語問題先查本機辭典（add-dictionary）/ consult the local dictionary for word questions
+    tw_phrases: bool = True         # 本機輸出換成台灣用語（OpenCC TWPhrases 篩選）/ Taiwan phrasing for local output
     knowledge: bool = True          # 台灣知識問題先查 taiwan-md（add-knowledge）/ Taiwan questions use taiwan-md
     writing_refs: bool = True       # 寫作問題附延伸閱讀連結（add-curriculum D6）/ further-reading links for writing questions
     curriculum: bool = True         # 課綱／國小學習問題先查知識圖譜（add-curriculum）/ curriculum questions use the graph
@@ -107,6 +108,7 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         curriculum=_onoff(env, "JIEZI_CURRICULUM", True),
         writing_refs=_onoff(env, "JIEZI_WRITING_REFS", True),
         knowledge=_onoff(env, "JIEZI_KNOWLEDGE", True),
+        tw_phrases=_onoff(env, "JIEZI_TW_PHRASES", True),
         consult_web=_onoff(env, "JIEZI_CONSULT_WEB", True),
         system_prompt=_system_prompt(root, env),
     )
