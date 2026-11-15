@@ -1,0 +1,104 @@
+# 芥子課綱知識圖譜來源（add-curriculum）/ Jiezi curriculum knowledge graph source (add-curriculum)
+# 鎖定 commit 與 SHA-256；檔案下載到 var/curriculum/，不進版控（R6.4、R18.3）。
+# Pinned commit and SHA-256; files go to var/curriculum/, never committed.
+
+[source]
+key = "tw-taxonomy"
+title = "tw-taxonomy 台灣國小學習知識圖譜（108 課綱）"
+publisher = "tw-taxonomy contributors（seyen37/tw-taxonomy）"
+commit = "512492c648b99f6d292f93dbb6eaadc5f0319cc1"
+license = "CC BY 4.0（課綱條文 © 教育部／國家教育研究院，依著作權法第 50 條與政府網站資料開放宣告收錄）"
+license_url = "https://github.com/seyen37/tw-taxonomy/blob/512492c648b99f6d292f93dbb6eaadc5f0319cc1/PROVENANCE.md"
+training_use = true  # 使用者 2026-11-15 決定：全部可訓練（含課綱條文）/ user decision: all trainable
+attribution = "資料來源：tw-taxonomy（CC BY 4.0，https://github.com/seyen37/tw-taxonomy）；課綱條文出自教育部《十二年國民基本教育課程綱要》各領域課程綱要，© 教育部。本資料集非教育部官方產品，教育部未參與亦未背書。"
+license_checked = "2026-11-15"
+
+[[file]]
+name = "topics"
+url = "https://raw.githubusercontent.com/seyen37/tw-taxonomy/512492c648b99f6d292f93dbb6eaadc5f0319cc1/data/topics.json"
+sha256 = "c6c021f4e37f806bba0f4e48dfc09effffbdc3a46ade9fc71f8f3781e89c519b"
+
+[[file]]
+name = "dependencies"
+url = "https://raw.githubusercontent.com/seyen37/tw-taxonomy/512492c648b99f6d292f93dbb6eaadc5f0319cc1/data/dependencies.json"
+sha256 = "f15dfba84b0b4c9bc0674be7b74d987612c2fda609b55ce354f098e46832ca8f"
+
+[[file]]
+name = "curriculum-standards"
+url = "https://raw.githubusercontent.com/seyen37/tw-taxonomy/512492c648b99f6d292f93dbb6eaadc5f0319cc1/data/curriculum-standards.json"
+sha256 = "0ab2b925b66b3dcb129d714c8b7d0de3782e9a27e46d82a23ea233236722d196"
+
+[[file]]
+name = "clusters"
+url = "https://raw.githubusercontent.com/seyen37/tw-taxonomy/512492c648b99f6d292f93dbb6eaadc5f0319cc1/data/clusters.json"
+sha256 = "f700b702aeb2d76f3aec4c292c92304981536a86b416ff3122009c1035b6e64e"
+
+# 108 課綱各版本課本章節對照（zetria-org/curriculum，MIT）。上游空白的檔案不列入
+# （2026-11-15：高中必修只有生物有內容，國中國文是空檔）。
+# Textbook chapter comparison by publisher (MIT). Empty upstream files are not listed.
+[textbooks]
+key = "zetria-textbooks"
+title = "108 課綱各版本課本章節內容對照（Zetria Education）"
+publisher = "Zetria Education（zetria-org/curriculum）"
+commit = "4ed07c9df435542e7ad95ab8a2e4f348a6182ebb"
+license = "MIT"
+license_url = "https://github.com/zetria-org/curriculum/blob/4ed07c9df435542e7ad95ab8a2e4f348a6182ebb/LICENSE"
+training_use = true
+attribution = "資料來源：zetria-org/curriculum（MIT，Copyright (c) 2025 Zetria Education）"
+license_checked = "2026-11-15"
+
+[[textbooks.file]]
+name = "國中-公民"
+level = "國中"
+subject = "公民"
+url = "https://raw.githubusercontent.com/zetria-org/curriculum/4ed07c9df435542e7ad95ab8a2e4f348a6182ebb/%E7%A7%91%E7%9B%AE%E5%96%AE%E5%85%83%E7%89%88%E6%9C%AC%E5%B0%8D%E7%85%A7-%E5%9C%8B%E4%B8%AD/%E5%85%AC%E6%B0%91.md"
+sha256 = "acc404c72f535f7395ebc9aa2b5a27a8e3e0928c8e9092fbd1c12c42175b24ef"
+
+[[textbooks.file]]
+name = "國中-地理"
+level = "國中"
+subject = "地理"
+url = "https://raw.githubusercontent.com/zetria-org/curriculum/4ed07c9df435542e7ad95ab8a2e4f348a6182ebb/%E7%A7%91%E7%9B%AE%E5%96%AE%E5%85%83%E7%89%88%E6%9C%AC%E5%B0%8D%E7%85%A7-%E5%9C%8B%E4%B8%AD/%E5%9C%B0%E7%90%86.md"
+sha256 = "70307c4c25df9492198ab3d577c4ce58934d24ef275a2a1ae133a6b938bfb94b"
+
+[[textbooks.file]]
+name = "國中-地科"
+level = "國中"
+subject = "地科"
+url = "https://raw.githubusercontent.com/zetria-org/curriculum/4ed07c9df435542e7ad95ab8a2e4f348a6182ebb/%E7%A7%91%E7%9B%AE%E5%96%AE%E5%85%83%E7%89%88%E6%9C%AC%E5%B0%8D%E7%85%A7-%E5%9C%8B%E4%B8%AD/%E5%9C%B0%E7%A7%91.md"
+sha256 = "5d6a9778bff395de62a7c1bf897d68c3b825e4767721c3b1ba5e22bc90211693"
+
+[[textbooks.file]]
+name = "國中-數學"
+level = "國中"
+subject = "數學"
+url = "https://raw.githubusercontent.com/zetria-org/curriculum/4ed07c9df435542e7ad95ab8a2e4f348a6182ebb/%E7%A7%91%E7%9B%AE%E5%96%AE%E5%85%83%E7%89%88%E6%9C%AC%E5%B0%8D%E7%85%A7-%E5%9C%8B%E4%B8%AD/%E6%95%B8%E5%AD%B8.md"
+sha256 = "a4f4dc42a9e3524b07d625406cb87628e1ce92facff8300293cd565f916651d2"
+
+[[textbooks.file]]
+name = "國中-歷史"
+level = "國中"
+subject = "歷史"
+url = "https://raw.githubusercontent.com/zetria-org/curriculum/4ed07c9df435542e7ad95ab8a2e4f348a6182ebb/%E7%A7%91%E7%9B%AE%E5%96%AE%E5%85%83%E7%89%88%E6%9C%AC%E5%B0%8D%E7%85%A7-%E5%9C%8B%E4%B8%AD/%E6%AD%B7%E5%8F%B2.md"
+sha256 = "16c6c94b2fcc4af541f61ba081c4fcb30bc55311c9d1d4d6e05665996d867421"
+
+[[textbooks.file]]
+name = "國中-理化"
+level = "國中"
+subject = "理化"
+url = "https://raw.githubusercontent.com/zetria-org/curriculum/4ed07c9df435542e7ad95ab8a2e4f348a6182ebb/%E7%A7%91%E7%9B%AE%E5%96%AE%E5%85%83%E7%89%88%E6%9C%AC%E5%B0%8D%E7%85%A7-%E5%9C%8B%E4%B8%AD/%E7%90%86%E5%8C%96.md"
+sha256 = "849d6cefb3a875c2fc8b9610b5d6d10fc6455f243f00264e1fbe73d250d36c1e"
+
+[[textbooks.file]]
+name = "國中-生物"
+level = "國中"
+subject = "生物"
+url = "https://raw.githubusercontent.com/zetria-org/curriculum/4ed07c9df435542e7ad95ab8a2e4f348a6182ebb/%E7%A7%91%E7%9B%AE%E5%96%AE%E5%85%83%E7%89%88%E6%9C%AC%E5%B0%8D%E7%85%A7-%E5%9C%8B%E4%B8%AD/%E7%94%9F%E7%89%A9.md"
+sha256 = "cc74f339b0c8be0aa3ec4f15ee02345bbbf6fa3f03056791c0143f19daf6f297"
+
+[[textbooks.file]]
+name = "高中必修-生物"
+level = "高中必修"
+subject = "生物"
+url = "https://raw.githubusercontent.com/zetria-org/curriculum/4ed07c9df435542e7ad95ab8a2e4f348a6182ebb/%E7%A7%91%E7%9B%AE%E5%96%AE%E5%85%83%E7%89%88%E6%9C%AC%E5%B0%8D%E7%85%A7-%E9%AB%98%E4%B8%AD%E5%BF%85%E4%BF%AE/%E7%94%9F%E7%89%A9.md"
+sha256 = "938070c575706c0dfe4e0e2313c21c4ef0b9175704aa95efa5ae303e29f007b2"

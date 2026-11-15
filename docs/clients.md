@@ -69,7 +69,20 @@ Inside a Herdr pane it reports `working` / `idle`; the resume command is `jiezi 
 Windows 11（客戶端）：沒有 bash 時用 `uv run --project <repo> python -m jiezi.runtime chat`，gateway 留在 WSL 內，經 WSL2 的 localhost 轉送連到 `127.0.0.1:36100`。
 Windows 11 client: without bash use `uv run --project <repo> python -m jiezi.runtime chat`; the gateway stays inside WSL and is reached through WSL2 localhost forwarding.
 
-## 5. Hermes Agent 與 OpenCode / Hermes Agent and OpenCode
+## 5. 課綱與課本資料 / Curriculum and textbooks
+
+```bash
+scripts/jiezi curriculum build                          # 下載並核對（約 1.3 MB）/ download and verify
+scripts/jiezi curriculum lookup N-3-9                   # 課綱代碼或微主題 / code or topic
+scripts/jiezi curriculum path 同分母分數的比較與加減      # 完整先修鏈 / full prerequisite chain
+scripts/jiezi curriculum plan --subject 數學 --grade 3  # 依先修排出教學順序 / ordered by prerequisites
+scripts/jiezi curriculum textbook "數學 7上 翰林"        # 課本單元；也可給單元名稱 / chapters, or a unit title
+```
+
+聊天時問到課綱代碼、國小學習內容、先修，或國高中課本某冊某版本的單元，gateway 會自動查資料，並在回答後附上原文與出處（`JIEZI_CURRICULUM=off` 可關閉）。
+In chats, curriculum, primary-learning and textbook questions are grounded automatically, with the data and attribution appended (`JIEZI_CURRICULUM=off` disables it).
+
+## 6. Hermes Agent 與 OpenCode / Hermes Agent and OpenCode
 
 ```bash
 scripts/jiezi check-clients    # 只檢查並列出建議設定，不修改任何設定 / read-only; prints suggested settings

@@ -1,5 +1,5 @@
-"""scripts/jiezi 的實作：serve、status、init-key（add-gateway）；ask、chat、check-clients（add-cli）。
-Implementation of scripts/jiezi: serve, status, init-key (add-gateway); ask, chat, check-clients (add-cli)."""
+"""scripts/jiezi 的實作：serve、status、init-key（add-gateway）；ask、chat、check-clients（add-cli）；curriculum（add-curriculum）。
+Implementation of scripts/jiezi: serve, status, init-key (add-gateway); ask, chat, check-clients (add-cli); curriculum (add-curriculum)."""
 
 from __future__ import annotations
 
@@ -37,6 +37,56 @@ def cmd_serve(root) -> int:
     return 0
 
 
+def cmd_curriculum(root, args) -> int:
+    """課綱知識圖譜指令（add-curriculum）。 / Curriculum graph commands."""
+    from .. import curriculum as C
+    if args.action == "build":
+        counts = C.build(root)
+        print(f"built {C.cache_dir(root)}: {counts}; restart the gateway (scripts/jiezi stop && scripts/jiezi start) "
+              "to use it")
+        return 0
+    g = C.Graph.load(root)
+    if args.action == "plan":
+        if not args.subject or not (args.grade or args.stage):
+            print("usage: scripts/jiezi curriculum plan --subject 數學 --grade 3 (or --stage 1)", file=sys.stderr)
+            return 2
+        ids = g.plan(args.subject, grade=args.grade, stage=args.stage)
+        for n, i in enumerate(ids, 1):
+            t = g.topics[i]
+            before = [g.topics[p]["name"] for p, _ in g.prereq[i] if p in ids]
+            codes = "、".join(t.get("contentCodes", []) + t.get("performanceCodes", []))
+            print(f"{n:3}. {t['name']}（{t['domain']}）{codes}" + (f"  ← {'、'.join(before)}" if before else ""))
+        print(f"— {g.src.attribution}")
+        return 0 if ids else 1
+    if not args.query:
+        print(f"usage: scripts/jiezi curriculum {args.action} <微主題名稱、id 或課綱代碼>", file=sys.stderr)
+        return 2
+    if args.action == "textbook":
+        hits = [g.render_textbook(g.textbooks[i]) for i in g.textbook_query(args.query)] or \
+            [g.where_unit(t) for t in g.units_in(args.query)]
+        for h in hits:
+            print(h + "\n")
+        if hits and g.tsrc:
+            print(f"— {g.tsrc.attribution}")
+        return 0 if hits else 1
+    keys = g.codes(args.query) if args.action == "lookup" else []
+    ids = g.find(args.query)
+    for k in keys:
+        print(g.render_standard(k) + "\n")
+    for i in ids[:10]:
+        if args.action == "path":
+            chain = g.ancestors(i) + [i]
+            print(f"{g.topics[i]['name']} 的學習路徑（{len(chain) - 1} 項先修）：")
+            for n, a in enumerate(chain, 1):
+                print(f"{n:3}. {g.topics[a]['name']}（{g.topics[a]['subject']}，{g.grade_text(g.topics[a])}）")
+            print()
+        else:
+            print(g.render(i) + "\n")
+    if keys or ids:
+        print(f"— {g.src.attribution}")
+    return 0 if keys or ids else 1
+
+
 def cmd_status(root) -> int:
     env = load_env(root)
     url = f"http://127.0.0.1:{port_base(env)}/health"
@@ -71,6 +121,12 @@ def main(argv: list[str] | None = None) -> int:
     dp = sub.add_parser("dict", help="local dictionary (add-dictionary)")
     dp.add_argument("action", choices=["build", "lookup"])
     dp.add_argument("word", nargs="?")
+    cp = sub.add_parser("curriculum", help="108 curriculum knowledge graph, tw-taxonomy (add-curriculum)")
+    cp.add_argument("action", choices=["build", "lookup", "path", "plan", "textbook"])
+    cp.add_argument("query", nargs="?", help="微主題名稱、id、課綱代碼；textbook：如「數學 7上 翰林」或單元名稱 / topic, code; textbook: e.g. 數學 7上 翰林")
+    cp.add_argument("--subject", help="plan：科目，如 數學 / subject")
+    cp.add_argument("--grade", type=int, choices=range(1, 7), help="plan：年級 / grade")
+    cp.add_argument("--stage", type=int, choices=(1, 2, 3), help="plan：學習階段 / learning stage")
     args = ap.parse_args(argv)
     root = project_root()
     try:
@@ -108,6 +164,8 @@ def main(argv: list[str] | None = None) -> int:
                 print(dictionary.render(entry))
                 print(f"— {d.meta.get(src, {}).get('attribution', src)}\n")
             return 0 if hits else 1
+        if args.cmd == "curriculum":
+            return cmd_curriculum(root, args)
         if args.cmd == "check-clients":
             from ..cli import check
             return check.main()

@@ -73,6 +73,13 @@ class Gateway:
                 self.dictionary = Dictionary(db_path(settings.root))
             except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
                 self.dictionary_note = str(exc)
+        self.curriculum, self.curriculum_note = None, None
+        if settings.curriculum:
+            from ..curriculum import Graph
+            try:
+                self.curriculum = Graph.load(settings.root)
+            except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
+                self.curriculum_note = str(exc)
         self.consult_cap = escalation.DailyCap(settings.var / "runtime" / "consult", settings.consult_daily_max) \
             if settings.consult_daily_max else None
         timeout = httpx.Timeout(settings.request_timeout_s, connect=10.0)
@@ -191,24 +198,31 @@ class Gateway:
         return self._finish_error(rec, 502, message, why)
 
     def _ground(self, body: dict, rec: dict) -> None:
-        """詞語問題先查本機辭典，把詞條原文附給模型（add-dictionary D2、D3）。
-        For word questions, attach verbatim dictionary entries (add-dictionary D2, D3)."""
-        if self.dictionary is None or body.get("tools"):
+        """詞語問題查本機辭典、課綱問題查知識圖譜，把原文附給模型（add-dictionary D2、D3；add-curriculum D2、D3）。
+        Attach verbatim dictionary entries for word questions and curriculum-graph data for curriculum questions."""
+        if body.get("tools") or (self.dictionary is None and self.curriculum is None):
             return
         last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
         if not last or not isinstance(last.get("content"), str):
             return
-        from ..dictionary import grounding
-        g = grounding(self.dictionary, last["content"])
-        if not g:
-            return
-        content, sources, trainable, appendix = g
+        found = []
+        if self.dictionary is not None:
+            from ..dictionary import grounding
+            found.append(grounding(self.dictionary, last["content"]))
+        if self.curriculum is not None:
+            from ..curriculum import grounding as curriculum_grounding
+            found.append(curriculum_grounding(self.curriculum, last["content"]))
         idx = body["messages"].index(last)
-        body["messages"].insert(idx, {"role": "system", "content": content})
-        rec["sources"] = sources
-        rec["dict_appendix"] = appendix
-        if not trainable:
-            rec["training_use"] = False  # 禁止改作的辭典 / no-derivatives dictionary
+        for g in found:
+            if not g:
+                continue
+            content, sources, trainable, appendix = g
+            body["messages"].insert(idx, {"role": "system", "content": content})
+            idx += 1
+            rec["sources"] = (rec.get("sources") or []) + sources
+            rec["dict_appendix"] = (rec.get("dict_appendix") or "") + appendix
+            if not trainable:
+                rec["training_use"] = False  # 例如禁止改作的辭典 / e.g. a no-derivatives dictionary
 
     # ── 端點 / Endpoints ──
     async def models(self, request: Request) -> Response:
@@ -221,6 +235,7 @@ class Gateway:
         return JSONResponse({"status": "ok", "engine": self.sup.describe(),
                              "consult": self.s.consult if self.consultant else "off",
                              "dictionary": "on" if self.dictionary else (self.dictionary_note or "off"),
+                             "curriculum": "on" if self.curriculum else (self.curriculum_note or "off"),
                              "cloud_escalation": self.s.cloud_ready, "cloud_used_today": self.cap.used(),
                              "cloud_daily_max": self.s.cloud_daily_max,
                              "trajectory": {"enabled": self.traj.enabled, "error": self.traj.last_error}})
