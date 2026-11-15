@@ -70,7 +70,12 @@ Automated: Textual's `App.run_test()` for key and layout tests, checking at fixe
 - **0.6B 暫代核心**：回答品質低，但介面要測的是顯示與流程。
   **The 0.6B stand-in**: weak answers, but the interface tests display and flow.
 
-## Open Questions
+## Decisions on Open Questions（使用者 2026-11-15 / user, 2026-11-15）
+
+- OQ1：同意 Textual 8.2.8 / Rich 15.0.0。/ Textual 8.2.8 / Rich 15.0.0 approved.
+- OQ2：Hermes 預設暫不改，`check-clients` 驗證後再問使用者。/ Hermes default unchanged for now; ask again after `check-clients`.
+
+## Open Questions（已決定，保留原文 / decided, kept for the record）
 
 - **OQ1**：Textual 8.2.8 與 Rich 15.0.0 作為新的執行期套件，是否同意？（R23 查證：OSV 沒有任何公告）
   Approve Textual 8.2.8 and Rich 15.0.0 as runtime packages? (R23: no advisories on OSV.)

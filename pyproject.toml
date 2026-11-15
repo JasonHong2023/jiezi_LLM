@@ -1,13 +1,18 @@
 # 芥子（Jiezi）專案設定 / Jiezi project configuration
-# 執行期依賴刻意為空：hwprobe 與 bootstrap 只用標準函式庫（R9、R23）
-# Runtime dependencies are intentionally empty: hwprobe and bootstrap use the standard library only (R9, R23)
+# hwprobe 與 bootstrap 只用標準函式庫（R9、R23）；執行期套件只有 gateway 用（add-gateway D2，R23 查證見 stack.md）
+# hwprobe and bootstrap use the standard library only (R9, R23); runtime packages serve the gateway only
+# (add-gateway D2; R23 check recorded in stack.md)
 [project]
 name = "jiezi"
 version = "0.1.0"
 description = "芥子納須彌 — tiny compressed core LLM plus system capabilities on laptop-class hardware"
 readme = "openspec/project.md"
 requires-python = ">=3.13,<3.14"
-dependencies = []
+dependencies = [
+    "httpx==0.28.1",
+    "starlette==1.10.0",
+    "uvicorn==0.54.0",
+]
 
 # 建置工具以 uv 安裝到 .venv，不需要 sudo / Build tools installed into .venv by uv, no sudo needed
 [dependency-groups]

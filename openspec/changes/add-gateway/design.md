@@ -90,6 +90,19 @@ Options (checked with OSV on 2026-11-15; none of these latest versions has known
 `var/trajectories/YYYY-MM-DD.jsonl`，每個請求一行：`id`、時間、模型名稱（策略）、請求訊息、每一層的答案、驗證結果、最後層級、實際模型、延遲、token、費用。只存在本機，`var/` 不進版控（R6.4）。`JIEZI_TRAJECTORY=off` 可完全關閉；`JIEZI_TRAJECTORY_RETENTION_DAYS`（預設 0，表示不自動刪除）可設定保留天數。
 `var/trajectories/YYYY-MM-DD.jsonl`, one line per request: `id`, time, model name (policy), request messages, each tier's answer, verification, final tier, actual model, latency, tokens, cost. Local only; `var/` is never committed (R6.4). `JIEZI_TRAJECTORY=off` disables it; `JIEZI_TRAJECTORY_RETENTION_DAYS` (default 0 = keep) sets retention.
 
+### D8 — 實作時的補充 / Additions during implementation
+
+- 串流的取捨：請求帶 `tools` 時先完整取得、驗證後再以串流格式送出；沒有 `tools` 時直接轉送本機串流，驗證只事後記錄（`escalation: not_retried_in_streaming`），不重試。
+  Streaming: with `tools`, fetch and verify first, then emit in stream format; without `tools`, relay directly and only record verification afterwards (`escalation: not_retried_in_streaming`).
+- 雲端失敗時，若已有本機答案就回本機答案（`escalation: cloud_failed`）。
+  On cloud failure, return the local answer if there is one (`escalation: cloud_failed`).
+- 引擎以 `--alias <核心名稱>` 啟動，回應中的模型名稱不洩漏本機檔案路徑（實測時發現）。
+  The engine starts with `--alias <core name>`, so responses never leak the local file path (found in the live test).
+- `LocalEngine` 移到 `jiezi/engine.py`，`fresh_facts` 移到 `jiezi/facts.py`；`EvalError` 與共用的 `JieziError` 是同一個類別。
+  `LocalEngine` moved to `jiezi/engine.py`, `fresh_facts` to `jiezi/facts.py`; `EvalError` is the same class as the shared `JieziError`.
+- Starlette 1.10 對 `starlette.testclient` 搭配 httpx 發出棄用警告（建議改用 `httpx2`）；只影響測試，執行期不受影響，之後升級時再評估。
+  Starlette 1.10 warns that `starlette.testclient` with httpx is deprecated (suggesting `httpx2`); tests only, revisit on upgrade.
+
 ## Risks / Trade-offs
 
 - **0.6B 暫代核心的品質很低**：第 1 層重試與雲端轉交會很常觸發。→ 這正好是驗證骨架的好情境；軌跡也會記錄轉交率，作為 G2 的基準。
@@ -101,7 +114,14 @@ Options (checked with OSV on 2026-11-15; none of these latest versions has known
 - **新增執行期相依套件**：→ R23 查證、`uv.lock` 鎖版本；選項 (c) 可避免相依，但犧牲中斷取消與 HTTP 解析的穩健性。
   **New runtime dependencies**: → R23 checks and `uv.lock` pins; option (c) avoids them at the cost of disconnect cancellation and robust HTTP parsing.
 
-## Open Questions
+## Decisions on Open Questions（使用者 2026-11-15 / user, 2026-11-15）
+
+- OQ1：Starlette + uvicorn + httpx。/ Starlette + uvicorn + httpx.
+- OQ2：雲端轉交預設關閉；開啟時用 `nvidia-nemotron-3-ultra`，每日上限 200 次。/ Off by default; `nvidia-nemotron-3-ultra` when on; 200 per day.
+- OQ3：完整保存對話，預設不自動刪除；用於訓練前依 R20 另行討論。/ Full conversations, no automatic deletion; training use discussed under R20 first.
+- OQ4：bootstrap 自動產生 `JIEZI_GATEWAY_KEY`。/ Bootstrap generates `JIEZI_GATEWAY_KEY`.
+
+## Open Questions（已決定，保留原文 / decided, kept for the record）
 
 - **OQ1 HTTP 框架**：(a) Starlette + uvicorn + httpx（建議）／(b) aiohttp／(c) 只用標準函式庫。
   **HTTP framework**: (a) Starlette + uvicorn + httpx (recommended) / (b) aiohttp / (c) standard library only.

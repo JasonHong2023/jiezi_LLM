@@ -1,7 +1,7 @@
 ## 0. 前置 / Prerequisites
 
 - [ ] 0.1 `add-gateway` 完成 / `add-gateway` done
-- [ ] 0.2 使用者決定 OQ1（Textual / Rich）、OQ2（是否切換 Hermes 預設）/ User decides OQ1 and OQ2
+- [x] 0.2 使用者決定 OQ1（Textual / Rich）、OQ2（是否切換 Hermes 預設）/ User decides OQ1 and OQ2（2026-11-15：同意 Textual；Hermes 暫不改 / Textual approved; Hermes unchanged）
 
 ## 1. 共用客戶端 / Shared client
 

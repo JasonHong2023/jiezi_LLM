@@ -21,7 +21,7 @@
 | 建置 / Build | ninja（PyPI） | 1.13.2（`uv.lock`） | `pyproject.toml` dev 群組 |
 | 建置 / Build | meson（PyPI） | 1.12.1（`uv.lock`；建置 bubblewrap 用 / builds bubblewrap） | `pyproject.toml` dev 群組 |
 | 程式驗證沙盒 / Code sandbox | bubblewrap（LGPL-2.1-or-later；非 setuid，建置到 `var/tools/`） | v0.13.1 commit `362936aea0d5c6e70f7af75d2d44b5a914cb4ba2`（2026-10-14） | `https://github.com/containers/bubblewrap` |
-| 執行期 Python 依賴 / Runtime Python deps | 無（只用標準函式庫） / none (stdlib only) | — | R9、R23 |
+| 執行期 Python 依賴 / Runtime Python deps | gateway：starlette、uvicorn（h11）、httpx（httpcore、certifi、idna）、anyio；hwprobe 與 bootstrap 仍只用標準函式庫 / gateway only; hwprobe and bootstrap stay stdlib-only | starlette 1.10.0、uvicorn 0.54.0、httpx 0.28.1（全部版本鎖在 `uv.lock` / all pinned in `uv.lock`） | `pyproject.toml` `dependencies`（add-gateway D2，使用者 2026-11-15 同意 / approved） |
 | 規格工具 / Spec tooling | OpenSpec | 1.4.1 | — |
 | 冒煙測試模型 / Smoke-test model | `Qwen3-0.6B-Q8_0.gguf` | HF repo commit `23749fefcc72300e3a2ad315e1317431b06b590a`，SHA-256 `9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031` | `models/manifest.toml` |
 
@@ -65,6 +65,7 @@ Building or running `rpc-server`; binding any llama.cpp service to anything othe
 | **llama.cpp RPC 後端** | **GHSA-j8rj-fmpv-wcxw / CVE-2026-34159（Critical）** | 未授權遠端執行程式碼（RPC `deserialize_tensor()` 在 `buffer == 0` 時跳過邊界檢查）。公告範圍 `<= b7991`、未列修正版本。**[本機查證]** 鎖定 commit 的 `ggml/src/ggml-rpc/ggml-rpc.cpp` 中，`buffer == 0` 時仍直接採用遠端傳入的 `data`，此函式內未見修正；是否在其他位置修正無法確認。**緩解：`GGML_RPC=OFF` 且不執行 `rpc-server`（§3）** |
 | OpenSSL 3.0.13（Ubuntu 24.04 `3.0.13-0ubuntu3.16`） | OSV API（`Ubuntu:24.04:LTS`） | 5 則未修補：CVE-2026-107496（`CMS_encrypt` 無限迴圈）、CVE-2026-88822、CVE-2026-95691（QUIC）、CVE-2026-88823、CVE-2026-95692（AES-GCM-SIV）。**[本機查證]** 本機 3.0.13 的 `libssl` 沒有 QUIC 符號，`openssl list -cipher-algorithms` 沒有 AES-GCM-SIV；llama.cpp 使用的 cpp-httplib 原始碼不含 CMS、QUIC、GCM-SIV 呼叫 → 判定 HTTPS 用途不會觸及這 5 則。OpenSSL 本身已是系統元件（`libssl3t64` 已安裝），`libssl-dev` 只增加標頭。每個決策關卡複查（R23.5） |
 | meson 1.12.1（PyPI） | OSV API | 0 個已知漏洞 [實測查詢 2026-11-15] |
+| gateway 執行期套件 / gateway runtime packages（starlette 1.10.0、uvicorn 0.54.0、h11 0.16.0、httpx 0.28.1、httpcore 1.0.9、anyio 4.16.0、certifi 2026.10.23、idna 3.20、click 8.5.1、typing-extensions 4.16.0） | OSV `querybatch`，以 `uv.lock` 全部套件查詢 / every `uv.lock` package | 0 個已知漏洞；歷來公告 starlette 20 則（皆已在此版修正），另評估過的 aiohttp 有 101 則而未採用 [實測查詢 2026-11-15] |
 | bubblewrap v0.13.1 | GitHub Security Advisories（`containers/bubblewrap`）、OSV（`Ubuntu:24.04:LTS`） | 3 則公告皆不影響 v0.13.1：GHSA-pxhw-h44j-8pfx / CVE-2026-87766（`< 0.12.0`）、CVE-2026-41163（setuid，`0.11.0`–`0.11.1`）、CVE-2020-5291（setuid）。**不用 Ubuntu 24.04 套件**：`0.9.0-1ubuntu0.3`（USN-8779-2）撤回了 CVE-2026-87766 的修正，仍受影響（使用者 2026-11-15 決定改建上游）[實測查詢 2026-11-15] |
 | libcap-dev `1:2.66-5ubuntu2.4`、pkgconf `1.8.1-2build1` | Ubuntu CVE tracker | libcap：CVE-2026-4878 已於此版修正（USN-8193-1）；pkgconf：CVE-2023-24056 對 noble 標為 Not affected [實測查詢 2026-11-15] |
 | Python 3.13 | — | 由 uv 取得官方版本；每次決策關卡以 `pip-audit` 複查（R23.5） |

@@ -95,6 +95,9 @@ def step_env(ctx: Ctx) -> str:
         shutil.copyfile(example, env_file)
         env_file.chmod(0o600)
         created = True
+    from jiezi.config import ensure_gateway_key
+    if ensure_gateway_key(ctx.root):
+        ctx.notes.append("已在 .env 產生 gateway 本機金鑰 JIEZI_GATEWAY_KEY / generated the local gateway key in .env")
     if not load_env(ctx.root).get("JIEZI_CLOUD_BASE_URL"):
         ctx.notes.append("JIEZI_CLOUD_BASE_URL 未設定：系統將以純本機模式運作 / "
                          "JIEZI_CLOUD_BASE_URL unset: the system will run local-only")

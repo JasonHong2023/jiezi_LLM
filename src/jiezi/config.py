@@ -43,3 +43,28 @@ def port_base(env: dict | None = None) -> int:
         return int(env.get("JIEZI_PORT_BASE") or 36100)
     except ValueError:
         return 36100
+
+
+GATEWAY_KEY_VAR = "JIEZI_GATEWAY_KEY"
+
+
+def ensure_gateway_key(root: Path | None = None) -> bool:
+    """`.env` 沒有 gateway 金鑰時產生一把隨機金鑰寫入（add-gateway design D3 / OQ4）。回傳是否新產生。
+    金鑰只寫進 `.env`（權限 0600），不印出、不進版控。
+    Write a random gateway key into `.env` when missing (add-gateway design D3 / OQ4). Return whether one was
+    created. The key only goes into `.env` (mode 0600); it is never printed or committed."""
+    import re
+    import secrets
+    root = root or project_root()
+    env_file = root / ".env"
+    if not env_file.exists():
+        return False
+    text = env_file.read_text(encoding="utf-8")
+    m = re.search(rf"^{GATEWAY_KEY_VAR}=(.*)$", text, re.M)
+    if m and m.group(1).strip().strip("'\""):
+        return False
+    line = f"{GATEWAY_KEY_VAR}={secrets.token_urlsafe(32)}"
+    text = text[:m.start()] + line + text[m.end():] if m else text.rstrip("\n") + "\n" + line + "\n"
+    env_file.write_text(text, encoding="utf-8")
+    env_file.chmod(0o600)
+    return True

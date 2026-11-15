@@ -23,12 +23,12 @@ from datetime import datetime
 from pathlib import Path
 
 from jiezi.config import load_env, port_base, project_root
+from jiezi.facts import FACTS_MAX_AGE_S, fresh_facts  # noqa: F401  (共用 / shared)
 
 from . import EvalError, bank, lock, night, prompts, report, runner, verify_run
 from .client import ChatClient
 from .engine import LocalEngine
 
-FACTS_MAX_AGE_S = 60  # 規則 R18.1 / rule R18.1
 KNOWN_LIMITATIONS = ["ceval-val: pinned ZIP may lack the 2025 val re-upload fixes (design D3)"]
 
 
@@ -74,17 +74,6 @@ def cmd_bank(args, root: Path) -> int:
 
 
 # ── 執行 / Run ──────────────────────────────────────────────────────────────
-
-def fresh_facts(root: Path) -> dict:
-    """facts.json 超過 60 秒就重新探測（R18.1）。 / Re-probe when facts.json is older than 60 s (R18.1)."""
-    f = root / "facts.json"
-    if not f.exists() or time.time() - f.stat().st_mtime > FACTS_MAX_AGE_S:
-        p = subprocess.run([sys.executable, str(root / "scripts" / "hwprobe.py"), "--out", str(f)],
-                           capture_output=True, text=True)
-        if p.returncode != 0 or not f.exists():
-            raise EvalError(f"hwprobe failed: {p.stderr.strip()}")
-    return json.loads(f.read_text(encoding="utf-8"))
-
 
 def resolve_model(root: Path, env: dict, ref: str) -> tuple[Path, str | None]:
     """--model 可以是 models/manifest.toml 的名稱或檔案路徑；回傳 (路徑, 清單中的 SHA-256)。
@@ -138,6 +127,26 @@ def select(items: list[dict], args) -> list[dict]:
 DEFAULT_REASONING_BUDGET = 4096
 
 
+def release_gateway(root: Path, env: dict, window, forced: bool) -> str:
+    """評測載入模型前請 gateway 卸載並暫停到時段結束（add-gateway D4）；結果記入條件（R17）。
+    Ask the gateway to unload and hold until the window ends before loading (add-gateway D4); recorded (R17)."""
+    from datetime import timedelta
+
+    from jiezi.runtime.coord import release_for_eval
+    now_ = datetime.now()
+    hold = None
+    if not forced and window.contains(now_):
+        end = now_.replace(hour=window.end // 60 % 24, minute=window.end % 60, second=0, microsecond=0)
+        hold = end if end > now_ else end + timedelta(days=1)
+    try:
+        status = release_for_eval(root, env.get("JIEZI_GATEWAY_KEY"), hold)
+    except Exception as exc:  # noqa: BLE001 - 協調失敗不可讓評測失敗 / never fail the evaluation over this
+        status = f"check_failed ({type(exc).__name__})"
+    if status not in ("not_running",) and not status.startswith("idle"):
+        print(f"gateway: {status}")
+    return status
+
+
 def cmd_run(args, root: Path) -> int:
     env = load_env(root)
     window = night.parse_window(env.get("JIEZI_NIGHT_WINDOW"))
@@ -161,6 +170,7 @@ def cmd_run(args, root: Path) -> int:
                "night_window": env.get("JIEZI_NIGHT_WINDOW") or night.DEFAULT_WINDOW, "forced_now": args.now}
 
     if args.backend == "local":
+        context["gateway"] = release_gateway(root, env, window, args.now)
         facts = fresh_facts(root)
         model, manifest_sha = resolve_model(root, env, args.model or "qwen3-0.6b-q8_0")
         if not model.is_file():
@@ -315,6 +325,7 @@ def e0_smoke(root: Path, env: dict, row, path: Path, ngl: int, out_dir: Path) ->
     _, items = load_items(root, "r0")
     picked = e0.smoke_items(items)
     answers = []
+    release_gateway(root, env, night.parse_window(env.get("JIEZI_NIGHT_WINDOW")), forced=False)
     try:
         eng = LocalEngine(root, fresh_facts(root), path, port_base(env), ngl=ngl, ctx=e0.CTX)
         with eng:

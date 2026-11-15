@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# 芥子 runtime 入口（add-gateway）：gateway 只綁 127.0.0.1（R6.12）。
+# Jiezi runtime entry (add-gateway): the gateway binds to 127.0.0.1 only (R6.12).
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! command -v uv >/dev/null 2>&1; then
+  echo "找不到 uv，請先執行 scripts/bootstrap / uv not found; run scripts/bootstrap first" >&2
+  exit 1
+fi
+export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+unset VIRTUAL_ENV  # 一律使用專案的 .venv / always use the project .venv
+exec uv run --project "$ROOT" python -m jiezi.runtime "$@"
