@@ -29,6 +29,10 @@ User decision: all of tw-taxonomy (including curriculum text) is trainable; zetr
 MIT 允許修改：解析時把純簡體字換成正體（使用者：不要有簡體中文），但 `群` 這類本身是正體的字不換成異體 `羣`；上游「全華板」改為「全華版」。
 MIT allows changes: Simplified-only characters become Traditional (群 is kept), and the upstream typo 全華板 becomes 全華版.
 
+### D6 — 寫作教學連結（使用者 2026-11-15：「兩個都做」）/ Writing-lesson links
+rocknovels.com（© 故事革命）沒有開放授權，所以不收錄內文、不訓練。`scripts/jiezi writing-refs build` 只抓一次目錄頁，存 131 篇的分類、標題、網址到 `var/refs/`（不進版控）。寫作問題（寫作、小說、角色、靈感……）在回答後附最多 3 篇標題用字最接近的文章連結（模型看不到內文）；請教 Claude 時加一則提示，說明可上網閱讀這些文章、用自己的話說明。
+rocknovels.com is all rights reserved: no text is ingested or trained on. Only titles and URLs are indexed; writing answers get up to three links, and Claude consultations get a hint that it may read them online.
+
 ## Risks / Trade-offs
 - 微主題名稱很短（如「速度」）時可能誤觸發 → 需同時有課綱用語。/ Short names over-trigger → a curriculum cue is also required.
 - 課本資料只涵蓋部分科目與版本 → 查不到時不附資料，由模型照常回答。/ Partial coverage → no grounding when not found.

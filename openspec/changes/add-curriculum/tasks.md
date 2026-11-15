@@ -14,3 +14,9 @@
 - [x] 3.1 單元測試（SHA-256、缺授權欄位、羅馬數字、先修鏈與排序、有環、觸發與不觸發、課本解析與冊別、gateway）；`openspec validate add-curriculum --strict` / Unit tests and validation
 - [x] 3.2 重啟 gateway，以 0.6B 實際問幾題課綱與課本問題 / Live check with the 0.6B
   實測（2026-11-15）：先修題答對並附完整先修鏈；「國一上數學翰林版」0.6B 只答出第一單元的小節，後面附的原文完整；「早安」不觸發。/ Live: the prerequisite answer was right; the 0.6B listed only unit 1 for the textbook question, the appended data was complete; small talk did not trigger.
+
+## 4. 寫作教學連結 / Writing-lesson links（D6）
+
+- [x] 4.1 `src/jiezi/writing_refs.py`、`scripts/jiezi writing-refs build|search`、授權登記 `rocknovels-teachlist`（訓練：否）/ Index, commands, registry
+- [x] 4.2 gateway：寫作問題附延伸閱讀連結；請教 Claude 時加上網參考提示；`JIEZI_WRITING_REFS` / Links and consult hint
+- [x] 4.3 單元測試 / Unit tests

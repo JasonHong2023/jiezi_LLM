@@ -82,6 +82,16 @@ scripts/jiezi curriculum textbook "數學 7上 翰林"        # 課本單元；�
 聊天時問到課綱代碼、國小學習內容、先修，或國高中課本某冊某版本的單元，gateway 會自動查資料，並在回答後附上原文與出處（`JIEZI_CURRICULUM=off` 可關閉）。
 In chats, curriculum, primary-learning and textbook questions are grounded automatically, with the data and attribution appended (`JIEZI_CURRICULUM=off` disables it).
 
+### 寫作教學連結 / Writing-lesson links
+
+```bash
+scripts/jiezi writing-refs build              # 抓一次故事革命的寫作教學目錄（只存標題與網址）/ index titles and URLs once
+scripts/jiezi writing-refs search 角色設計      # 找相關文章 / find related articles
+```
+
+問寫作問題時，回答後會附上最多 3 篇相關文章的連結；芥子請教 Claude 時也會提示它可以上網讀這些文章。內文不會被複製或拿去訓練（`JIEZI_WRITING_REFS=off` 可關閉）。
+Writing questions get up to three related article links after the answer, and Claude consultations are told it may read them online. Article text is never copied or trained on.
+
 ## 6. Hermes Agent 與 OpenCode / Hermes Agent and OpenCode
 
 ```bash

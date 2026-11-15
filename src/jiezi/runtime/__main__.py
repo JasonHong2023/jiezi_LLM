@@ -127,6 +127,9 @@ def main(argv: list[str] | None = None) -> int:
     cp.add_argument("--subject", help="plan：科目，如 數學 / subject")
     cp.add_argument("--grade", type=int, choices=range(1, 7), help="plan：年級 / grade")
     cp.add_argument("--stage", type=int, choices=(1, 2, 3), help="plan：學習階段 / learning stage")
+    wp = sub.add_parser("writing-refs", help="writing-lesson link index, titles and URLs only (add-curriculum D6)")
+    wp.add_argument("action", choices=["build", "search"])
+    wp.add_argument("query", nargs="?")
     args = ap.parse_args(argv)
     root = project_root()
     try:
@@ -163,6 +166,15 @@ def main(argv: list[str] | None = None) -> int:
             for src, entry in hits:
                 print(dictionary.render(entry))
                 print(f"— {d.meta.get(src, {}).get('attribution', src)}\n")
+            return 0 if hits else 1
+        if args.cmd == "writing-refs":
+            from .. import writing_refs as W
+            if args.action == "build":
+                print(f"indexed {W.build(root)} articles into {W.index_path(root)}; restart the gateway to use it")
+                return 0
+            hits = W.WritingRefs(W.index_path(root)).search(args.query or "", limit=10)
+            for r in hits:
+                print(f"{r['title']}（{r['category']}）{r['url']}")
             return 0 if hits else 1
         if args.cmd == "curriculum":
             return cmd_curriculum(root, args)

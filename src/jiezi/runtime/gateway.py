@@ -80,6 +80,13 @@ class Gateway:
                 self.curriculum = Graph.load(settings.root)
             except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
                 self.curriculum_note = str(exc)
+        self.writing, self.writing_note = None, None
+        if settings.writing_refs:
+            from ..writing_refs import WritingRefs, index_path
+            try:
+                self.writing = WritingRefs(index_path(settings.root))
+            except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
+                self.writing_note = str(exc)
         self.consult_cap = escalation.DailyCap(settings.var / "runtime" / "consult", settings.consult_daily_max) \
             if settings.consult_daily_max else None
         timeout = httpx.Timeout(settings.request_timeout_s, connect=10.0)
@@ -200,7 +207,7 @@ class Gateway:
     def _ground(self, body: dict, rec: dict) -> None:
         """詞語問題查本機辭典、課綱問題查知識圖譜，把原文附給模型（add-dictionary D2、D3；add-curriculum D2、D3）。
         Attach verbatim dictionary entries for word questions and curriculum-graph data for curriculum questions."""
-        if body.get("tools") or (self.dictionary is None and self.curriculum is None):
+        if body.get("tools") or (self.dictionary is None and self.curriculum is None and self.writing is None):
             return
         last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
         if not last or not isinstance(last.get("content"), str):
@@ -223,6 +230,11 @@ class Gateway:
             rec["dict_appendix"] = (rec.get("dict_appendix") or "") + appendix
             if not trainable:
                 rec["training_use"] = False  # 例如禁止改作的辭典 / e.g. a no-derivatives dictionary
+        if self.writing is not None:
+            w = self.writing.appendix(last["content"])
+            if w:  # 只附連結，不給模型內文 / links only; no article text reaches the model
+                rec["sources"] = (rec.get("sources") or []) + w[1]
+                rec["dict_appendix"] = (rec.get("dict_appendix") or "") + w[0]
 
     # ── 端點 / Endpoints ──
     async def models(self, request: Request) -> Response:
@@ -236,6 +248,7 @@ class Gateway:
                              "consult": self.s.consult if self.consultant else "off",
                              "dictionary": "on" if self.dictionary else (self.dictionary_note or "off"),
                              "curriculum": "on" if self.curriculum else (self.curriculum_note or "off"),
+                             "writing_refs": "on" if self.writing else (self.writing_note or "off"),
                              "cloud_escalation": self.s.cloud_ready, "cloud_used_today": self.cap.used(),
                              "cloud_daily_max": self.s.cloud_daily_max,
                              "trajectory": {"enabled": self.traj.enabled, "error": self.traj.last_error}})
@@ -345,6 +358,12 @@ class Gateway:
         return self._deliver(resp, meta, rec, stream)
 
     async def _consult_once(self, body: dict) -> tuple[dict, dict]:
+        last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
+        hint = self.writing.consult_hint(last["content"]) \
+            if self.writing is not None and last and isinstance(last.get("content"), str) else None
+        if hint:  # 寫作問題：提示 Claude 可上網參考（使用者 2026-11-15）/ writing questions: Claude may read the site
+            body = {**body, "messages": [*body["messages"][:-1], {"role": "system", "content": hint},
+                                         body["messages"][-1]]}
         ans = await self.consultant.ask(body)
         if self.consult_cap:
             self.consult_cap.take()
