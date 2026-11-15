@@ -1,5 +1,5 @@
-"""scripts/jiezi 的實作：serve、status、init-key（add-gateway task 6.1）。
-Implementation of scripts/jiezi: serve, status, init-key."""
+"""scripts/jiezi 的實作：serve、status、init-key（add-gateway）；ask、chat、check-clients（add-cli）。
+Implementation of scripts/jiezi: serve, status, init-key (add-gateway); ask, chat, check-clients (add-cli)."""
 
 from __future__ import annotations
 
@@ -56,6 +56,15 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("serve", help="run the gateway in the foreground (Ctrl-C stops it and the engine)")
     sub.add_parser("status", help="show gateway and engine state")
     sub.add_parser("init-key", help="generate JIEZI_GATEWAY_KEY in .env if missing")
+    a = sub.add_parser("ask", help="one-shot question (pipe a file into stdin to attach it)")
+    a.add_argument("question")
+    a.add_argument("--json", action="store_true", help="print the full response, including the jiezi field")
+    for flag, p in (("--local", "jiezi-local"), ("--cloud", "jiezi-cloud"), ("--claude", "jiezi-ask-claude")):
+        a.add_argument(flag, dest="policy", action="store_const", const=p)
+    c = sub.add_parser("chat", help="full-screen chat (Textual)")
+    for flag, p in (("--local", "jiezi-local"), ("--cloud", "jiezi-cloud"), ("--claude", "jiezi-ask-claude")):
+        c.add_argument(flag, dest="policy", action="store_const", const=p)
+    sub.add_parser("check-clients", help="read-only check; prints suggested Hermes / OpenCode settings")
     args = ap.parse_args(argv)
     root = project_root()
     try:
@@ -63,6 +72,15 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_serve(root)
         if args.cmd == "status":
             return cmd_status(root)
+        if args.cmd == "ask":
+            from ..cli import ask
+            return ask.main(args.question, args.policy or "jiezi", args.json)
+        if args.cmd == "chat":
+            from ..cli import chat
+            return chat.main(args.policy or "jiezi")
+        if args.cmd == "check-clients":
+            from ..cli import check
+            return check.main()
         created = ensure_gateway_key(root)
         print("generated JIEZI_GATEWAY_KEY in .env" if created else "JIEZI_GATEWAY_KEY already set (or no .env)")
         return 0

@@ -79,7 +79,9 @@ class ClaudeCliConsultant:
             raise ConsultError(f"claude exited {p.returncode}: {p.stderr.decode('utf-8', 'replace')[-300:]}") from exc
         if data.get("is_error") or p.returncode != 0:
             raise ConsultError(f"Claude could not answer: {str(data.get('result') or data.get('subtype'))[:300]}")
-        models = list((data.get("modelUsage") or {}).keys())
+        mu = data.get("modelUsage") or {}
+        # 有多個模型（例如輔助模型）時，取輸出最多的那個 / with several models, take the one with the most output
+        models = sorted(mu, key=lambda k: (mu[k] or {}).get("outputTokens") or 0, reverse=True)
         usage = data.get("usage") or {}
         return {"content": data.get("result") or "", "model": models[0] if models else "claude",
                 "usage": {"prompt_tokens": (usage.get("input_tokens") or 0) + (usage.get("cache_read_input_tokens") or 0)

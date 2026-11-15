@@ -234,7 +234,7 @@ class Gateway:
             return self._finish_error(rec, 503, f"local engine unavailable: {exc}", "engine_unavailable")
 
         if stream and not body.get("tools"):
-            return StreamingResponse(self._relay_stream(base, body, rec, t0), media_type="text/event-stream")
+            return StreamingResponse(self._relay_stream(base, body, rec, t0, policy), media_type="text/event-stream")
         try:
             return await self._tiered(base, body, rec, t0, policy, stream)
         finally:
@@ -360,9 +360,13 @@ class Gateway:
         yield _sse({**base, "choices": [], "jiezi": meta})
         yield b"data: [DONE]\n\n"
 
-    async def _relay_stream(self, base: str, body: dict, rec: dict, t0: float) -> AsyncIterator[bytes]:
-        """直接轉送本機串流；客戶端中斷時取消上游。 / Relay the local stream; cancel upstream on disconnect."""
-        content, last, status = [], {}, "ok"
+    async def _relay_stream(self, base: str, body: dict, rec: dict, t0: float, policy: str = "jiezi-local"
+                            ) -> AsyncIterator[bytes]:
+        """直接轉送本機串流；客戶端中斷時取消上游。送完後若本機答不出來（design D9），在同一個串流接著送出
+        Claude（或雲端）的回答。
+        Relay the local stream; cancel upstream on disconnect. If the local model could not answer (design D9),
+        append Claude's (or the cloud's) answer to the same stream."""
+        content, last, status, finish, released = [], {}, "ok", None, False
         try:
             async with self.local.stream("POST", f"{base}/v1/chat/completions",
                                          json=self._local_body(body, stream=True)) as r:
@@ -381,13 +385,23 @@ class Gateway:
                         last = chunk
                         for ch in chunk.get("choices") or []:
                             content.append((ch.get("delta") or {}).get("content") or "")
+                            finish = ch.get("finish_reason") or finish
                     yield (line + "\n\n").encode("utf-8")
+            self.sup.release()
+            released = True
             text = "".join(content)
             ver = escalation.verify(body, {"content": text})
+            help_reason = escalation.needs_help({"content": text}, finish)
             rec["tiers"].append({"tier": 0, "answer": {"role": "assistant", "content": text}, "verification": ver,
-                                 "model": last.get("model"), "tps": _tps(last)})
+                                 "model": last.get("model"), "tps": _tps(last), "needs_help": help_reason})
+            route = self._auto_route() if policy == "jiezi" and help_reason else None
+            if route:
+                async for chunk in self._stream_escalation(body, rec, t0, last, help_reason, route):
+                    yield chunk
+                return
+            why = help_reason and ("local_only_policy" if policy != "jiezi" else self._no_route_reason())
             meta = self._meta(rec, 0, last, ver, t0,
-                              escalation="not_retried_in_streaming" if ver["status"] == "fail" else None)
+                              escalation=why or ("not_retried_in_streaming" if ver["status"] == "fail" else None))
             rec.update(final_tier=0, jiezi=meta)
             yield _sse({"id": last.get("id"), "object": "chat.completion.chunk", "created": int(time.time()),
                         "model": last.get("model"), "choices": [], "jiezi": meta})
@@ -402,8 +416,54 @@ class Gateway:
             yield _sse({"error": {"message": f"local engine error: {exc}", "code": "engine_error"}})
         finally:
             rec["status"] = status
-            self.sup.release()
+            if not released:
+                self.sup.release()
             self.traj.write(rec)
+
+    async def _stream_escalation(self, body: dict, rec: dict, t0: float, last: dict, reason: str, route: str
+                                 ) -> AsyncIterator[bytes]:
+        """在串流後面接上轉交的回答。 / Append the escalated answer to a stream."""
+        who = "Claude" if route == "consult" else "雲端 / cloud"
+        sep = f"\n\n—— 本機答不出來，以下由 {who} 回答 / The local model could not answer; {who} answers below ——\n\n"
+        base = {"id": last.get("id"), "object": "chat.completion.chunk", "created": int(time.time())}
+        yield _sse({**base, "model": last.get("model"),
+                    "choices": [{"index": 0, "delta": {"content": sep}, "finish_reason": None}]})
+        try:
+            if route == "consult":
+                resp, ans = await self._consult_once(body)
+                rec["training_use"] = consult_mod.TRAINING_USE
+                msg = _message(resp)
+                rec["tiers"].append({"tier": 3, "provider": "claude", "answer": msg, "model": ans["model"],
+                                     "reason": reason, "usage": ans["usage"],
+                                     "cost_equivalent_usd": ans.get("cost_equivalent_usd"),
+                                     "training_use": consult_mod.TRAINING_USE})
+                total = ans["usage"]["prompt_tokens"] + ans["usage"]["completion_tokens"]
+                meta = self._meta(rec, 3, resp, None, t0, escalation=reason,
+                                  cloud={"usage": {"total_tokens": total}, "cost": ans.get("cost_equivalent_usd")})
+                meta.update(provider="claude", training_use=consult_mod.TRAINING_USE)
+            else:
+                self.cap.take()
+                resp, info = await self._cloud_once(body)
+                msg = _message(resp)
+                rec["tiers"].append({"tier": 3, "provider": "cloud", "answer": msg, "model": info["model"],
+                                     "reason": reason, "usage": info["usage"], "cost": info["cost"]})
+                meta = self._meta(rec, 3, resp, None, t0, escalation=reason, cloud=info)
+                meta["provider"] = "cloud"
+        except (consult_mod.ConsultError, httpx.HTTPError) as exc:
+            rec["tiers"].append({"tier": 3, "provider": "claude" if route == "consult" else "cloud", "error": str(exc)})
+            note = f"（{who} 目前無法回答 / {who} cannot answer now: {exc}）"
+            yield _sse({**base, "model": last.get("model"),
+                        "choices": [{"index": 0, "delta": {"content": note}, "finish_reason": None}]})
+            meta = self._meta(rec, 0, last, None, t0, escalation=f"{route}_failed")
+            rec.update(final_tier=0, jiezi=meta)
+            yield _sse({**base, "model": last.get("model"), "choices": [], "jiezi": meta})
+            yield b"data: [DONE]\n\n"
+            return
+        rec.update(final_tier=3, jiezi=meta)
+        yield _sse({**base, "model": resp.get("model"),
+                    "choices": [{"index": 0, "delta": {"content": msg.get("content") or ""}, "finish_reason": "stop"}]})
+        yield _sse({**base, "model": resp.get("model"), "choices": [], "jiezi": meta})
+        yield b"data: [DONE]\n\n"
 
     def _finish_error(self, rec: dict, code: int, message: str, kind: str) -> JSONResponse:
         rec.update(status=kind, error=message)

@@ -61,6 +61,15 @@ Automated: Textual's `App.run_test()` for key and layout tests, checking at fixe
 `docs/clients.md` 寫明 Hermes Agent（`hermes config set model.base_url http://127.0.0.1:36100/v1`、金鑰）與 OpenCode 的設定步驟；`scripts/jiezi check-clients` 只做讀取檢查（gateway 可連線、金鑰有效、`/v1/models` 列出三個策略），**不改動**使用者的 Hermes 或 OpenCode 設定。要不要真的切換由使用者決定，因為這會改變使用者日常工具的行為。
 `docs/clients.md` documents the Hermes Agent and OpenCode setup; `scripts/jiezi check-clients` only reads (gateway reachable, key valid, `/v1/models` lists the three policies) and **never changes** the user's Hermes or OpenCode settings. Whether to switch is the user's call, since it changes their everyday tools.
 
+### D8 — 實作時的補充 / Additions during implementation
+
+- gateway 的串流在送完本機答案後，若本機答不出來（`needs_help`），會在同一個串流接著送出 Claude（或雲端）的回答，前面加一行分隔說明；所以 `ask` 與 `chat` 用串流也能自動請教。
+  After relaying the local answer, the gateway stream appends Claude's (or the cloud's) answer with a separator line when the local model could not answer, so `ask` and `chat` get automatic consultation while streaming.
+- 連線失敗同時處理 `ConnectError` 與 `ConnectTimeout`（實測 gateway 未啟動時出現後者）。
+  Connection failures handle both `ConnectError` and `ConnectTimeout` (the latter seen when the gateway was down).
+- 中斷時保留已收到的部分答案在對話紀錄中；沒有任何答案時移除該問題，避免連續兩則使用者訊息。
+  On stop, the partial answer stays in the history; with no answer at all, the question is dropped to avoid two user turns in a row.
+
 ## Risks / Trade-offs
 
 - **Kitty 鍵盤協定與 Shift+Enter**：部分終端機無法分辨 Shift+Enter。→ 同時提供 Ctrl+J 換行。

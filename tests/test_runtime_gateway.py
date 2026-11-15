@@ -567,6 +567,34 @@ class TestAutoConsult(unittest.TestCase):
         r = self.run_one([{"role": "assistant", "content": "玉山"}], {"messages": [{"role": "user", "content": "x"}]})
         self.assertEqual((r["jiezi"]["tier"], self.asked), (0, []))
 
+    def test_stream_appends_claude_answer(self):
+        from jiezi.runtime.consult import ClaudeCliConsultant
+
+        async def run(cmd, input=None, cwd=None, check=False):
+            return FakeProc(TestConsult.OK)
+        sup, _, patch = make_supervisor(self.tmp, consult="claude-cli")
+
+        def unsure(request):
+            lines = ['data: ' + json.dumps({"id": "x", "model": "core", "choices": [
+                {"index": 0, "delta": {"content": "我不知道"}, "finish_reason": "stop"}]}), "data: [DONE]"]
+            return httpx.Response(200, text="\n\n".join(lines) + "\n\n", headers={"content-type": "text/event-stream"})
+        gw = Gateway(sup.s, sup, TrajectoryWriter(self.tmp / "traj", log=lambda *_: None),
+                     local_http=httpx.AsyncClient(transport=httpx.MockTransport(unsure)),
+                     consultant=ClaudeCliConsultant(self.tmp / "cwd", binary="/usr/bin/claude", run_process=run),
+                     log=lambda *_: None)
+        with patch, TestClient(create_app(gw)) as c:
+            with c.stream("POST", "/v1/chat/completions", headers={"Authorization": f"Bearer {KEY}"},
+                          json={"messages": [{"role": "user", "content": "x"}], "stream": True}) as r:
+                events = [line[6:] for line in r.iter_lines() if line.startswith("data: ")]
+        text = "".join((json.loads(e)["choices"][0]["delta"].get("content") or "")
+                       for e in events[:-1] if json.loads(e).get("choices"))
+        self.assertTrue(text.startswith("我不知道"))
+        self.assertIn("Claude", text)
+        self.assertTrue(text.endswith("玉山"))
+        meta = json.loads(events[-2])["jiezi"]
+        self.assertEqual((meta["tier"], meta["provider"], meta["training_use"]), (3, "claude", False))
+        self.assertEqual(sup.in_flight, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
