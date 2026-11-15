@@ -124,6 +124,25 @@ def verify(request: dict, message: dict) -> dict:
             "error": "; ".join(c["error"] for c in failed) or None}
 
 
+# 本機模型自己表示不會的說法（只看回答開頭附近，避免誤判引用的文字）
+# Phrases where the local model says it can't answer (checked near the start, to avoid quoted text)
+_UNSURE = re.compile(r"我不確定|我不知道|无法回答|無法回答|无法确定|無法確定|沒有足夠的資訊|没有足够的信息|"
+                     r"I don't know|I do not know|I'm not sure|I am not sure|I cannot answer|I can't answer", re.I)
+
+
+def needs_help(message: dict, finish_reason: str | None) -> str | None:
+    """本機答案是否明顯需要求助（不需要標準答案）。回傳原因或 None。
+    Whether the local answer obviously needs help (no ground truth needed). Return a reason or None."""
+    if message.get("tool_calls"):
+        return None
+    text = (message.get("content") or "").strip()
+    if not text:
+        return "truncated" if finish_reason == "length" else "empty_answer"
+    if _UNSURE.search(text[:200]):
+        return "self_reported_unsure"
+    return None
+
+
 def retry_messages(messages: list[dict], answer: dict, error: str) -> list[dict]:
     prev = {"role": "assistant", "content": answer.get("content") or ""}
     if answer.get("tool_calls"):

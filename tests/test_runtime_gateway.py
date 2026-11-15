@@ -495,5 +495,78 @@ class TestConsult(unittest.TestCase):
             load_settings(Path("/x"), {"JIEZI_GATEWAY_KEY": KEY, "JIEZI_CONSULT": "openai"})
 
 
+class TestAutoConsult(unittest.TestCase):
+    """jiezi 自己判斷要不要請教 Claude（使用者 2026-11-15）。 / jiezi decides by itself when to consult Claude."""
+
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._t.name)
+        self.addCleanup(self._t.cleanup)
+
+    def run_one(self, answers, body, consult_out=None, consult_auto=True, cloud_on=False, engine_ok=True):
+        from jiezi.runtime.consult import ClaudeCliConsultant
+        self.asked = []
+
+        async def run(cmd, input=None, cwd=None, check=False):
+            self.asked.append(input.decode())
+            return FakeProc(consult_out if consult_out is not None else TestConsult.OK)
+        sup, _, patch = make_supervisor(self.tmp, consult="claude-cli", consult_auto=consult_auto,
+                                        cloud_escalation=cloud_on, cloud_base="http://cloud" if cloud_on else None,
+                                        escalation_models=["nemotron"] if cloud_on else [])
+        if not engine_ok:
+            sup.status, sup.reason = "unavailable", "crashed"
+        lh, _ = local_handler(answers)
+        self.cloud_calls = []
+        gw = Gateway(sup.s, sup, TrajectoryWriter(self.tmp / "traj", log=lambda *_: None),
+                     local_http=httpx.AsyncClient(transport=httpx.MockTransport(lh)),
+                     cloud_http=httpx.AsyncClient(transport=httpx.MockTransport(cloud_handler(self.cloud_calls))),
+                     consultant=ClaudeCliConsultant(self.tmp / "cwd", binary="/usr/bin/claude", run_process=run),
+                     log=lambda *_: None)
+        with patch, TestClient(create_app(gw)) as c:
+            return c.post("/v1/chat/completions", headers={"Authorization": f"Bearer {KEY}"}, json=body).json()
+
+    def test_needs_help(self):
+        self.assertEqual(escalation.needs_help({"content": "我不確定答案"}, "stop"), "self_reported_unsure")
+        self.assertEqual(escalation.needs_help({"content": ""}, "length"), "truncated")
+        self.assertEqual(escalation.needs_help({"content": " "}, "stop"), "empty_answer")
+        self.assertIsNone(escalation.needs_help({"content": "玉山"}, "stop"))
+        self.assertIsNone(escalation.needs_help({"content": "x" * 300 + "我不知道"}, "stop"))  # 只看開頭 / start only
+
+    def test_unsure_answer_consults_claude(self):
+        r = self.run_one([{"role": "assistant", "content": "抱歉，我不確定。"}],
+                         {"messages": [{"role": "user", "content": "最高的山？"}]})
+        self.assertEqual((r["jiezi"]["tier"], r["jiezi"]["provider"], r["jiezi"]["escalation"]),
+                         (3, "claude", "self_reported_unsure"))
+        self.assertIs(r["jiezi"]["training_use"], False)
+        self.assertEqual(r["choices"][0]["message"]["content"], "玉山")
+
+    def test_failed_verification_consults_before_cloud(self):
+        bad = {"role": "assistant", "content": "[get_weather()]"}
+        r = self.run_one([bad], {"messages": [{"role": "user", "content": "x"}], "tools": TOOLS}, cloud_on=True)
+        self.assertEqual((r["jiezi"]["tier"], r["jiezi"]["provider"]), (3, "claude"))
+        self.assertEqual(self.cloud_calls, [])
+        self.assertIn("get_weather", self.asked[0])
+
+    def test_engine_unavailable_consults(self):
+        r = self.run_one([], {"messages": [{"role": "user", "content": "x"}]}, engine_ok=False)
+        self.assertEqual((r["jiezi"]["provider"], r["jiezi"]["escalation"]), ("claude", "engine_unavailable"))
+
+    def test_consult_failure_falls_back(self):
+        bad_consult = {"type": "result", "is_error": True, "result": "usage limit"}
+        unsure = [{"role": "assistant", "content": "我不知道"}]
+        r = self.run_one(unsure, {"messages": [{"role": "user", "content": "x"}]}, consult_out=bad_consult)
+        self.assertEqual((r["jiezi"]["tier"], r["jiezi"]["escalation"]), (0, "consult_failed"))
+        r = self.run_one(unsure, {"messages": [{"role": "user", "content": "x"}]}, consult_out=bad_consult,
+                         cloud_on=True)
+        self.assertEqual((r["jiezi"]["tier"], r["jiezi"]["model"]), (3, "nemotron"))
+
+    def test_auto_off_and_confident_answer(self):
+        r = self.run_one([{"role": "assistant", "content": "我不知道"}],
+                         {"messages": [{"role": "user", "content": "x"}]}, consult_auto=False)
+        self.assertEqual((r["jiezi"]["tier"], self.asked), (0, []))
+        r = self.run_one([{"role": "assistant", "content": "玉山"}], {"messages": [{"role": "user", "content": "x"}]})
+        self.assertEqual((r["jiezi"]["tier"], self.asked), (0, []))
+
+
 if __name__ == "__main__":
     unittest.main()

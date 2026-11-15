@@ -31,14 +31,21 @@ Runtime verifiers SHALL use only checks that need no ground truth and SHALL NOT 
 - **THEN** 第 0 層直接回傳，`jiezi.verification` 為 `not_applicable`
   Tier 0 returns directly with `jiezi.verification` = `not_applicable`
 
-### Requirement: Explicit Claude Consultation
+### Requirement: Claude Consultation
 
-`jiezi-ask-claude` 策略 SHALL 只在 `JIEZI_CONSULT=claude-cli` 時，透過本機 Claude Code CLI 的無頭模式請教 Claude，並 SHALL 關閉所有工具、不載入 MCP 與設定檔、不保存工作階段、在空的工作目錄執行。分層轉交 SHALL NOT 自動使用此策略。關閉時 SHALL 回 503 並說明如何開啟；CLI 回報錯誤（例如額度用完）時 SHALL 回 503 並附原因，不重試。
-The `jiezi-ask-claude` policy SHALL consult Claude through the local Claude Code CLI in headless mode only when `JIEZI_CONSULT=claude-cli`, with all tools off, no MCP or settings loaded, no session persistence, in an empty working directory. Tiered escalation SHALL NOT use this policy automatically. When off it SHALL answer 503 explaining how to enable it; when the CLI reports an error (for example an exhausted allowance) it SHALL answer 503 with the reason, without retrying.
+`JIEZI_CONSULT=claude-cli` 時，系統 SHALL 能透過本機 Claude Code CLI 的無頭模式請教 Claude，並 SHALL 關閉所有工具、不載入 MCP 與設定檔、不保存工作階段、在空的工作目錄執行。`jiezi-ask-claude` 策略 SHALL 直接請教。`jiezi` 策略在 `JIEZI_CONSULT_AUTO` 開啟（預設開啟）時 SHALL 自行判斷並請教 Claude，不需使用者逐次同意，時機為：第 1 層後驗證仍失敗、本機引擎不可用，或本機答案是空的、被長度截斷、開頭表示自己不確定或不知道。自動轉交 SHALL 先請教 Claude，失敗時改用雲端（若已開啟），再不行就回傳本機答案並註明原因。`jiezi-local` SHALL NOT 請教。
+With `JIEZI_CONSULT=claude-cli`, the system SHALL be able to consult Claude through the local Claude Code CLI in headless mode, with all tools off, no MCP or settings loaded, no session persistence, in an empty working directory. The `jiezi-ask-claude` policy SHALL consult directly. With `JIEZI_CONSULT_AUTO` on (the default), the `jiezi` policy SHALL decide by itself to consult Claude without per-call user approval when: verification still fails after tier 1, the local engine is unavailable, or the local answer is empty, truncated, or opens by saying it is unsure or does not know. Automatic escalation SHALL try Claude first, then the cloud (if enabled), and otherwise return the local answer with the reason. `jiezi-local` SHALL NOT consult.
 
-#### Scenario: 請教成功 / Consultation succeeds
+#### Scenario: 本機自己表示不會 / The local model says it does not know
 
-- **WHEN** 使用者以 `jiezi-ask-claude` 提問，且請教已開啟
-  The user asks with `jiezi-ask-claude` and consultation is on
-- **THEN** 回傳 Claude 的回答，`jiezi.tier` 為 `consult`、`jiezi.training_use` 為 `false`，本機模型不會被載入
-  Claude's answer is returned with `jiezi.tier` = `consult` and `jiezi.training_use` = `false`, and the local model is not loaded
+- **WHEN** 第 0 層的答案開頭是「我不確定」
+  The tier-0 answer opens with "I'm not sure"
+- **THEN** 不做本機重試，直接請教 Claude；回傳 Claude 的答案，`jiezi.tier` 為 3、`jiezi.provider` 為 `claude`、`jiezi.escalation` 為 `self_reported_unsure`、`jiezi.training_use` 為 `false`
+  No local retry; Claude is consulted directly, and its answer is returned with `jiezi.tier` = 3, `jiezi.provider` = `claude`, `jiezi.escalation` = `self_reported_unsure` and `jiezi.training_use` = `false`
+
+#### Scenario: 請教失敗 / Consultation fails
+
+- **WHEN** 自動請教時 Claude CLI 回報錯誤（例如用量額度用完），且雲端轉交關閉
+  During automatic escalation the Claude CLI reports an error (for example an exhausted allowance) and cloud escalation is off
+- **THEN** 回傳本機答案，`jiezi.escalation` 為 `consult_failed`，不重試
+  The local answer is returned with `jiezi.escalation` = `consult_failed`, without retrying

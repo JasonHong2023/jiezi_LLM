@@ -133,6 +133,46 @@ class Gateway:
             return "daily_cap_reached"
         return None
 
+    def _consult_ready(self) -> bool:
+        return self.consultant is not None and (self.consult_cap is None or self.consult_cap.available())
+
+    def _auto_route(self) -> str | None:
+        """自動轉交的去處：先請教 Claude（開啟自動請教時），否則雲端；都不行回傳 None。
+        Where automatic escalation goes: Claude first (when auto-consult is on), else the cloud; None if neither."""
+        if self.s.consult_auto and self._consult_ready():
+            return "consult"
+        if self._can_escalate() is None:
+            return "cloud"
+        return None
+
+    def _no_route_reason(self) -> str:
+        if self.s.consult_auto and self.consultant is not None:
+            return "consult_daily_cap"
+        return self._can_escalate() or "no_escalation_route"
+
+    async def _escalate(self, body: dict, rec: dict, t0: float, stream: bool, reason: str) -> Response:
+        """自動轉交（design D5、D9）：Claude 失敗時改用雲端，再不行就回本機答案。
+        Automatic escalation: on Claude failure try the cloud, else return the local answer."""
+        if self._auto_route() == "consult":
+            try:
+                resp, info = await self._consult_once(body)
+            except consult_mod.ConsultError as exc:
+                rec["tiers"].append({"tier": 3, "provider": "claude", "error": str(exc)})
+                if self._can_escalate() is None:
+                    return await self._respond_cloud(body, rec, t0, stream, reason=reason)
+                return self._fallback_local(rec, t0, stream, "consult_failed", f"cannot consult Claude: {exc}")
+            return self._deliver_consult(body, rec, t0, stream, resp, info, tier=3, reason=reason)
+        return await self._respond_cloud(body, rec, t0, stream, reason=reason)
+
+    def _fallback_local(self, rec: dict, t0: float, stream: bool, why: str, message: str) -> Response:
+        local = next((t for t in reversed(rec["tiers"]) if t.get("answer") and t.get("provider") is None), None)
+        if local:
+            fake = {"object": "chat.completion", "model": local.get("model"),
+                    "choices": [{"index": 0, "message": local["answer"], "finish_reason": "stop"}]}
+            meta = self._meta(rec, local["tier"], fake, local.get("verification"), t0, escalation=why)
+            return self._deliver(fake, meta, rec, stream)
+        return self._finish_error(rec, 502, message, why)
+
     # ── 端點 / Endpoints ──
     async def models(self, request: Request) -> Response:
         if not self._authorized(request):
@@ -188,9 +228,9 @@ class Gateway:
         try:
             base = await self.sup.acquire()
         except EngineUnavailable as exc:
-            if policy == "jiezi" and not self._can_escalate():
+            if policy == "jiezi" and self._auto_route():
                 rec["engine"] = str(exc)
-                return await self._respond_cloud(body, rec, t0, stream, reason="engine_unavailable")
+                return await self._escalate(body, rec, t0, stream, reason="engine_unavailable")
             return self._finish_error(rec, 503, f"local engine unavailable: {exc}", "engine_unavailable")
 
         if stream and not body.get("tools"):
@@ -210,6 +250,13 @@ class Gateway:
         rec["tiers"].append({"tier": 0, "answer": _message(resp), "verification": ver, "model": resp.get("model"),
                              "tps": _tps(resp), "usage": resp.get("usage")})
         final, tier, escalate_reason = resp, 0, None
+        help_reason = escalation.needs_help(_message(resp), (resp.get("choices") or [{}])[0].get("finish_reason"))
+        if help_reason and ver["status"] != "fail":
+            # 本機自己表示不會：本機重試沒有幫助，直接轉交 / the local model says it can't: retrying won't help
+            rec["tiers"][-1]["needs_help"] = help_reason
+            if policy == "jiezi" and self._auto_route():
+                return await self._escalate(body, rec, t0, stream, reason=help_reason)
+            escalate_reason = "local_only_policy" if policy != "jiezi" else self._no_route_reason()
         if ver["status"] == "fail":
             msgs = escalation.retry_messages(body["messages"], _message(resp), ver["error"])
             try:
@@ -222,9 +269,9 @@ class Gateway:
                 rec["tiers"].append({"tier": 1, "error": str(exc)})
             if ver["status"] == "fail":
                 if policy == "jiezi":
-                    escalate_reason = self._can_escalate()
-                    if escalate_reason is None:
-                        return await self._respond_cloud(body, rec, t0, stream, reason="verification_failed")
+                    if self._auto_route():
+                        return await self._escalate(body, rec, t0, stream, reason="verification_failed")
+                    escalate_reason = self._no_route_reason()
                 else:
                     escalate_reason = "local_only_policy"
         meta = self._meta(rec, tier, final, ver, t0, escalation=escalate_reason)
@@ -236,21 +283,40 @@ class Gateway:
             resp, info = await self._cloud_once(body)
         except httpx.HTTPError as exc:
             # 雲端失敗時，若有本機答案就回本機答案 / on cloud failure, fall back to a local answer if any
-            local = next((t for t in reversed(rec["tiers"]) if t.get("answer")), None)
-            rec["tiers"].append({"tier": 3, "error": str(exc)})
-            if local:
-                fake = {"object": "chat.completion", "model": local.get("model"),
-                        "choices": [{"index": 0, "message": local["answer"], "finish_reason": "stop"}]}
-                meta = self._meta(rec, local["tier"], fake, local.get("verification"), t0, escalation="cloud_failed")
-                return self._deliver(fake, meta, rec, stream)
-            return self._finish_error(rec, 502, f"cloud escalation failed: {exc}", "cloud_failed")
-        rec["tiers"].append({"tier": 3, "answer": _message(resp), "model": info["model"], "reason": reason,
-                             "usage": info["usage"], "cost": info["cost"]})
+            rec["tiers"].append({"tier": 3, "provider": "cloud", "error": str(exc)})
+            return self._fallback_local(rec, t0, stream, "cloud_failed", f"cloud escalation failed: {exc}")
+        rec["tiers"].append({"tier": 3, "provider": "cloud", "answer": _message(resp), "model": info["model"],
+                             "reason": reason, "usage": info["usage"], "cost": info["cost"]})
         meta = self._meta(rec, 3, resp, None, t0, escalation=reason, cloud=info)
         return self._deliver(resp, meta, rec, stream)
 
+    async def _consult_once(self, body: dict) -> tuple[dict, dict]:
+        ans = await self.consultant.ask(body)
+        if self.consult_cap:
+            self.consult_cap.take()
+        msg = {"role": "assistant", "content": ans["content"]}
+        resp = {"id": f"chatcmpl-consult-{int(time.time() * 1000)}", "object": "chat.completion",
+                "created": int(time.time()), "model": ans["model"], "usage": ans["usage"],
+                "choices": [{"index": 0, "message": msg, "finish_reason": "stop"}]}
+        return resp, ans
+
+    def _deliver_consult(self, body: dict, rec: dict, t0: float, stream: bool, resp: dict, ans: dict,
+                         tier, reason: str) -> Response:
+        """Claude 的回答一律標記為不可用於訓練（design D9）。 / Claude's answers are never usable for training."""
+        rec["training_use"] = consult_mod.TRAINING_USE
+        msg = _message(resp)
+        ver = escalation.verify(body, msg) if body.get("tools") else None
+        rec["tiers"].append({"tier": tier, "provider": "claude", "answer": msg, "model": ans["model"],
+                             "reason": reason, "usage": ans["usage"], "cost_equivalent_usd": ans.get("cost_equivalent_usd"),
+                             "verification": ver, "training_use": consult_mod.TRAINING_USE})
+        total = ans["usage"]["prompt_tokens"] + ans["usage"]["completion_tokens"]
+        meta = self._meta(rec, tier, resp, ver, t0, escalation=reason,
+                          cloud={"usage": {"total_tokens": total}, "cost": ans.get("cost_equivalent_usd")})
+        meta.update(provider="claude", training_use=consult_mod.TRAINING_USE)
+        return self._deliver(resp, meta, rec, stream)
+
     async def _respond_consult(self, body: dict, rec: dict, t0: float, stream: bool) -> Response:
-        """向 Claude 請教（design D9）；回答標記為不可用於訓練。 / Consult Claude; answer marked not for training."""
+        """`jiezi-ask-claude`：直接請教 Claude（design D9）。 / Ask Claude directly."""
         rec["training_use"] = consult_mod.TRAINING_USE
         if self.consultant is None:
             return self._finish_error(rec, 503, "consulting Claude is off (set JIEZI_CONSULT=claude-cli in .env)",
@@ -258,24 +324,10 @@ class Gateway:
         if self.consult_cap and not self.consult_cap.available():
             return self._finish_error(rec, 503, "today's Claude consultations are used up", "consult_daily_cap")
         try:
-            ans = await self.consultant.ask(body)
+            resp, ans = await self._consult_once(body)
         except consult_mod.ConsultError as exc:
             return self._finish_error(rec, 503, f"cannot consult Claude right now: {exc}", "consult_unavailable")
-        if self.consult_cap:
-            self.consult_cap.take()
-        msg = {"role": "assistant", "content": ans["content"]}
-        resp = {"id": f"chatcmpl-{rec['id']}", "object": "chat.completion", "created": int(time.time()),
-                "model": ans["model"], "usage": ans["usage"],
-                "choices": [{"index": 0, "message": msg, "finish_reason": "stop"}]}
-        ver = escalation.verify(body, msg) if body.get("tools") else None
-        rec["tiers"].append({"tier": "consult", "answer": msg, "model": ans["model"], "usage": ans["usage"],
-                             "cost_equivalent_usd": ans.get("cost_equivalent_usd"), "verification": ver,
-                             "training_use": consult_mod.TRAINING_USE})
-        meta = self._meta(rec, "consult", resp, ver, t0, escalation="policy",
-                          cloud={"usage": {"total_tokens": ans["usage"]["prompt_tokens"] + ans["usage"]["completion_tokens"]},
-                                 "cost": ans.get("cost_equivalent_usd")})
-        meta["training_use"] = consult_mod.TRAINING_USE
-        return self._deliver(resp, meta, rec, stream)
+        return self._deliver_consult(body, rec, t0, stream, resp, ans, tier="consult", reason="policy")
 
     def _meta(self, rec: dict, tier: int, resp: dict, ver: dict | None, t0: float, escalation: str | None = None,
               cloud: dict | None = None) -> dict:

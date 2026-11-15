@@ -56,6 +56,7 @@ class Settings:
     consult_daily_max: int = 0      # 0 = 不限（使用者 2026-11-15）/ 0 = unlimited (user, 2026-11-15)
     consult_timeout_s: int = 300
     consult_model: str | None = None
+    consult_auto: bool = True       # 自動請教，不用逐次同意（使用者 2026-11-15）/ auto-consult without per-call approval
 
     @property
     def cloud_ready(self) -> bool:
@@ -95,6 +96,7 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         consult_daily_max=_int(env, "JIEZI_CONSULT_DAILY_MAX", 0),
         consult_timeout_s=_int(env, "JIEZI_CONSULT_TIMEOUT_S", 300),
         consult_model=env.get("JIEZI_CONSULT_MODEL") or None,
+        consult_auto=_onoff(env, "JIEZI_CONSULT_AUTO", True),
     )
 
 

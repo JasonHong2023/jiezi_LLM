@@ -105,8 +105,10 @@ Options (checked with OSV on 2026-11-15; none of these latest versions has known
 
 ### D9 — 向 Claude 請教 / Consulting Claude（使用者 2026-11-15 要求 / requested by the user）
 
-- 新策略 `jiezi-ask-claude`：只有使用者明確選用時才請教，一般的分層轉交不會自動使用。
-  A new policy `jiezi-ask-claude`: used only when the user explicitly picks it; tiered escalation never uses it automatically.
+- 新策略 `jiezi-ask-claude`：直接請教。
+  A new policy `jiezi-ask-claude`: consults directly.
+- **自動請教（使用者 2026-11-15 追加：「他自己覺得有需要時不用我同意」）**：`JIEZI_CONSULT_AUTO`（預設開啟）時，`jiezi` 策略在下列情況自行請教 Claude：第 1 層後驗證仍失敗、本機引擎不可用、本機答案是空的、被長度截斷，或開頭 200 字內表示不確定或不知道（`escalation.needs_help`）。本機自己表示不會時不做本機重試。順序：Claude → 雲端（若開啟）→ 本機答案。沒有帶工具的串流已經即時送出，事後才發現需要求助時只記錄、不轉交。
+  **Automatic consultation (added by the user on 2026-11-15: "when it thinks it needs to, without my approval")**: with `JIEZI_CONSULT_AUTO` on (default), the `jiezi` policy consults Claude when tier-1 verification still fails, the engine is unavailable, or the local answer is empty, truncated, or says within its first 200 characters that it is unsure or does not know. No local retry for self-reported uncertainty. Order: Claude → cloud (if on) → local answer. A tool-less stream is already sent, so a need found afterwards is only recorded.
 - 途徑：本機已登入的 Claude Code CLI 無頭模式（`claude -p --output-format json`），使用者自己的帳號與用量額度，不需另外的 API 金鑰（使用者決定）。實測（2026-11-15）：模型 `claude-opus-5-5`，約 1.7 秒。
   Route: the locally logged-in Claude Code CLI in headless mode, with the user's own account and usage allowance, no extra API key (user decision). Measured on 2026-11-15: model `claude-opus-5-5`, about 1.7 s.
 - 安全：`--tools ""`（關閉所有工具）、`--strict-mcp-config` 搭配空的 MCP 設定、`--setting-sources ""`、`--no-session-persistence`，在 `var/runtime/consult-cwd/` 空目錄執行；同時只請教一個問題；逾時 300 秒。
