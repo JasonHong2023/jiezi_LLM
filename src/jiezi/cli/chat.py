@@ -1,8 +1,12 @@
 """`jiezi chat`：Textual 全螢幕對話（規格 cli：Interactive Chat；add-cli design D4）。
 `jiezi chat`: Textual full-screen chat (spec cli: Interactive Chat; design D4).
 
-按鍵 / Keys：Enter 送出 / send；Shift+Enter 或 Ctrl+J 換行 / newline；Ctrl+C 中斷生成 / stop generation；
-F2 切換策略 / switch policy；Ctrl+Q 離開 / quit。指令 / Commands：`/save 路徑`、`/clear`。"""
+按鍵 / Keys：Enter 送出 / send；Shift+Enter 或 Ctrl+J 換行 / newline；
+Ctrl+C 有選取文字時複製，否則中斷生成 / copy the selection, else stop generation；F3 複製最後一則回答 / copy the
+last answer；F2 切換策略 / switch policy；Ctrl+Q 離開 / quit。
+指令 / Commands：`/save 路徑`、`/copy`、`/clear`。
+選取 / Selecting：用滑鼠在對話區拖曳選取；多數終端機按住 Shift 拖曳可改用終端機自己的選取。
+Drag with the mouse in the conversation; in most terminals Shift+drag uses the terminal's own selection."""
 
 from __future__ import annotations
 
@@ -17,6 +21,7 @@ from textual.widgets import Footer, Markdown, Static, TextArea
 from textual.worker import Worker
 
 from .client import Connection, GatewayError, GatewayUnreachable, status_line, stream_chat
+from .clipboard import system_copy
 from .herdr import HerdrReporter
 
 POLICIES = ("jiezi", "jiezi-local", "jiezi-ask-claude", "jiezi-cloud")
@@ -58,7 +63,8 @@ class ChatApp(App):
     #bar { height: 1; color: $text-muted; padding: 0 1; }
     """
     BINDINGS = [
-        Binding("ctrl+c", "stop", "中斷 Stop", priority=True),
+        Binding("ctrl+c", "copy_or_stop", "複製/中斷 Copy/Stop", priority=True),
+        Binding("f3", "copy_last", "複製回答 Copy answer"),
         Binding("f2", "cycle_policy", "策略 Policy"),
         Binding("ctrl+q", "quit", "離開 Quit", priority=True),
     ]
@@ -71,10 +77,12 @@ class ChatApp(App):
         self.cost = 0.0
         self.worker: Worker | None = None
         self.last_status = ""
+        self.copied: str | None = None
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(Static("輸入問題後按 Enter / Type a question and press Enter. "
-                                    "F2 切換策略 / switch policy; Ctrl+C 中斷 / stop; Ctrl+Q 離開 / quit.",
+                                    "拖曳選取後 Ctrl+C 複製，F3 複製最後一則回答 / drag to select, Ctrl+C copies, "
+                                    "F3 copies the last answer. F2 切換策略 / policy; Ctrl+Q 離開 / quit.",
                                     classes="meta"), id="log")
         yield PromptArea(id="prompt", soft_wrap=True, show_line_numbers=False)
         yield Static(id="bar")
@@ -98,10 +106,39 @@ class ChatApp(App):
         if self.worker and self.worker.is_running:
             self.worker.cancel()
 
+    def action_copy_or_stop(self) -> None:
+        """有選取文字就複製；否則中斷正在進行的回答。 / Copy the selection if any; otherwise stop the answer."""
+        selected = self.screen.get_selected_text()
+        if selected:
+            self.copy_text(selected)
+        elif self.worker and self.worker.is_running:
+            self.worker.cancel()
+        else:
+            focused = self.focused
+            if isinstance(focused, TextArea) and focused.selected_text:
+                self.copy_text(focused.selected_text)
+
+    def action_copy_last(self) -> None:
+        last = next((m["content"] for m in reversed(self.history) if m["role"] == "assistant"), None)
+        if last:
+            self.copy_text(last)
+        else:
+            self._update_bar("還沒有回答可以複製 / no answer to copy yet")
+
+    def copy_text(self, text: str) -> None:
+        """OSC 52（終端機）加系統剪貼簿。 / OSC 52 (terminal) plus the system clipboard."""
+        self.copy_to_clipboard(text)
+        tool = system_copy(text)
+        self.copied = text
+        self._update_bar(f"已複製 copied {len(text)} 字 chars" + (f" ({tool})" if tool else " (OSC 52)"))
+
     async def on_prompt_area_submitted(self, message: PromptArea.Submitted) -> None:
         text = message.text
         if text.startswith("/save"):
             self._save(text[5:].strip())
+            return
+        if text == "/copy":
+            self.action_copy_last()
             return
         if text == "/clear":
             self.history.clear()

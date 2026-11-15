@@ -46,11 +46,16 @@ scripts/jiezi chat            # 或 / or: scripts/jiezi chat --claude
 |---|---|
 | Enter | 送出 / send |
 | Shift+Enter、Ctrl+J | 換行 / newline |
-| Ctrl+C | 中斷目前的回答（不離開）/ stop the current answer (stay) |
+| 滑鼠拖曳 / Mouse drag | 選取對話文字 / select text in the conversation |
+| Ctrl+C | 有選取文字時複製；否則中斷目前的回答（不離開）/ copy the selection; otherwise stop the current answer (stay) |
+| F3、`/copy` | 複製最後一則回答 / copy the last answer |
 | F2 | 切換策略 / switch policy |
 | Ctrl+Q | 離開 / quit |
 | `/save 檔案.md` | 存成 Markdown / save as Markdown |
 | `/clear` | 清除對話 / clear the conversation |
+
+複製會同時寫入終端機剪貼簿（OSC 52）與系統剪貼簿（WSL 用 Windows 的 `clip.exe`，Linux 桌面用 `wl-copy` / `xclip`），所以在 Herdr 內也能貼到 Windows。多數終端機按住 Shift 拖曳，可以改用終端機自己的選取。
+Copying writes both the terminal clipboard (OSC 52) and the system clipboard (`clip.exe` on WSL, `wl-copy` / `xclip` on Linux desktops), so it pastes into Windows even inside Herdr. In most terminals Shift+drag uses the terminal's own selection.
 
 在 Herdr pane 內執行時，會自動回報 `working` / `idle` 狀態，恢復指令是 `jiezi chat`。
 Inside a Herdr pane it reports `working` / `idle`; the resume command is `jiezi chat`.

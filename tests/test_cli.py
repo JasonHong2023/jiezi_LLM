@@ -196,5 +196,54 @@ class TestChat(unittest.TestCase):
         self.assertLessEqual(cell_len(r["bar"].splitlines()[0]), 60 * 2)
 
 
+class TestClipboard(unittest.TestCase):
+    def test_picks_detected_tool_and_utf16_for_clip_exe(self):
+        from jiezi.cli import clipboard
+        calls = []
+
+        class P:
+            returncode = 0
+        tool = clipboard.system_copy("中文", which=lambda n: "/x" if n == "clip.exe" else None,
+                                     run=lambda cmd, input=None, **k: calls.append((cmd, input)) or P())
+        self.assertEqual(tool, "clip.exe")
+        self.assertEqual(calls[0][1], "中文".encode("utf-16-le"))  # 沒有 BOM / no BOM
+        self.assertIsNone(clipboard.system_copy("x", which=lambda n: None))
+
+    def test_failure_tries_next(self):
+        from jiezi.cli import clipboard
+
+        def run(cmd, **k):
+            if cmd[0] == "wl-copy":
+                raise OSError("no display")
+
+            class P:
+                returncode = 0
+            return P()
+        self.assertEqual(clipboard.system_copy("x", which=lambda n: "/x" if n in ("wl-copy", "xclip") else None,
+                                               run=run), "xclip")
+
+
+class TestChatCopy(TestChat):
+    def test_f3_and_copy_command(self):
+        copied = []
+
+        async def script(app, pilot):
+            await pilot.press(*"問")
+            await pilot.press("enter")
+            await app.workers.wait_for_complete()
+            await pilot.press("f3")
+            await pilot.pause()
+            await pilot.press(*"/copy")
+            await pilot.press("enter")
+            await pilot.pause()
+            await pilot.press("ctrl+c")  # 沒有選取也沒有回答進行中：不出錯 / no selection, nothing running
+            await pilot.pause()
+        with mock.patch.object(chat, "system_copy", lambda text: copied.append(text) or "clip.exe"):
+            app, r, _ = self.run_app(script)
+        self.assertEqual(copied, ["台北是首都", "台北是首都"])
+        self.assertEqual(app.copied, "台北是首都")
+        self.assertIn("clip.exe", r["bar"])
+
+
 if __name__ == "__main__":
     unittest.main()

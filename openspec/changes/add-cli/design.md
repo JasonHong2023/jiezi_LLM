@@ -70,6 +70,9 @@ Automated: Textual's `App.run_test()` for key and layout tests, checking at fixe
 - 中斷時保留已收到的部分答案在對話紀錄中；沒有任何答案時移除該問題，避免連續兩則使用者訊息。
   On stop, the partial answer stays in the history; with no answer at all, the question is dropped to avoid two user turns in a row.
 
+- **複製（使用者 2026-11-15 回報「文字無法複製」）**：Textual 會攔下滑鼠，終端機原本的選取失效，而 Ctrl+C 又被設成中斷。改成：Ctrl+C 有選取文字就複製、否則中斷；F3 與 `/copy` 複製最後一則回答；同時寫入 OSC 52 與系統剪貼簿（偵測 `wl-copy` / `xclip` / `xsel` / `clip.exe` / `pbcopy`；`clip.exe` 用不含 BOM 的 UTF-16LE，實測中文正確且沒有隱形字元）。
+  **Copying (user report on 2026-11-15)**: Textual captures the mouse, disabling terminal selection, and Ctrl+C was bound to stop. Now Ctrl+C copies a selection or else stops; F3 and `/copy` copy the last answer; both OSC 52 and the system clipboard are written (detecting `wl-copy` / `xclip` / `xsel` / `clip.exe` / `pbcopy`; `clip.exe` gets BOM-less UTF-16LE, verified to paste CJK correctly without a hidden character).
+
 ## Risks / Trade-offs
 
 - **Kitty 鍵盤協定與 Shift+Enter**：部分終端機無法分辨 Shift+Enter。→ 同時提供 Ctrl+J 換行。
