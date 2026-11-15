@@ -211,7 +211,12 @@ def cmd_verify(args, root: Path) -> int:
         raise EvalError(f"{run_dir} has no conditions.json")
     ident = json.loads((run_dir / "conditions.json").read_text(encoding="utf-8"))["identity"]
     env = load_env(root)
-    judge_model = env.get("JIEZI_JUDGE_MODEL")
+    # --judge-model 只影響這次；此時 .env 的比對字串屬於另一個模型，不沿用。
+    # --judge-model applies to this call only; the .env match string belongs to another model then.
+    if getattr(args, "judge_model", None):
+        judge_model, judge_match = args.judge_model, getattr(args, "judge_match", None)
+    else:
+        judge_model, judge_match = env.get("JIEZI_JUDGE_MODEL"), env.get("JIEZI_JUDGE_MODEL_MATCH")
     kinds = args.only or [k for k in verify_run.KINDS if "judge" not in k or judge_model]
     window = night.parse_window(env.get("JIEZI_NIGHT_WINDOW"))
     long_kinds = sorted(set(kinds) - verify_run.QUICK_KINDS)
@@ -240,7 +245,7 @@ def cmd_verify(args, root: Path) -> int:
         if not judge_model or not base:
             raise EvalError("judging needs JIEZI_JUDGE_MODEL and JIEZI_CLOUD_BASE_URL in .env (and user consent)")
         client = ChatClient(base, judge_model, api_key=key, timeout_s=args.timeout or 120, baseline=True,
-                            model_match=env.get("JIEZI_JUDGE_MODEL_MATCH"))
+                            model_match=judge_match)
         j = judge_v.Judge(client, judge_model, root / "var" / "verify" / "judge",
                           reasoning_budget=args.reasoning_budget)
         try:
@@ -388,6 +393,8 @@ def parser() -> argparse.ArgumentParser:
     v.add_argument("--reasoning-budget", type=int, default=DEFAULT_REASONING_BUDGET,
                    help="extra max_tokens for a reasoning judge model")
     v.add_argument("--timeout", type=float, help="judge request timeout in seconds (default 120)")
+    v.add_argument("--judge-model", help="judge model for this run only (overrides JIEZI_JUDGE_MODEL)")
+    v.add_argument("--judge-match", help="expected substring of the judge's reported model (with --judge-model)")
     v.add_argument("--now", action="store_true", help="ignore the night window (only when the user asks)")
 
     x = sub.add_parser("xcheck-tool", help="side-by-side with the official ACEBench checker (in the sandbox)")

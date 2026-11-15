@@ -108,6 +108,11 @@ class TestVerifyCli(unittest.TestCase):
                 with self.assertRaisesRegex(EvalError, "long jobs"):
                     cli.cmd_verify(args, root)
 
+    def test_judge_model_override_parses(self):
+        a = cli.parser().parse_args(["verify", "r1", "--judge-model", "m2", "--judge-match", "m2"])
+        self.assertEqual((a.judge_model, a.judge_match), ("m2", "m2"))
+        self.assertIsNone(cli.parser().parse_args(["verify", "r1"]).judge_model)
+
 
 if __name__ == "__main__":
     unittest.main()
