@@ -139,6 +139,29 @@ def schedule(root: Path, jobs: list[list[str]], when: datetime, run=subprocess.r
     return record
 
 
+def cancel(root: Path, sid: str, run=subprocess.run, kill=os.kill) -> str:
+    """取消尚未開始的排程。 / Cancel a schedule that has not started."""
+    d = schedule_dir(root)
+    rec_path, state_path = d / f"{sid}.json", d / f"{sid}.state"
+    if not rec_path.exists():
+        raise EvalError(f"no schedule {sid}")
+    state = state_path.read_text().strip() if state_path.exists() else ""
+    if not state.startswith("waiting"):
+        raise EvalError(f"schedule {sid} is not waiting ({state or 'unknown'}); not cancelling")
+    rec = json.loads(rec_path.read_text(encoding="utf-8"))
+    if rec.get("method") == "systemd-user":
+        p = run(["systemctl", "--user", "stop", f"{rec['unit']}.timer"], capture_output=True, text=True)
+        if p.returncode != 0:
+            raise EvalError(f"systemctl stop failed: {p.stderr.strip()}")
+    else:
+        try:
+            kill(-int(rec["pid"]), 15)  # 背景程序以新 session 啟動 / started in its own session
+        except ProcessLookupError:
+            pass
+    state_path.write_text(f"cancelled {datetime.now().isoformat(timespec='seconds')}\n")
+    return f"cancelled {sid}"
+
+
 def list_schedules(root: Path) -> list[dict]:
     out = []
     for f in sorted(schedule_dir(root).glob("*.json")):

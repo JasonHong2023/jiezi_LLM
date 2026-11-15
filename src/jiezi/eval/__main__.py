@@ -287,6 +287,9 @@ def parse_jobs(args) -> list[list[str]]:
 
 
 def cmd_schedule(args, root: Path) -> int:
+    if args.cancel:
+        print(night.cancel(root, args.cancel))
+        return 0
     if args.list:
         for s in night.list_schedules(root):
             jobs = " ; ".join(" ".join(j) for j in s.get("jobs") or [])
@@ -352,6 +355,7 @@ def parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("schedule", help="schedule a run into the next night window")
     s.add_argument("--list", action="store_true")
+    s.add_argument("--cancel", metavar="SCHEDULE_ID", help="cancel a schedule that has not started")
     s.add_argument("--job", action="append", help='one job, e.g. "run --model qwen3-0.6b-q8_0" (repeatable, run in order)')
     s.add_argument("run_args", nargs=argparse.REMAINDER)
     return ap

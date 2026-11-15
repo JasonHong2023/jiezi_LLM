@@ -95,6 +95,21 @@ class TestSchedule(unittest.TestCase):
         self.assertTrue(started["kw"]["start_new_session"])
         self.assertIn("sleep 14400;", started["cmd"][2])  # 20:05 → 00:05
 
+    def test_cancel_waiting_only(self):
+        calls = []
+
+        def run(cmd, **kw):
+            calls.append(cmd)
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        rec = night.schedule(self.root, [["run"]], datetime(2026, 11, 16, 0, 5), run=run, use_systemd=True)
+        night.cancel(self.root, rec["id"], run=run)
+        self.assertEqual(calls[-1], ["systemctl", "--user", "stop", f"{rec['unit']}.timer"])
+        self.assertTrue(night.list_schedules(self.root)[0]["state"].startswith("cancelled"))
+        with self.assertRaisesRegex(EvalError, "not waiting"):
+            night.cancel(self.root, rec["id"], run=run)
+        with self.assertRaisesRegex(EvalError, "no schedule"):
+            night.cancel(self.root, "nope", run=run)
+
     def test_systemd_failure(self):
         bad = lambda *a, **k: SimpleNamespace(returncode=1, stdout="", stderr="no bus")  # noqa: E731
         with self.assertRaisesRegex(EvalError, "no bus"):
