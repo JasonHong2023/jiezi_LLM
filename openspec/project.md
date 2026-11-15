@@ -15,7 +15,7 @@ Combine CPU / GPU / NPU on laptop-class hardware so that a heavily compressed co
 | --- | --- |
 | `reference/rules_20261114.md` | 專案規則 R1–R23（**所有變更必須遵守**） |
 | `openspec/specs/` | 系統行為的真實來源（R3） |
-| `docs/dev-plan.md` | 階段、決策關卡、預算、時程（待遷入，R15 Q3） |
+| `docs/dev-plan.md` | 階段、決策關卡、預算、時程（2026-11-15 已遷入；設計文件在 `docs/design*`，分析在 `docs/analysis/`，討論記錄在 `docs/discussions/`） |
 
 ## 技術棧 / Stack（詳見規則 R9，鎖定版本見 `openspec/specs/stack.md`）
 - 推論引擎：llama.cpp（vendored ggml），版本以 commit 鎖定
