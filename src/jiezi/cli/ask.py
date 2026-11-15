@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import io
+
 import json
 import sys
 from typing import TextIO
@@ -22,9 +24,21 @@ def build_messages(question: str, attachment: str | None) -> list[dict]:
     return [{"role": "user", "content": question}]
 
 
+def _piped(stdin: TextIO) -> bool:
+    """只有管線或檔案才當附件讀；終端機、socket 等不讀（2026-11-15：開著不關的 socket 讓 ask 一直等）。
+    Read stdin as an attachment only from a pipe or a file; never from a TTY or a socket that never closes."""
+    import os
+    import stat
+    try:
+        mode = os.fstat(stdin.fileno()).st_mode
+    except (OSError, ValueError, AttributeError, io.UnsupportedOperation):
+        return not stdin.isatty()  # 測試用的 StringIO 等 / e.g. StringIO in tests
+    return stat.S_ISFIFO(mode) or stat.S_ISREG(mode)
+
+
 async def run_ask(question: str, policy: str, conn: Connection, as_json: bool, stdin: TextIO, stdout: TextIO,
                   stderr: TextIO, client=None) -> int:
-    attachment = None if stdin.isatty() else stdin.read()
+    attachment = stdin.read() if _piped(stdin) else None
     messages = build_messages(question, attachment)
     tty = stdout.isatty()
     try:

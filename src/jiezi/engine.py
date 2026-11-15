@@ -34,7 +34,12 @@ def find_port(base: int, is_free=None) -> int:
 
 
 def _port_free(port: int) -> bool:
+    """有人在聽才算佔用；剛關閉、還在 TIME_WAIT 的連線不算（llama-server 也用 SO_REUSEADDR）。
+    Taken only when something listens; TIME_WAIT leftovers do not count (llama-server uses SO_REUSEADDR too).
+    2026-11-15：stop 後立刻 start 時曾回報 port 佔用（原因未完全確認；若舊引擎仍在聽，這裡照樣回報佔用）。
+    A quick restart once reported the port taken (cause not fully confirmed; a still-listening engine is still reported)."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             s.bind((HOST, port))
             return True
