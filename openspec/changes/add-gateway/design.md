@@ -103,6 +103,19 @@ Options (checked with OSV on 2026-11-15; none of these latest versions has known
 - Starlette 1.10 對 `starlette.testclient` 搭配 httpx 發出棄用警告（建議改用 `httpx2`）；只影響測試，執行期不受影響，之後升級時再評估。
   Starlette 1.10 warns that `starlette.testclient` with httpx is deprecated (suggesting `httpx2`); tests only, revisit on upgrade.
 
+### D9 — 向 Claude 請教 / Consulting Claude（使用者 2026-11-15 要求 / requested by the user）
+
+- 新策略 `jiezi-ask-claude`：只有使用者明確選用時才請教，一般的分層轉交不會自動使用。
+  A new policy `jiezi-ask-claude`: used only when the user explicitly picks it; tiered escalation never uses it automatically.
+- 途徑：本機已登入的 Claude Code CLI 無頭模式（`claude -p --output-format json`），使用者自己的帳號與用量額度，不需另外的 API 金鑰（使用者決定）。實測（2026-11-15）：模型 `claude-opus-5-5`，約 1.7 秒。
+  Route: the locally logged-in Claude Code CLI in headless mode, with the user's own account and usage allowance, no extra API key (user decision). Measured on 2026-11-15: model `claude-opus-5-5`, about 1.7 s.
+- 安全：`--tools ""`（關閉所有工具）、`--strict-mcp-config` 搭配空的 MCP 設定、`--setting-sources ""`、`--no-session-persistence`，在 `var/runtime/consult-cwd/` 空目錄執行；同時只請教一個問題；逾時 300 秒。
+  Safety: all tools off, no MCP, no settings, no session persistence, an empty working directory; one consultation at a time; 300 s timeout.
+- 次數：使用者選擇不限（`JIEZI_CONSULT_DAILY_MAX=0`）；額度用完時 CLI 回報錯誤，gateway 回 503 並說明，不重試。
+  Volume: unlimited by user choice; when the allowance runs out the CLI errors and the gateway answers 503 with the reason, without retrying.
+- **訓練限制**：Anthropic 條款限制用 Claude 的輸出開發或訓練 AI 模型。請教的回答與整筆軌跡標記 `training_use: false`，授權表登記 `claude-consult-output`（訓練：否）；Phase 6 的自我進化必須排除這些紀錄（R18.3、R20）。其他軌跡的 `training_use` 為 `null`，訓練前依授權表判斷。
+  **Training restriction**: Anthropic's terms restrict using Claude's outputs to develop or train AI models. Consultation answers and their trajectories carry `training_use: false`, the registry lists `claude-consult-output` (training: no), and Phase 6 self-evolution must exclude them (R18.3, R20). Other trajectories carry `training_use: null`, decided against the registry before training.
+
 ## Risks / Trade-offs
 
 - **0.6B 暫代核心的品質很低**：第 1 層重試與雲端轉交會很常觸發。→ 這正好是驗證骨架的好情境；軌跡也會記錄轉交率，作為 G2 的基準。

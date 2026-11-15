@@ -18,3 +18,15 @@ Every request that passes the key check SHALL produce one line in `var/trajector
   The trajectory file cannot be written (for example, the disk is full)
 - **THEN** 請求仍正常回應，gateway 記錄警告並在 `/health` 顯示軌跡記錄異常
   The request is still answered, and the gateway logs a warning and shows the trajectory problem in `/health`
+
+### Requirement: Training-Use Flag
+
+每筆軌跡 SHALL 有 `training_use` 欄位：請教 Claude 的紀錄 SHALL 為 `false`；其他紀錄為 `null`，表示訓練前必須依授權表判斷。任何訓練或自我進化流程 SHALL 排除 `training_use` 為 `false` 的紀錄。
+Every trajectory SHALL carry `training_use`: Claude consultations SHALL be `false`; others are `null`, meaning the license registry decides before training. Any training or self-evolution pipeline SHALL exclude records whose `training_use` is `false`.
+
+#### Scenario: 準備訓練資料 / Preparing training data
+
+- **WHEN** 之後的自我進化從軌跡挑選資料
+  Later self-evolution selects data from trajectories
+- **THEN** `training_use: false` 的紀錄全部排除，排除數量寫進該輪的報告
+  Every `training_use: false` record is excluded, and the excluded count is written into that round's report

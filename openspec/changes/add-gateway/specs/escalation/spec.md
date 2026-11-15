@@ -30,3 +30,15 @@ Runtime verifiers SHALL use only checks that need no ground truth and SHALL NOT 
   The request has no `tools` and the answer has no code block
 - **THEN** 第 0 層直接回傳，`jiezi.verification` 為 `not_applicable`
   Tier 0 returns directly with `jiezi.verification` = `not_applicable`
+
+### Requirement: Explicit Claude Consultation
+
+`jiezi-ask-claude` 策略 SHALL 只在 `JIEZI_CONSULT=claude-cli` 時，透過本機 Claude Code CLI 的無頭模式請教 Claude，並 SHALL 關閉所有工具、不載入 MCP 與設定檔、不保存工作階段、在空的工作目錄執行。分層轉交 SHALL NOT 自動使用此策略。關閉時 SHALL 回 503 並說明如何開啟；CLI 回報錯誤（例如額度用完）時 SHALL 回 503 並附原因，不重試。
+The `jiezi-ask-claude` policy SHALL consult Claude through the local Claude Code CLI in headless mode only when `JIEZI_CONSULT=claude-cli`, with all tools off, no MCP or settings loaded, no session persistence, in an empty working directory. Tiered escalation SHALL NOT use this policy automatically. When off it SHALL answer 503 explaining how to enable it; when the CLI reports an error (for example an exhausted allowance) it SHALL answer 503 with the reason, without retrying.
+
+#### Scenario: 請教成功 / Consultation succeeds
+
+- **WHEN** 使用者以 `jiezi-ask-claude` 提問，且請教已開啟
+  The user asks with `jiezi-ask-claude` and consultation is on
+- **THEN** 回傳 Claude 的回答，`jiezi.tier` 為 `consult`、`jiezi.training_use` 為 `false`，本機模型不會被載入
+  Claude's answer is returned with `jiezi.tier` = `consult` and `jiezi.training_use` = `false`, and the local model is not loaded

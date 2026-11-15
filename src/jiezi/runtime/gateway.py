@@ -28,6 +28,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
+from . import consult as consult_mod
 from . import escalation
 from .settings import POLICIES, Settings
 from .supervisor import EngineUnavailable, Supervisor
@@ -57,8 +58,14 @@ def _tps(resp: dict) -> float | None:
 class Gateway:
     def __init__(self, settings: Settings, supervisor: Supervisor, trajectories: TrajectoryWriter,
                  local_http: httpx.AsyncClient | None = None, cloud_http: httpx.AsyncClient | None = None,
-                 cap: escalation.DailyCap | None = None, log=print):
+                 cap: escalation.DailyCap | None = None, consultant=None, log=print):
         self.s, self.sup, self.traj, self.log = settings, supervisor, trajectories, log
+        self.consultant = consultant
+        if consultant is None and settings.consult == "claude-cli":
+            self.consultant = consult_mod.ClaudeCliConsultant(settings.var / "runtime" / "consult-cwd",
+                                                              settings.consult_timeout_s, settings.consult_model)
+        self.consult_cap = escalation.DailyCap(settings.var / "runtime" / "consult", settings.consult_daily_max) \
+            if settings.consult_daily_max else None
         timeout = httpx.Timeout(settings.request_timeout_s, connect=10.0)
         self.local = local_http or httpx.AsyncClient(timeout=timeout)
         self.cloud = cloud_http or httpx.AsyncClient(timeout=timeout)
@@ -135,6 +142,7 @@ class Gateway:
 
     async def health(self, request: Request) -> Response:
         return JSONResponse({"status": "ok", "engine": self.sup.describe(),
+                             "consult": self.s.consult if self.consultant else "off",
                              "cloud_escalation": self.s.cloud_ready, "cloud_used_today": self.cap.used(),
                              "cloud_daily_max": self.s.cloud_daily_max,
                              "trajectory": {"enabled": self.traj.enabled, "error": self.traj.last_error}})
@@ -162,9 +170,14 @@ class Gateway:
             return _err(400, f"model must be one of {', '.join(POLICIES)}", "invalid_model")
         stream = bool(body.get("stream"))
         tid = new_id() if self.traj.enabled else None
+        # training_use：None 表示訓練前要依授權表確認；請教 Claude 的回答一律 False（design D9）
+        # training_use: None means check the license registry before training; Claude consultations are always False
         rec = {"id": tid, "at": now_iso(), "policy": policy, "stream": stream, "request": body, "tiers": [],
-               "final_tier": None, "status": "ok"}
+               "final_tier": None, "status": "ok", "training_use": None}
         t0 = time.monotonic()
+
+        if policy == "jiezi-ask-claude":
+            return await self._respond_consult(body, rec, t0, stream)
 
         if policy == "jiezi-cloud":
             reason = self._can_escalate()
@@ -234,6 +247,34 @@ class Gateway:
         rec["tiers"].append({"tier": 3, "answer": _message(resp), "model": info["model"], "reason": reason,
                              "usage": info["usage"], "cost": info["cost"]})
         meta = self._meta(rec, 3, resp, None, t0, escalation=reason, cloud=info)
+        return self._deliver(resp, meta, rec, stream)
+
+    async def _respond_consult(self, body: dict, rec: dict, t0: float, stream: bool) -> Response:
+        """向 Claude 請教（design D9）；回答標記為不可用於訓練。 / Consult Claude; answer marked not for training."""
+        rec["training_use"] = consult_mod.TRAINING_USE
+        if self.consultant is None:
+            return self._finish_error(rec, 503, "consulting Claude is off (set JIEZI_CONSULT=claude-cli in .env)",
+                                      "consult_off")
+        if self.consult_cap and not self.consult_cap.available():
+            return self._finish_error(rec, 503, "today's Claude consultations are used up", "consult_daily_cap")
+        try:
+            ans = await self.consultant.ask(body)
+        except consult_mod.ConsultError as exc:
+            return self._finish_error(rec, 503, f"cannot consult Claude right now: {exc}", "consult_unavailable")
+        if self.consult_cap:
+            self.consult_cap.take()
+        msg = {"role": "assistant", "content": ans["content"]}
+        resp = {"id": f"chatcmpl-{rec['id']}", "object": "chat.completion", "created": int(time.time()),
+                "model": ans["model"], "usage": ans["usage"],
+                "choices": [{"index": 0, "message": msg, "finish_reason": "stop"}]}
+        ver = escalation.verify(body, msg) if body.get("tools") else None
+        rec["tiers"].append({"tier": "consult", "answer": msg, "model": ans["model"], "usage": ans["usage"],
+                             "cost_equivalent_usd": ans.get("cost_equivalent_usd"), "verification": ver,
+                             "training_use": consult_mod.TRAINING_USE})
+        meta = self._meta(rec, "consult", resp, ver, t0, escalation="policy",
+                          cloud={"usage": {"total_tokens": ans["usage"]["prompt_tokens"] + ans["usage"]["completion_tokens"]},
+                                 "cost": ans.get("cost_equivalent_usd")})
+        meta["training_use"] = consult_mod.TRAINING_USE
         return self._deliver(resp, meta, rec, stream)
 
     def _meta(self, rec: dict, tier: int, resp: dict, ver: dict | None, t0: float, escalation: str | None = None,

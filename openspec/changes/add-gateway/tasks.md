@@ -32,6 +32,10 @@
 
 - [x] 6.1 `scripts/jiezi serve`、`scripts/jiezi status`；`.env.example`；依 OQ4 由 bootstrap 產生金鑰 / Commands, settings, key generation
 
+## 6b. 向 Claude 請教 / Consulting Claude（使用者 2026-11-15 追加 / added by the user）
+
+- [x] 6b.1 `runtime/consult.py`（本機 Claude Code CLI 無頭模式、關閉工具）、`jiezi-ask-claude` 策略、`training_use` 標記、`.env.example`、授權表 `claude-consult-output` / CLI consultant, policy, training-use flag, settings, registry row
+
 ## 7. 驗證 / Verification
 
 - [x] 7.1 單元測試（假引擎、假雲端；全部 288 個通過）：金鑰、綁定、策略、各層轉交、每日上限、中斷取消、閒置卸載、重啟上限、軌跡；`openspec validate add-gateway --strict` / Unit tests with fake engine and cloud; strict validation

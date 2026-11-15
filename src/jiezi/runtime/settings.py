@@ -10,7 +10,7 @@ from ..config import GATEWAY_KEY_VAR, load_env, port_base, project_root
 from ..errors import JieziError
 
 LOCAL_HOST = "127.0.0.1"
-POLICIES = ("jiezi", "jiezi-local", "jiezi-cloud")
+POLICIES = ("jiezi", "jiezi-local", "jiezi-cloud", "jiezi-ask-claude")
 DEFAULT_CORE = "qwen3-0.6b-q8_0"
 
 
@@ -52,6 +52,10 @@ class Settings:
     request_max_bytes: int = 1 << 20
     request_timeout_s: float = 600.0
     host: str = LOCAL_HOST
+    consult: str = "off"            # off | claude-cli（design D9）
+    consult_daily_max: int = 0      # 0 = 不限（使用者 2026-11-15）/ 0 = unlimited (user, 2026-11-15)
+    consult_timeout_s: int = 300
+    consult_model: str | None = None
 
     @property
     def cloud_ready(self) -> bool:
@@ -87,4 +91,15 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         cloud_daily_max=_int(env, "JIEZI_CLOUD_DAILY_MAX", 200),
         trajectory=_onoff(env, "JIEZI_TRAJECTORY", True),
         retention_days=_int(env, "JIEZI_TRAJECTORY_RETENTION_DAYS", 0),
+        consult=_consult(env),
+        consult_daily_max=_int(env, "JIEZI_CONSULT_DAILY_MAX", 0),
+        consult_timeout_s=_int(env, "JIEZI_CONSULT_TIMEOUT_S", 300),
+        consult_model=env.get("JIEZI_CONSULT_MODEL") or None,
     )
+
+
+def _consult(env: dict) -> str:
+    v = (env.get("JIEZI_CONSULT") or "off").strip().lower()
+    if v not in ("off", "claude-cli"):
+        raise JieziError(f"JIEZI_CONSULT must be off or claude-cli, got {v!r}")
+    return v

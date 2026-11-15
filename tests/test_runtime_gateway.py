@@ -272,7 +272,7 @@ class TestGateway(unittest.TestCase):
             self.assertEqual(self.post(c, {"messages": []}, key="wrong").status_code, 401)
             self.assertEqual(c.get("/v1/models").status_code, 401)
             ids = [m["id"] for m in c.get("/v1/models", headers={"Authorization": f"Bearer {KEY}"}).json()["data"]]
-            self.assertEqual(ids, ["jiezi", "jiezi-local", "jiezi-cloud"])
+            self.assertEqual(ids, ["jiezi", "jiezi-local", "jiezi-cloud", "jiezi-ask-claude"])
             self.assertEqual(c.get("/health").json()["engine"]["status"], "unloaded")
             self.assertEqual(self.post(c, {"model": "gpt-4", "messages": []}).status_code, 400)
         self.assertEqual(self.traj(), [])  # 401 不寫軌跡 / no trajectory on 401
@@ -418,6 +418,81 @@ class TestCoordination(unittest.TestCase):
             self.write_state(Path(d), port)
             self.assertTrue(release_for_eval(Path(d), KEY, None).startswith("idle"))
         self.assertEqual(calls, [])
+
+
+class FakeProc:
+    def __init__(self, out: dict | str, rc: int = 0):
+        self.stdout = (json.dumps(out) if isinstance(out, dict) else out).encode()
+        self.stderr, self.returncode = b"", rc
+
+
+class TestConsult(unittest.TestCase):
+    OK = {"type": "result", "is_error": False, "result": "玉山", "total_cost_usd": 0.02,
+          "usage": {"input_tokens": 2, "cache_read_input_tokens": 10, "output_tokens": 5},
+          "modelUsage": {"claude-opus-5-5": {}}}
+
+    def consultant(self, tmp, out, rc=0, seen=None):
+        from jiezi.runtime.consult import ClaudeCliConsultant
+
+        async def run(cmd, input=None, cwd=None, check=False):
+            if seen is not None:
+                seen.append((cmd, input.decode(), cwd))
+            return FakeProc(out, rc)
+        return ClaudeCliConsultant(tmp / "cwd", binary="/usr/bin/claude", run_process=run)
+
+    def test_safe_flags_and_prompt(self):
+        from jiezi.runtime import consult
+        self.assertIn("--tools", consult.ARGS)
+        self.assertEqual(consult.ARGS[consult.ARGS.index("--tools") + 1], "")
+        for flag in ("--strict-mcp-config", "--no-session-persistence", "--setting-sources"):
+            self.assertIn(flag, consult.ARGS)
+        p = consult.render_prompt({"messages": [{"role": "system", "content": "s"}, {"role": "user", "content": "q"}],
+                                   "tools": TOOLS})
+        self.assertIn("q", p)
+        self.assertIn("get_weather", p)
+
+    def test_gateway_consult_marks_not_for_training(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            seen = []
+            sup, _, patch = make_supervisor(tmp)
+            gw = Gateway(sup.s, sup, TrajectoryWriter(tmp / "traj", log=lambda *_: None),
+                         consultant=self.consultant(tmp, self.OK, seen=seen), log=lambda *_: None)
+            with patch, TestClient(create_app(gw)) as c:
+                r = c.post("/v1/chat/completions", headers={"Authorization": f"Bearer {KEY}"},
+                           json={"model": "jiezi-ask-claude", "messages": [{"role": "user", "content": "最高的山？"}]}).json()
+            self.assertEqual(r["choices"][0]["message"]["content"], "玉山")
+            self.assertEqual((r["model"], r["jiezi"]["tier"], r["jiezi"]["training_use"]),
+                             ("claude-opus-5-5", "consult", False))
+            self.assertEqual(sup.status, "unloaded")  # 不載入本機模型 / the local model is not loaded
+            self.assertEqual(seen[0][2], str(tmp / "cwd"))
+            t = json.loads(next((tmp / "traj").glob("*.jsonl")).read_text().splitlines()[0])
+            self.assertIs(t["training_use"], False)
+            self.assertIs(t["tiers"][0]["training_use"], False)
+
+    def test_consult_off_and_errors(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            sup, _, patch = make_supervisor(tmp)
+            body = {"model": "jiezi-ask-claude", "messages": [{"role": "user", "content": "x"}]}
+            hdr = {"Authorization": f"Bearer {KEY}"}
+            gw = Gateway(sup.s, sup, TrajectoryWriter(tmp / "traj", log=lambda *_: None), log=lambda *_: None)
+            with patch, TestClient(create_app(gw)) as c:
+                self.assertEqual(c.post("/v1/chat/completions", headers=hdr, json=body).json()["error"]["code"],
+                                 "consult_off")
+            bad = {"type": "result", "is_error": True, "result": "usage limit reached"}
+            gw = Gateway(sup.s, sup, TrajectoryWriter(tmp / "traj", log=lambda *_: None),
+                         consultant=self.consultant(tmp, bad), log=lambda *_: None)
+            with patch, TestClient(create_app(gw)) as c:
+                r = c.post("/v1/chat/completions", headers=hdr, json=body)
+            self.assertEqual(r.status_code, 503)
+            self.assertIn("usage limit", r.json()["error"]["message"])
+
+    def test_consult_settings(self):
+        s = load_settings(Path("/x"), {"JIEZI_GATEWAY_KEY": KEY, "JIEZI_CONSULT": "claude-cli"})
+        self.assertEqual((s.consult, s.consult_daily_max), ("claude-cli", 0))
+        with self.assertRaises(JieziError):
+            load_settings(Path("/x"), {"JIEZI_GATEWAY_KEY": KEY, "JIEZI_CONSULT": "openai"})
 
 
 if __name__ == "__main__":
