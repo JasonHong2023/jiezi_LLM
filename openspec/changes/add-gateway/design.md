@@ -118,6 +118,15 @@ Options (checked with OSV on 2026-11-15; none of these latest versions has known
 - **訓練限制**：Anthropic 條款限制用 Claude 的輸出開發或訓練 AI 模型。請教的回答與整筆軌跡標記 `training_use: false`，授權表登記 `claude-consult-output`（訓練：否）；Phase 6 的自我進化必須排除這些紀錄（R18.3、R20）。其他軌跡的 `training_use` 為 `null`，訓練前依授權表判斷。
   **Training restriction**: Anthropic's terms restrict using Claude's outputs to develop or train AI models. Consultation answers and their trajectories carry `training_use: false`, the registry lists `claude-consult-output` (training: no), and Phase 6 self-evolution must exclude them (R18.3, R20). Other trajectories carry `training_use: null`, decided against the registry before training.
 
+### D10 — 預設系統提示 / Default system prompt（使用者 2026-11-15 問「為什麼他叫『小智』」/ user asked why it called itself "Xiaozhi"）
+
+- 0.6B 沒有身分提示時會自己編名字（「小智」）和來由，也常回簡體字。客戶端沒有給 system 訊息時，gateway 加上 `src/jiezi/runtime/data/system_prompt.md`：名字「芥子」與由來、一律繁體中文、閒聊直接回答、不知道的事實回答「我不確定」。`JIEZI_SYSTEM_PROMPT_FILE` 可改用自己的檔案或設為 `off`。
+  Without an identity prompt the 0.6B invents a name ("Xiaozhi") and its origin, and often answers in Simplified Chinese. When the client sends no system message, the gateway adds `src/jiezi/runtime/data/system_prompt.md`: the name "Jiezi" and its origin, Traditional Chinese, direct answers for small talk, "I'm not sure" for unknown facts. `JIEZI_SYSTEM_PROMPT_FILE` points to another file or `off`.
+- 實測（0.6B）：第一版只寫「不確定就說不確定」時，連自我介紹都回「我不確定」（會讓每題都轉給 Claude）；改成明確給出身分並把「不確定」限定在事實類問題後，自我介紹、算術、問候都正常，答錯過的「台灣最高的山」改回「我不確定」而觸發自動請教。
+  Measured with the 0.6B: a first version that only said "say you're unsure when unsure" made it answer "I'm not sure" even to self-introductions (sending everything to Claude); stating the identity explicitly and limiting "unsure" to factual questions fixed that, and a previously wrong answer now triggers consultation.
+- 夜間評測直接呼叫引擎，不經過 gateway，量測條件不受影響。
+  Night evaluations call the engine directly, not through the gateway, so measurement conditions are unaffected.
+
 ## Risks / Trade-offs
 
 - **0.6B 暫代核心的品質很低**：第 1 層重試與雲端轉交會很常觸發。→ 這正好是驗證骨架的好情境；軌跡也會記錄轉交率，作為 G2 的基準。

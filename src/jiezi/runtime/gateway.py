@@ -91,6 +91,10 @@ class Gateway:
             return _err(400, f"invalid JSON: {exc.msg}", "invalid_request")
         if not isinstance(data, dict) or not isinstance(data.get("messages"), list):
             return _err(400, "body must be a JSON object with a messages list", "invalid_request")
+        # 客戶端沒有給 system 訊息時，加上預設的身分與語言提示（design D10）
+        # Without a client system message, add the default identity and language prompt (design D10)
+        if self.s.system_prompt and not any(m.get("role") == "system" for m in data["messages"]):
+            data["messages"] = [{"role": "system", "content": self.s.system_prompt}, *data["messages"]]
         return data
 
     def _local_body(self, body: dict, messages: list | None = None, stream: bool = False) -> dict:

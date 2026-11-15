@@ -56,6 +56,7 @@ class Settings:
     consult_daily_max: int = 0      # 0 = 不限（使用者 2026-11-15）/ 0 = unlimited (user, 2026-11-15)
     consult_timeout_s: int = 300
     consult_model: str | None = None
+    system_prompt: str | None = None   # 請求沒有 system 訊息時加上（design D10）/ added when a request has none
     consult_auto: bool = True       # 自動請教，不用逐次同意（使用者 2026-11-15）/ auto-consult without per-call approval
 
     @property
@@ -97,7 +98,26 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         consult_timeout_s=_int(env, "JIEZI_CONSULT_TIMEOUT_S", 300),
         consult_model=env.get("JIEZI_CONSULT_MODEL") or None,
         consult_auto=_onoff(env, "JIEZI_CONSULT_AUTO", True),
+        system_prompt=_system_prompt(root, env),
     )
+
+
+DEFAULT_SYSTEM_PROMPT = Path(__file__).resolve().parent / "data" / "system_prompt.md"
+
+
+def _system_prompt(root: Path, env: dict) -> str | None:
+    """預設的身分與語言提示；`JIEZI_SYSTEM_PROMPT_FILE=off` 關閉，或指向自己的檔案。
+    The default identity and language prompt; `JIEZI_SYSTEM_PROMPT_FILE=off` disables it, or point it at a file."""
+    v = (env.get("JIEZI_SYSTEM_PROMPT_FILE") or "").strip()
+    if v.lower() == "off":
+        return None
+    path = Path(v).expanduser() if v else DEFAULT_SYSTEM_PROMPT
+    if not path.is_absolute():
+        path = root / path
+    try:
+        return path.read_text(encoding="utf-8").strip() or None
+    except OSError as exc:
+        raise JieziError(f"JIEZI_SYSTEM_PROMPT_FILE {path}: {exc}") from exc
 
 
 def _consult(env: dict) -> str:

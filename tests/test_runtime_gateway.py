@@ -596,5 +596,29 @@ class TestAutoConsult(unittest.TestCase):
         self.assertEqual(sup.in_flight, 0)
 
 
+class TestSystemPrompt(unittest.TestCase):
+    def test_default_prompt_added_only_without_client_system(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            sup, _, patch = make_supervisor(tmp, system_prompt="你是芥子")
+            lh, seen = local_handler([{"role": "assistant", "content": "我是芥子"}])
+            gw = Gateway(sup.s, sup, TrajectoryWriter(tmp / "traj", log=lambda *_: None),
+                         local_http=httpx.AsyncClient(transport=httpx.MockTransport(lh)), log=lambda *_: None)
+            hdr = {"Authorization": f"Bearer {KEY}"}
+            with patch, TestClient(create_app(gw)) as c:
+                c.post("/v1/chat/completions", headers=hdr, json={"messages": [{"role": "user", "content": "你是誰"}]})
+                c.post("/v1/chat/completions", headers=hdr, json={"messages": [
+                    {"role": "system", "content": "client"}, {"role": "user", "content": "x"}]})
+        self.assertEqual(seen[0]["messages"][0], {"role": "system", "content": "你是芥子"})
+        self.assertEqual([m["content"] for m in seen[1]["messages"] if m["role"] == "system"], ["client"])
+
+    def test_settings(self):
+        s = load_settings(Path("/x"), {"JIEZI_GATEWAY_KEY": KEY})
+        self.assertIn("芥子", s.system_prompt)
+        self.assertIn("繁體中文", s.system_prompt)
+        self.assertIsNone(load_settings(Path("/x"), {"JIEZI_GATEWAY_KEY": KEY,
+                                                     "JIEZI_SYSTEM_PROMPT_FILE": "off"}).system_prompt)
+
+
 if __name__ == "__main__":
     unittest.main()
