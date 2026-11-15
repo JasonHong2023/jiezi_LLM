@@ -36,12 +36,19 @@ The system SHALL judge HumanEval+ / MBPP+ the evalplus way: the canonical soluti
 系統 SHALL 以 Python `ast` 解析工具呼叫回答（只接受字面值），SHALL NOT 執行回答內容，並依鎖定 commit 的 ACEBench normal 規則比對 `ground_truth`。
 The system SHALL parse tool-call responses with Python `ast` (literals only), SHALL NOT execute response content, and SHALL match against `ground_truth` using the ACEBench normal rules at the pinned commit.
 
-#### Scenario: 回答含非字面值 / Response contains a non-literal
+#### Scenario: 回答含運算式 / Response contains an expression
 
-- **WHEN** 回答的參數值是函式呼叫、名稱或運算式（例如 `f(x=__import__("os"))`）
-  An argument value is a call, a name, or an expression
-- **THEN** 該題記為錯誤並標記 `unparsed`，不執行任何內容
-  The item counts as wrong, flagged `unparsed`, and nothing is executed
+- **WHEN** 回答的參數值是非純數字的運算式或 lambda（例如 `f(x=a+1)`、`f(x=lambda: 0)`）
+  An argument value is a non-numeric expression or a lambda
+- **THEN** 該題記為錯誤並標記 `unparsed`，不執行任何內容（官方以 eval 計算，列為已知差異）
+  The item counts as wrong, flagged `unparsed`, and nothing is executed (upstream evals it; a known difference)
+
+#### Scenario: 回答含名稱或呼叫 / Response contains a name or a call
+
+- **WHEN** 參數值是名稱或呼叫（例如 `f(x=__import__("os"))`）
+  An argument value is a name or a call
+- **THEN** 依官方規則轉為字串或 `{名稱: {...}}` 結構後比對，**不執行**
+  It is converted per upstream rules into a string or a `{name: {...}}` structure and compared, **never executed**
 
 ### Requirement: Summary Rule Checks
 

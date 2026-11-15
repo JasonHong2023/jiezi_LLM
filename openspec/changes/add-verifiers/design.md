@@ -110,7 +110,21 @@ Reads `results.jsonl`, appends results to a separate `verifications.jsonl` (raw 
 - [移植偏差 / Porting drift] 移植的判定邏輯可能和官方不同。→ 用官方 repo 的範例回答做對照測試，有差異就寫入報表的「已知差異」。
   Ported judging may differ from upstream. → Cross-check with sample answers from the official repos; differences go into a "known differences" report section.
 
-## Open Questions
+## Decisions on Open Questions（2026-11-15，使用者）
+
+- **OQ1 → 從上游原始碼建置**。使用者選 (b)；後續查到上游已有 v0.13.1（2026-10-14，同樣含修正），經使用者同意改鎖定 v0.13.1（commit `362936ae`）。系統前置 `libcap-dev`、`pkgconf` 經同意以 sudo 視窗安裝；meson 1.12.1 由 uv 管理。R23 查證見 `openspec/specs/stack.md` §4。
+  OQ1 → build from upstream source; with the user's consent pinned to v0.13.1 (also fixed); `libcap-dev` and `pkgconf` installed via the sudo window with consent.
+- **OQ2 → `nvidia-deepseek-v4.1-flash`**（使用者從候選中選定；與基準模型 Nemotron 不同家族）。評審在夜間進行。
+  OQ2 → `nvidia-deepseek-v4.1-flash` (chosen by the user; a different family from the Nemotron baseline). Judging runs at night.
+- 實作時的補充 / Implementation notes：
+  - 摘要的簡體字判定改用 OpenCC `STCharacters.txt`：簡轉繁候選不含自己的字才算簡體（「后、台、干、表、里、面」也是正體字，用繁轉簡表會誤判）。
+    The simplified-character check uses OpenCC `STCharacters.txt` (a character is simplified-only when its S→T candidates exclude itself); the T→S table misflags shared forms.
+  - 期望輸出以不透明位元組保存，主程式從不 unpickle 沙盒產生的資料。
+    Expected outputs are kept as opaque bytes; the host never unpickles sandbox output.
+  - 移植版與官方程式的逐題對照（在本機執行上游程式）被自動權限模式擋下，改以照官方邏輯手寫的測試案例驗證。
+    Running the upstream checkers locally for a side-by-side comparison was blocked by the auto-permission mode; hand-written cases that follow the upstream logic are used instead.
+
+## Open Questions（原始問題 / as originally asked）
 
 - **OQ1（需使用者決定）bubblewrap 的取得方式 / How to obtain bubblewrap：**
   - (a) `sudo apt install bubblewrap`：取得 0.9.0-1ubuntu0.3。這版有 CVE-2026-87766，但以我方的使用方式推論無法被模型程式利用。Ubuntu 釋出完整修正後由 `apt upgrade` 自動更新。

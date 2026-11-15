@@ -4,6 +4,7 @@
   bank lock|fetch|verify   產生鎖定檔 / 依鎖定檔取得並驗證題目 / generate the lock; fetch and verify items
   run                      執行評測（只在夜間時段內，除非 --now）/ run an evaluation (night window only unless --now)
   report RUN_ID            產生報表 / produce the report
+  verify RUN_ID            事後評分（程式、工具、摘要、評審）/ score a finished run after the fact
   schedule [--list] -- …   排程到下一個夜間時段 / schedule into the next night window"""
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from pathlib import Path
 
 from jiezi.config import load_env, port_base, project_root
 
-from . import EvalError, bank, lock, night, prompts, report, runner
+from . import EvalError, bank, lock, night, prompts, report, runner, verify_run
 from .client import ChatClient
 from .engine import LocalEngine
 
@@ -202,7 +203,70 @@ def cmd_run(args, root: Path) -> int:
     return 0 if summary["state"] == "complete" else 3
 
 
-SCHEDULABLE = {"run", "bank", "report"}
+def cmd_verify(args, root: Path) -> int:
+    """事後評分（add-verifiers design D7）。 / After-the-fact scoring (add-verifiers design D7)."""
+    run_dir = root / "var" / "eval" / "runs" / args.run_id
+    if not (run_dir / "conditions.json").exists():
+        raise EvalError(f"{run_dir} has no conditions.json")
+    ident = json.loads((run_dir / "conditions.json").read_text(encoding="utf-8"))["identity"]
+    env = load_env(root)
+    judge_model = env.get("JIEZI_JUDGE_MODEL")
+    kinds = args.only or [k for k in verify_run.KINDS if "judge" not in k or judge_model]
+    window = night.parse_window(env.get("JIEZI_NIGHT_WINDOW"))
+    long_kinds = sorted(set(kinds) - verify_run.QUICK_KINDS)
+    if long_kinds and not args.now and not window.contains(datetime.now()):
+        raise EvalError(f"{', '.join(long_kinds)} are long jobs (R18.2a); outside the night window use "
+                        f"`scripts/eval schedule --job \"verify {args.run_id}\"`, or --only tool summary_rules now")
+    lk, items = load_items(root, ident.get("bank", "r0"))
+    if lk["bank_hash"] != ident.get("bank_hash"):
+        raise EvalError("the run used a different bank version than the current lock")
+    verifiers, versions = verify_run.quick_verifiers()
+    vcond: dict = {"kinds": kinds, "versions": {}, "started": runner.now()}
+    if "code" in kinds:
+        from jiezi.verify import code as code_v
+        from jiezi.verify.sandbox import Sandbox
+        sb = Sandbox(root, fresh_facts(root))
+        cv = code_v.CodeVerifier(sb, root / "var" / "verify" / "expected")
+        verifiers["code"], versions["code"] = cv.verify, f"{code_v.VERSION}/{sb.describe()['version']}"
+        ok, reason = sb.available()
+        vcond["sandbox"] = {**sb.describe(), "available": ok, "reason": reason}
+        if not ok:
+            print(f"注意 / Note: sandbox unavailable ({reason}); code items stay pending_verifier")
+    judge_kinds = [k for k in kinds if "judge" in k]
+    if judge_kinds:
+        from jiezi.verify import judge as judge_v
+        base, key = env.get("JIEZI_CLOUD_BASE_URL"), env.get("JIEZI_CLOUD_API_KEY")
+        if not judge_model or not base:
+            raise EvalError("judging needs JIEZI_JUDGE_MODEL and JIEZI_CLOUD_BASE_URL in .env (and user consent)")
+        client = ChatClient(base, judge_model, api_key=key, timeout_s=args.timeout or 120, baseline=True,
+                            model_match=env.get("JIEZI_JUDGE_MODEL_MATCH"))
+        j = judge_v.Judge(client, judge_model, root / "var" / "verify" / "judge",
+                          reasoning_budget=args.reasoning_budget)
+        try:
+            j.check_not_self(ident.get("cloud_model"))
+        except judge_v.JudgeRefused as exc:
+            raise EvalError(str(exc)) from exc
+        tag = f"{judge_v.VERSION}/{judge_v.PROMPT_HASH}/{judge_model}"
+        verifiers["simpleqa_judge"], versions["simpleqa_judge"] = j.simpleqa, tag
+        verifiers["summary_judge"], versions["summary_judge"] = j.summary, tag
+        vcond["judge"] = j.describe()
+    vcond["versions"] = {k: versions[k] for k in kinds}
+    vpath = run_dir / "verify_conditions.json"
+    if vpath.exists():  # 累加：保留之前其他種類的條件 / accumulate: keep earlier kinds' conditions
+        old = json.loads(vpath.read_text(encoding="utf-8"))
+        vcond = {**old, **vcond, "kinds": sorted(set(old.get("kinds", [])) | set(kinds)),
+                 "versions": {**old.get("versions", {}), **vcond["versions"]}}
+    (run_dir / "verify_conditions.json").write_text(json.dumps(vcond, indent=2, ensure_ascii=False) + "\n",
+                                                    encoding="utf-8")
+    summary = verify_run.verify_run(run_dir, items, kinds, verifiers, versions,
+                                    may_continue=lambda: args.now or not long_kinds or window.contains(datetime.now()))
+    rep = report.write(run_dir)
+    print(f"verify {args.run_id}: {summary['state']}; report: {(run_dir / 'report.md').relative_to(root)}; "
+          f"completeness: {rep['completeness']}")
+    return 0 if summary["state"] == "complete" else 3
+
+
+SCHEDULABLE = {"run", "bank", "report", "verify"}
 
 
 def parse_jobs(args) -> list[list[str]]:
@@ -277,6 +341,15 @@ def parser() -> argparse.ArgumentParser:
     rp = sub.add_parser("report", help="(re)build a run's report")
     rp.add_argument("run_id")
 
+    v = sub.add_parser("verify", help="score a finished run after the fact (verifiers)")
+    v.add_argument("run_id")
+    v.add_argument("--only", nargs="+", choices=list(verify_run.KINDS),
+                   help="only these kinds (tool and summary_rules are quick and may run any time)")
+    v.add_argument("--reasoning-budget", type=int, default=DEFAULT_REASONING_BUDGET,
+                   help="extra max_tokens for a reasoning judge model")
+    v.add_argument("--timeout", type=float, help="judge request timeout in seconds (default 120)")
+    v.add_argument("--now", action="store_true", help="ignore the night window (only when the user asks)")
+
     s = sub.add_parser("schedule", help="schedule a run into the next night window")
     s.add_argument("--list", action="store_true")
     s.add_argument("--job", action="append", help='one job, e.g. "run --model qwen3-0.6b-q8_0" (repeatable, run in order)')
@@ -292,6 +365,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_bank(args, root)
         if args.cmd == "run":
             return cmd_run(args, root)
+        if args.cmd == "verify":
+            return cmd_verify(args, root)
         if args.cmd == "report":
             rep = report.write(root / "var" / "eval" / "runs" / args.run_id)
             print(f"completeness: {rep['completeness']}")
