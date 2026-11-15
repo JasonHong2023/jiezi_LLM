@@ -1,0 +1,15 @@
+# 芥子台灣知識庫來源（add-knowledge）/ Jiezi Taiwan knowledge base source (add-knowledge)
+# 鎖定 commit；逐檔 git blob 雜湊列在 lock 檔。文章下載到 var/knowledge/，不進版控（R6.4、R18.3）。
+# Pinned commit; per-file git blob hashes in the lock file. Articles go to var/knowledge/, never committed.
+
+[source]
+key = "taiwan-md"
+title = "Taiwan.md 台灣知識庫（繁體中文原文）"
+repo = "frank890417/taiwan-md"
+commit = "f4c3978342e09d1b695701fd91cbe3516e4f4503"
+license = "CC BY-SA 4.0"
+license_url = "https://github.com/frank890417/taiwan-md/blob/f4c3978342e09d1b695701fd91cbe3516e4f4503/README.md"
+training_use = true  # 使用者 2026-11-15 決定：全部可訓練（衍生物需相同方式分享）/ user decision; share-alike applies
+attribution = "資料來源：Taiwan.md（https://github.com/frank890417/taiwan-md ，CC BY-SA 4.0）"
+license_checked = "2026-11-15"
+lock = "taiwan-md.lock.json"

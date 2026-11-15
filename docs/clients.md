@@ -82,6 +82,16 @@ scripts/jiezi curriculum textbook "數學 7上 翰林"        # 課本單元；�
 聊天時問到課綱代碼、國小學習內容、先修，或國高中課本某冊某版本的單元，gateway 會自動查資料，並在回答後附上原文與出處（`JIEZI_CURRICULUM=off` 可關閉）。
 In chats, curriculum, primary-learning and textbook questions are grounded automatically, with the data and attribution appended (`JIEZI_CURRICULUM=off` disables it).
 
+### 台灣知識庫 / Taiwan knowledge base
+
+```bash
+scripts/jiezi knowledge build                 # 下載 Taiwan.md 1163 篇並建索引（約 22 MB，逐檔核對）/ download and index
+scripts/jiezi knowledge search 刈包是什麼        # 看會查到哪些段落 / see what would be retrieved
+```
+
+問到台灣相關主題時，gateway 取最相關的 1–2 段給模型當依據，回答後附上文章標題、連結與 CC BY-SA 出處；未經人工審核的文章會註明（`JIEZI_KNOWLEDGE=off` 可關閉）。
+For Taiwan topics the gateway retrieves one or two sections and appends titles, links and the CC BY-SA attribution; unreviewed articles are marked.
+
 ### 寫作教學連結 / Writing-lesson links
 
 ```bash

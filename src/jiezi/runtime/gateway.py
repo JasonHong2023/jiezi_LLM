@@ -80,6 +80,13 @@ class Gateway:
                 self.curriculum = Graph.load(settings.root)
             except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
                 self.curriculum_note = str(exc)
+        self.knowledge, self.knowledge_note = None, None
+        if settings.knowledge:
+            from ..knowledge import Knowledge, db_path as knowledge_db
+            try:
+                self.knowledge = Knowledge(knowledge_db(settings.root))
+            except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
+                self.knowledge_note = str(exc)
         self.writing, self.writing_note = None, None
         if settings.writing_refs:
             from ..writing_refs import WritingRefs, index_path
@@ -207,7 +214,8 @@ class Gateway:
     def _ground(self, body: dict, rec: dict) -> None:
         """詞語問題查本機辭典、課綱問題查知識圖譜，把原文附給模型（add-dictionary D2、D3；add-curriculum D2、D3）。
         Attach verbatim dictionary entries for word questions and curriculum-graph data for curriculum questions."""
-        if body.get("tools") or (self.dictionary is None and self.curriculum is None and self.writing is None):
+        if body.get("tools") or all(x is None for x in (self.dictionary, self.curriculum, self.knowledge,
+                                                         self.writing)):
             return
         last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
         if not last or not isinstance(last.get("content"), str):
@@ -219,6 +227,9 @@ class Gateway:
         if self.curriculum is not None:
             from ..curriculum import grounding as curriculum_grounding
             found.append(curriculum_grounding(self.curriculum, last["content"]))
+        if self.knowledge is not None:
+            from ..knowledge import grounding as knowledge_grounding
+            found.append(knowledge_grounding(self.knowledge, last["content"]))
         idx = body["messages"].index(last)
         for g in found:
             if not g:
@@ -249,6 +260,7 @@ class Gateway:
                              "dictionary": "on" if self.dictionary else (self.dictionary_note or "off"),
                              "curriculum": "on" if self.curriculum else (self.curriculum_note or "off"),
                              "writing_refs": "on" if self.writing else (self.writing_note or "off"),
+                             "knowledge": "on" if self.knowledge else (self.knowledge_note or "off"),
                              "cloud_escalation": self.s.cloud_ready, "cloud_used_today": self.cap.used(),
                              "cloud_daily_max": self.s.cloud_daily_max,
                              "trajectory": {"enabled": self.traj.enabled, "error": self.traj.last_error}})

@@ -127,6 +127,9 @@ def main(argv: list[str] | None = None) -> int:
     cp.add_argument("--subject", help="plan：科目，如 數學 / subject")
     cp.add_argument("--grade", type=int, choices=range(1, 7), help="plan：年級 / grade")
     cp.add_argument("--stage", type=int, choices=(1, 2, 3), help="plan：學習階段 / learning stage")
+    kp = sub.add_parser("knowledge", help="Taiwan knowledge base, taiwan-md (add-knowledge)")
+    kp.add_argument("action", choices=["build", "search"])
+    kp.add_argument("query", nargs="?")
     wp = sub.add_parser("writing-refs", help="writing-lesson link index, titles and URLs only (add-curriculum D6)")
     wp.add_argument("action", choices=["build", "search"])
     wp.add_argument("query", nargs="?")
@@ -167,6 +170,15 @@ def main(argv: list[str] | None = None) -> int:
                 print(dictionary.render(entry))
                 print(f"— {d.meta.get(src, {}).get('attribution', src)}\n")
             return 0 if hits else 1
+        if args.cmd == "knowledge":
+            from .. import knowledge as K
+            if args.action == "build":
+                counts = K.build(root)
+                print(f"built {K.db_path(root)}: {counts}; restart the gateway to use it")
+                return 0
+            g = K.grounding(K.Knowledge(K.db_path(root)), args.query or "")
+            print(g[0].split("\n\n", 1)[1] + g[3] if g else "（沒有相關段落 / nothing relevant）")
+            return 0 if g else 1
         if args.cmd == "writing-refs":
             from .. import writing_refs as W
             if args.action == "build":

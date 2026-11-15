@@ -1,0 +1,5821 @@
+{
+"repo": "frank890417/taiwan-md",
+"commit": "f4c3978342e09d1b695701fd91cbe3516e4f4503",
+"files": [
+{
+"path": "knowledge/About/taiwan-md.md",
+"sha": "41d8ba005e44dcaf72f18448759ed00afa4e218a",
+"size": 33240
+},
+{
+"path": "knowledge/About/台灣官方網站資源.md",
+"sha": "740f80b177dad743453ba2bc2eede4b8a1e81888",
+"size": 5450
+},
+{
+"path": "knowledge/About/台灣官方網站資源重寫.md",
+"sha": "708b25ad77a7d1541cb9f490498707d6fb559e99",
+"size": 18369
+},
+{
+"path": "knowledge/About/文章如何誕生.md",
+"sha": "d00e8fd08799c2e7cf0ff7dffa4be57e6dc0e16f",
+"size": 33802
+},
+{
+"path": "knowledge/About/比國家還大的演算藝術.md",
+"sha": "a61943aa360276e424662497b3f454fbd3e6bc42",
+"size": 77701
+},
+{
+"path": "knowledge/About/為什麼台灣需要自己的知識庫.md",
+"sha": "148e7b38cf9a31167ae8a06c88275d3e0e61946e",
+"size": 40664
+},
+{
+"path": "knowledge/About/看見台灣引言集.md",
+"sha": "5a8dc8e48fce9ed8dafcce4c0dee8fd0affd4a0a",
+"size": 10122
+},
+{
+"path": "knowledge/About/緣起故事.md",
+"sha": "dbe983b9b5474c71dc7e5a1c8a62af833aea3e06",
+"size": 4936
+},
+{
+"path": "knowledge/About/視覺化模組型錄.md",
+"sha": "b6e739ee334560964abbe9018519f810bb4d4e26",
+"size": 19366
+},
+{
+"path": "knowledge/Art/EEWH綠建築標章.md",
+"sha": "4ab0ba67075509a6ee96b739866ad862d653ed0a",
+"size": 10419
+},
+{
+"path": "knowledge/Art/FAB DAO與百岳計畫.md",
+"sha": "9a77af3b536f703086403c152ee827a852b9a15e",
+"size": 9495
+},
+{
+"path": "knowledge/Art/原住民文學.md",
+"sha": "3f60ebc6afbb930772636ab2ad47c59a56a78d1e",
+"size": 11767
+},
+{
+"path": "knowledge/Art/台中國家歌劇院.md",
+"sha": "1258fb2c1c65d1db26d06d17ff56b9168dd923da",
+"size": 19981
+},
+{
+"path": "knowledge/Art/台灣傳統藝術.md",
+"sha": "f873f1638f4cc89d667548196b5a3f4f1c622c84",
+"size": 15353
+},
+{
+"path": "knowledge/Art/台灣劇場與表演藝術.md",
+"sha": "2a47c6d84f2a494b945ab8c5ed825a2f2438fc6d",
+"size": 9955
+},
+{
+"path": "knowledge/Art/台灣原住民當代藝術.md",
+"sha": "f6b82128fa7b98c660b9b62d9fa87729d19618a8",
+"size": 15404
+},
+{
+"path": "knowledge/Art/台灣建築.md",
+"sha": "8bd3b65cb239bc56f813ca98f5d8d56ee35033c9",
+"size": 20755
+},
+{
+"path": "knowledge/Art/台灣攝影.md",
+"sha": "becd25e272d31870153f63fca61344d9b15fea2b",
+"size": 10765
+},
+{
+"path": "knowledge/Art/台灣散文.md",
+"sha": "ddffc925dd3e3ba1620484fdb6d24269b9b559e4",
+"size": 11066
+},
+{
+"path": "knowledge/Art/台灣文學史.md",
+"sha": "ef8eaa5c0ba5a2de152962e93a1859eaa40d7806",
+"size": 16590
+},
+{
+"path": "knowledge/Art/台灣新媒體藝術.md",
+"sha": "43bc795f189fa9c5d7cefe073e4b4ce1963a6bd9",
+"size": 22724
+},
+{
+"path": "knowledge/Art/台灣水彩畫的百年流變.md",
+"sha": "0f5c8101e2d7e49a48d65c250a23eb108dc4ead6",
+"size": 11130
+},
+{
+"path": "knowledge/Art/台灣漫畫.md",
+"sha": "eff1039b092fe53e638c9ef81346eab10c351fcd",
+"size": 14227
+},
+{
+"path": "knowledge/Art/台灣現代詩.md",
+"sha": "06ec5214726a51f760bc4d2ac23a33b16dc517d0",
+"size": 7884
+},
+{
+"path": "knowledge/Art/台灣當代雕塑發展.md",
+"sha": "9839ec6627824829718ae3ee99a5b196c7f88356",
+"size": 23771
+},
+{
+"path": "knowledge/Art/台灣策展人與藝術文化建構.md",
+"sha": "a6d2f56eae9099c27cf8a7bcb4957c5420237af5",
+"size": 10363
+},
+{
+"path": "knowledge/Art/台灣藝術教育與學院發展.md",
+"sha": "f092e64250d90e1519561859fc1311d9a43bc263",
+"size": 17766
+},
+{
+"path": "knowledge/Art/台灣電影.md",
+"sha": "8b9d057665e1ecfe680180a17f74c0c1e1a5980f",
+"size": 53595
+},
+{
+"path": "knowledge/Art/戰後台灣文學.md",
+"sha": "e6ca0667ad5c6d38faf8e14dbd44ad18aac37e2a",
+"size": 28393
+},
+{
+"path": "knowledge/Art/戰後台灣現代主義建築群像.md",
+"sha": "225295f009161aa312d5900f41d98437b495d60e",
+"size": 15105
+},
+{
+"path": "knowledge/Art/數位荒原.md",
+"sha": "39efbb44593eb38a54cf96ff61dffa568be2ef7f",
+"size": 34896
+},
+{
+"path": "knowledge/Art/新北市美術館.md",
+"sha": "024df39b656894c58164acc426311416e6a43863",
+"size": 8384
+},
+{
+"path": "knowledge/Art/新生態藝術環境.md",
+"sha": "3895d7f4c48bf09c7e7429ef700c9df2f69477b9",
+"size": 24915
+},
+{
+"path": "knowledge/Art/日治時期文學.md",
+"sha": "d67a94cdb82027f43eecf63b8d42e2c4dd380b8d",
+"size": 14818
+},
+{
+"path": "knowledge/Art/林經堯.md",
+"sha": "3b768aeee9c90b533848501a6790795a5c7428a1",
+"size": 10330
+},
+{
+"path": "knowledge/Art/植劇場.md",
+"sha": "730bb8ff98430d3fe0d94d33c83a79d1782e3916",
+"size": 14348
+},
+{
+"path": "knowledge/Art/歌仔戲.md",
+"sha": "ae12952c6d2128beea55096236c9a401eab4bce8",
+"size": 15652
+},
+{
+"path": "knowledge/Art/江賢二.md",
+"sha": "fbf7917039199be3ea5ac52860a2307db88e13cc",
+"size": 35379
+},
+{
+"path": "knowledge/Art/王新仁.md",
+"sha": "c65064e0abea318acb5d8489dba32c86705241b5",
+"size": 29178
+},
+{
+"path": "knowledge/Art/王連晟.md",
+"sha": "af82ce9a0dc574344aaa773dd1918af3dcfd438e",
+"size": 21648
+},
+{
+"path": "knowledge/Art/當代台灣文學.md",
+"sha": "8598b3fa883f389d300b7502bffa31766de50a1c",
+"size": 13135
+},
+{
+"path": "knowledge/Art/當代藝術.md",
+"sha": "066385ee955bce617633ca734e7c125f67b54c0e",
+"size": 9577
+},
+{
+"path": "knowledge/Art/看不見的台灣.md",
+"sha": "a49783e0f43d1c084e63f7ba018ed5019390727f",
+"size": 9383
+},
+{
+"path": "knowledge/Art/看不見的國家.md",
+"sha": "2416064856f66a1d89f18bfab561d9676ae7db8b",
+"size": 43777
+},
+{
+"path": "knowledge/Art/笠詩社.md",
+"sha": "09cbec3567f866f5c8b63adb92abbf7632277b31",
+"size": 42169
+},
+{
+"path": "knowledge/Art/紀柏豪.md",
+"sha": "261c00b75166bb570fe840868a6ae26fe813a509",
+"size": 29953
+},
+{
+"path": "knowledge/Art/紙風車劇團.md",
+"sha": "aa92b404248104d462dbdbc1bad6faccc24c806e",
+"size": 13977
+},
+{
+"path": "knowledge/Art/總統府.md",
+"sha": "318cddf0155bd82df181bb4fe37c243e9791f979",
+"size": 21152
+},
+{
+"path": "knowledge/Art/臺灣漫遊錄.md",
+"sha": "5698e60ea296371110583fc885db7aecf326569d",
+"size": 30371
+},
+{
+"path": "knowledge/Art/葉廷皓.md",
+"sha": "52f1e6945ba8e3be96a9579f51d544fafbb288aa",
+"size": 43985
+},
+{
+"path": "knowledge/Art/街頭塗鴉.md",
+"sha": "30bd9b4d3291c9390f1d3a48e60ed3e8623259df",
+"size": 7524
+},
+{
+"path": "knowledge/Art/衛武營.md",
+"sha": "d7e9ec85dffc901dbb8d56912db6d33553c40a6b",
+"size": 16890
+},
+{
+"path": "knowledge/Art/西門紅樓.md",
+"sha": "2f50e8a91c29a1b9cd73acd94bda3449613da6fb",
+"size": 12235
+},
+{
+"path": "knowledge/Art/解嚴後台灣文學.md",
+"sha": "ab4a5ec828a00ced148473d1d02b2830a0a30a5d",
+"size": 14722
+},
+{
+"path": "knowledge/Art/謝德慶.md",
+"sha": "965f5ef0e08a1781ebd8cca776e623b2a663304b",
+"size": 24919
+},
+{
+"path": "knowledge/Art/造山者世紀的賭注.md",
+"sha": "f307b68558b026c7da85035d06da3dc962d93936",
+"size": 40629
+},
+{
+"path": "knowledge/Art/金馬獎.md",
+"sha": "eb55a036194eebb6566e58a14b035701d6dfc4b8",
+"size": 61454
+},
+{
+"path": "knowledge/Art/金馬賓館當代美術館.md",
+"sha": "4b8c5472142ad1b0b869bf7904c040928c115502",
+"size": 11326
+},
+{
+"path": "knowledge/Art/首映創意.md",
+"sha": "669b542c9f8e868d4c3940db56d32fcf6c5ca750",
+"size": 7992
+},
+{
+"path": "knowledge/Art/馬祖國際藝術島.md",
+"sha": "a9dc501fb2456586f4ea7efbc1d7d328795313b8",
+"size": 54686
+},
+{
+"path": "knowledge/Art/鶯歌陶瓷博物館.md",
+"sha": "d0eb1a7f5c29f79d7ee36ecf6081f38d2876b531",
+"size": 8753
+},
+{
+"path": "knowledge/Culture/Dcard.md",
+"sha": "902cde5574cd1b6780d7512a68e97546dd7239d7",
+"size": 11143
+},
+{
+"path": "knowledge/Culture/Shopping Design.md",
+"sha": "dfc6d8c9eac18e8496feb7599166db2aeabb01ea",
+"size": 33844
+},
+{
+"path": "knowledge/Culture/一同走過從前.md",
+"sha": "c114481b2945c761b9c71e1915daab57f85d3fb4",
+"size": 61126
+},
+{
+"path": "knowledge/Culture/中元節.md",
+"sha": "3e785c25c7809b07c7924aff9cb39d89c55a3fef",
+"size": 7173
+},
+{
+"path": "knowledge/Culture/中秋.md",
+"sha": "34bb559eeb1a00de3385fbea953bbd85711e5080",
+"size": 8628
+},
+{
+"path": "knowledge/Culture/中華職棒.md",
+"sha": "4111afbf5db201bcd75c7b4b089af8bd5e7bff36",
+"size": 20438
+},
+{
+"path": "knowledge/Culture/九天玄女信仰.md",
+"sha": "00f96392e84b2c7f755ca266bd43a1cec51c820c",
+"size": 11607
+},
+{
+"path": "knowledge/Culture/人間雜誌.md",
+"sha": "a48c41e4b04c77fdcd8618ea5cac2e0225d47146",
+"size": 13855
+},
+{
+"path": "knowledge/Culture/伊斯蘭教在台灣.md",
+"sha": "ea4f1bbc806c92dda46d72faa1727df9353fc546",
+"size": 8239
+},
+{
+"path": "knowledge/Culture/傳統節慶與慶典.md",
+"sha": "308d35322551776b822335bc41da2415d53d5e2e",
+"size": 11071
+},
+{
+"path": "knowledge/Culture/光華雜誌.md",
+"sha": "62523ca057170a79439b9e7e6e33435b87eaffe5",
+"size": 22779
+},
+{
+"path": "knowledge/Culture/兩廳院.md",
+"sha": "86a3b4a561f97e945c17f614d22f372190f624b9",
+"size": 10515
+},
+{
+"path": "knowledge/Culture/八點檔.md",
+"sha": "12571bd6bf8644a86f30b1cbaa490b0b1a0a9315",
+"size": 8309
+},
+{
+"path": "knowledge/Culture/原住民神話.md",
+"sha": "64a01b1b457a97b725969372c77d2ed094cd8cdc",
+"size": 9735
+},
+{
+"path": "knowledge/Culture/原住民織布.md",
+"sha": "3b88b15f5092b5abcac745e3f94bd4050464ac94",
+"size": 23228
+},
+{
+"path": "knowledge/Culture/台灣VTuber.md",
+"sha": "ebe504829d36134096660325f48f4dae3672e639",
+"size": 44308
+},
+{
+"path": "knowledge/Culture/台灣YouTuber產業與文化.md",
+"sha": "9cf23cf576d5d0a972e9804479c566ff65d3b760",
+"size": 9648
+},
+{
+"path": "knowledge/Culture/台灣乖乖文化.md",
+"sha": "6c580d4b16534e6254d07a7d485c510bc4cff2f3",
+"size": 5400
+},
+{
+"path": "knowledge/Culture/台灣人小時候的英文名字.md",
+"sha": "c5bf1785f5c6ffb679b60cf81875276c64800409",
+"size": 43062
+},
+{
+"path": "knowledge/Culture/台灣傳統工藝與無形文化資產.md",
+"sha": "e83bc5d0999754f006b4f4c3e7e7f2a94c8f88a0",
+"size": 31210
+},
+{
+"path": "knowledge/Culture/台灣動漫文化.md",
+"sha": "939080f4c6fe57b02d9bb5ba1f0a7318737a00e5",
+"size": 11377
+},
+{
+"path": "knowledge/Culture/台灣原住民族16族文化地圖.md",
+"sha": "e65fb37b3eeeb5070778dbd8356dce00a9b9442e",
+"size": 11182
+},
+{
+"path": "knowledge/Culture/台灣原住民族姓名.md",
+"sha": "b73adb78634febb362f15a2f508adf19b55870ef",
+"size": 19247
+},
+{
+"path": "knowledge/Culture/台灣原住民語言復振運動.md",
+"sha": "8a549e4d1286ead356ca7e19eda8eca13378db62",
+"size": 11695
+},
+{
+"path": "knowledge/Culture/台灣口語特色.md",
+"sha": "50add520394e3f0b4f98848e7365e2f1cbe1e151",
+"size": 15108
+},
+{
+"path": "knowledge/Culture/台灣吧.md",
+"sha": "61d5475aa3c5f2cd47a3a78b28c1e699ed0147f2",
+"size": 10836
+},
+{
+"path": "knowledge/Culture/台灣外來語與語言接觸.md",
+"sha": "8c9c781712a9754a3231ae48ac32c9734f17aab3",
+"size": 13314
+},
+{
+"path": "knowledge/Culture/台灣婚喪喜慶與人生禮俗.md",
+"sha": "adad480ed8d08e3347f999ced4f3020c6fab6dc9",
+"size": 19370
+},
+{
+"path": "knowledge/Culture/台灣宗教與寺廟文化.md",
+"sha": "d06f7b02a6143f630dcc313ca3456c891efa96d0",
+"size": 28880
+},
+{
+"path": "knowledge/Culture/台灣廟會與陣頭文化.md",
+"sha": "5f07b71f517bee64da6fcbc6bfab9328bf763737",
+"size": 11107
+},
+{
+"path": "knowledge/Culture/台灣廣告史.md",
+"sha": "8c1950695e02ef44fe78ea96d098fecb57ce3f83",
+"size": 37062
+},
+{
+"path": "knowledge/Culture/台灣感性.md",
+"sha": "054e78ab62f474ab8b9a564b2aa985fd831ce106",
+"size": 40545
+},
+{
+"path": "knowledge/Culture/台灣手語.md",
+"sha": "775e74ca055af4f4d6cdf3b938ef0f4bd4f9e0eb",
+"size": 22643
+},
+{
+"path": "knowledge/Culture/台灣教會公報.md",
+"sha": "092585f37828de261c09270f1df8278865bb5803",
+"size": 9217
+},
+{
+"path": "knowledge/Culture/台灣文化創意園區發展.md",
+"sha": "6d9ebb0fe152a28abbb34faeecac02cb8a7953ae",
+"size": 18408
+},
+{
+"path": "knowledge/Culture/台灣新偶像世代.md",
+"sha": "56726baf763c3f58ea6b32505d365bdc2006337c",
+"size": 19005
+},
+{
+"path": "knowledge/Culture/台灣棒球文化.md",
+"sha": "c098439a7bff795cb6323d41f4cf641f9c708470",
+"size": 11342
+},
+{
+"path": "knowledge/Culture/台灣殯葬文化與生死觀.md",
+"sha": "99c8afbe6aacba6eecec2e1b2c06b7491fc2607b",
+"size": 13265
+},
+{
+"path": "knowledge/Culture/台灣活版印刷.md",
+"sha": "44f305ee594189ba5a8b4df4cbaa11e1742916ca",
+"size": 25247
+},
+{
+"path": "knowledge/Culture/台灣漆器.md",
+"sha": "61449b01f7f9247e2ef056ba80674c97d786d2b9",
+"size": 19411
+},
+{
+"path": "knowledge/Culture/台灣獨立書店.md",
+"sha": "0b09d265f9f7eacda4980e9e5dc18ac88350830c",
+"size": 22624
+},
+{
+"path": "knowledge/Culture/台灣獸迷文化.md",
+"sha": "ec252daf90bfe651f74efc1b99b42f9106fb4eb5",
+"size": 16984
+},
+{
+"path": "knowledge/Culture/台灣綜藝.md",
+"sha": "b59d0b36ff3fdcc42f61138920e40ac09bb48cca",
+"size": 15697
+},
+{
+"path": "knowledge/Culture/台灣老街文化與商業街區.md",
+"sha": "79f0ed10b7bb9f20387e684b97d9345fcea09ba5",
+"size": 19833
+},
+{
+"path": "knowledge/Culture/台灣聲景.md",
+"sha": "726138361a0f92d6a1ce3c88279b64cea2ff6e43",
+"size": 28213
+},
+{
+"path": "knowledge/Culture/台灣花布.md",
+"sha": "dee844286fbe628342885721bb521c8caf8e4de6",
+"size": 13994
+},
+{
+"path": "knowledge/Culture/台灣茶文化.md",
+"sha": "bf75696e5c97a01def53ff0dac2283dd2391796e",
+"size": 36559
+},
+{
+"path": "knowledge/Culture/台灣茶道與生活美學.md",
+"sha": "34ecd8ef34c6b1786053733d93b1953b76b960c9",
+"size": 11141
+},
+{
+"path": "knowledge/Culture/台灣華語的演化.md",
+"sha": "d0bf8b91ba9d50fd8c11764df367d9678615b962",
+"size": 12061
+},
+{
+"path": "knowledge/Culture/台灣街頭藝術與塗鴉文化.md",
+"sha": "22af22491cb404cf75c78d11c9397c74226a21f7",
+"size": 8848
+},
+{
+"path": "knowledge/Culture/台灣製香文化與香腳原鄉.md",
+"sha": "c740c40247c6c3fa2f280f39ea6ac8e6ad6192b4",
+"size": 10715
+},
+{
+"path": "knowledge/Culture/台灣諧音禁忌文化.md",
+"sha": "898173593b5c338e7d85aec15e6749ffd994388f",
+"size": 6523
+},
+{
+"path": "knowledge/Culture/台灣迷因.md",
+"sha": "b011e14d41850a93eb566e33c25328f9793fab1d",
+"size": 11786
+},
+{
+"path": "knowledge/Culture/台灣郵票.md",
+"sha": "aff0475a90fc961cc29eacfe9ad190f1fc88172e",
+"size": 16175
+},
+{
+"path": "knowledge/Culture/咖波.md",
+"sha": "362cbee545b6093d114f79a6f4d584a0eceeb697",
+"size": 20191
+},
+{
+"path": "knowledge/Culture/噗浪Plurk.md",
+"sha": "1fd7ab123c6e78058bdd6aaff0e3758be82ba85d",
+"size": 6707
+},
+{
+"path": "knowledge/Culture/噶瑪蘭族.md",
+"sha": "59db899449b1bc05595203286d3423133e4a1aee",
+"size": 16450
+},
+{
+"path": "knowledge/Culture/四秀仔.md",
+"sha": "fa41daadc884637df5199a33bf86ee2397f84f07",
+"size": 14935
+},
+{
+"path": "knowledge/Culture/國家圖書館.md",
+"sha": "8a0b54e307b239117b08b9257ede8a536447590b",
+"size": 23981
+},
+{
+"path": "knowledge/Culture/國立故宮博物院.md",
+"sha": "94dbfdf99425f7f0ea63d83def1d2a635b542154",
+"size": 8100
+},
+{
+"path": "knowledge/Culture/國立臺灣博物館.md",
+"sha": "7add2cda0333423a70429aa0e1baf05f94f7a594",
+"size": 20377
+},
+{
+"path": "knowledge/Culture/基督教在台灣.md",
+"sha": "62bb3d57a2152c83547d1790c479f36fee7a90ee",
+"size": 10013
+},
+{
+"path": "knowledge/Culture/大甲媽祖遶境.md",
+"sha": "c983db673c5b89d8c7954dfc7f52380a4ce72d76",
+"size": 9862
+},
+{
+"path": "knowledge/Culture/天燈.md",
+"sha": "a5c4be8cf368fab526a8691091983c1f21d4e22d",
+"size": 30447
+},
+{
+"path": "knowledge/Culture/太魯閣族.md",
+"sha": "43bf54afaba7012eabc1860721f808f2d7e6b816",
+"size": 21211
+},
+{
+"path": "knowledge/Culture/媽祖與大道公的傳說.md",
+"sha": "93e0fd936259efdfb4367a3e40d816a4ec50f64e",
+"size": 6201
+},
+{
+"path": "knowledge/Culture/客家文化與語言.md",
+"sha": "20a03d20a79276a24e7f66eeb1bdbb1e5914c075",
+"size": 15428
+},
+{
+"path": "knowledge/Culture/巧固球.md",
+"sha": "801e1b0330a9d77854b32d30d8aea42f463935b4",
+"size": 5327
+},
+{
+"path": "knowledge/Culture/巴哈姆特.md",
+"sha": "420d88701730fa7fd8a5d322678d4ea4a2d5df0d",
+"size": 9254
+},
+{
+"path": "knowledge/Culture/布袋戲.md",
+"sha": "113160e9fb861d96ceca36c1eacf120de35fcaf7",
+"size": 10587
+},
+{
+"path": "knowledge/Culture/布農族小米歲時祭儀.md",
+"sha": "d0b29267a41d90266f9e077188831261a9e35574",
+"size": 20606
+},
+{
+"path": "knowledge/Culture/廟宇建築與對場作.md",
+"sha": "8d96ea807a689a426656eb7634f41e3b9e8a2304",
+"size": 10360
+},
+{
+"path": "knowledge/Culture/彈珠檯.md",
+"sha": "29d3ce28e149065525787ab1f2f7e76639089981",
+"size": 16358
+},
+{
+"path": "knowledge/Culture/拉阿魯哇族.md",
+"sha": "922e885ce1c9371cd501b06482600d81259a079a",
+"size": 11414
+},
+{
+"path": "knowledge/Culture/拼板舟.md",
+"sha": "fdae9ffa071943b520c298580a1bdaee78a38b4c",
+"size": 38579
+},
+{
+"path": "knowledge/Culture/排灣族琉璃珠.md",
+"sha": "ff040add926a5d37378cd0d2f94e4b3d752cb3a3",
+"size": 21047
+},
+{
+"path": "knowledge/Culture/擲筊.md",
+"sha": "71727ec11336a93528c999a6e2399dac3629d5c8",
+"size": 6168
+},
+{
+"path": "knowledge/Culture/支語誤判學.md",
+"sha": "ca2a5786c75c886cdae7eda15d06370e7bfd8b09",
+"size": 8497
+},
+{
+"path": "knowledge/Culture/斗笠.md",
+"sha": "c50e1b01eddd4e3166163942d8b18c0cbf9bb9db",
+"size": 33026
+},
+{
+"path": "knowledge/Culture/新竹都城隍廟.md",
+"sha": "fbec9d9baaa908b99d12522c50e2d367c764378d",
+"size": 21660
+},
+{
+"path": "knowledge/Culture/族群（閩南客家原住民外省新住民）.md",
+"sha": "63267830025fa9bf3e5f31d06351dad6af93dacc",
+"size": 14066
+},
+{
+"path": "knowledge/Culture/東港迎王船.md",
+"sha": "e56d777c44c7c8c6b6e5a9ed45c26861bab47270",
+"size": 21335
+},
+{
+"path": "knowledge/Culture/校園順口溜.md",
+"sha": "39babe9f849c772c21ba70826f3cefd16cfee882",
+"size": 14714
+},
+{
+"path": "knowledge/Culture/注音符號.md",
+"sha": "d77a69785d50f57de09209f6d954574cc2b53aba",
+"size": 10325
+},
+{
+"path": "knowledge/Culture/泰雅族.md",
+"sha": "321d3e706d4f4f59faa29e737af9a006c6b008ac",
+"size": 18832
+},
+{
+"path": "knowledge/Culture/滿月習俗.md",
+"sha": "e18533fbe31f2c98cce92fda30cd91ad1b6f6c8a",
+"size": 8884
+},
+{
+"path": "knowledge/Culture/澎湖民俗文化.md",
+"sha": "55836cc63f1a9429c4b48349b10ba784f9177929",
+"size": 13326
+},
+{
+"path": "knowledge/Culture/無名小站.md",
+"sha": "dc1d4b3441a76db83713e319afc5a7c32181f55e",
+"size": 35743
+},
+{
+"path": "knowledge/Culture/燈會.md",
+"sha": "c663f5d4c1d9f3db4e9f69e55685701e8513690f",
+"size": 21699
+},
+{
+"path": "knowledge/Culture/痞客邦.md",
+"sha": "1a80e5276d180931ff0fd5b46b16c1c2c3bfabb4",
+"size": 16127
+},
+{
+"path": "knowledge/Culture/皮影戲.md",
+"sha": "2f08eab30f66ec106938469db104c5565d8f001d",
+"size": 10817
+},
+{
+"path": "knowledge/Culture/神豬.md",
+"sha": "4b8cbe89373515d533cf471f35f7bcd2d4536140",
+"size": 12174
+},
+{
+"path": "knowledge/Culture/端午節.md",
+"sha": "eb7bda7aa7f768901ea6d9e8c1eb402cdae24ef4",
+"size": 37760
+},
+{
+"path": "knowledge/Culture/紙傘.md",
+"sha": "9f83ada39b3c7759a2b01845e11a415ae73e4a3c",
+"size": 8703
+},
+{
+"path": "knowledge/Culture/群島思維.md",
+"sha": "41e549f761be27a902fe7728e3e249befed58a33",
+"size": 31710
+},
+{
+"path": "knowledge/Culture/茄芷袋.md",
+"sha": "4cb683080f9320ddcb19c1e9e6647aac722665e3",
+"size": 14423
+},
+{
+"path": "knowledge/Culture/菜市場名.md",
+"sha": "b127f03607917dc45283c1bf271d8fa3b5354790",
+"size": 7061
+},
+{
+"path": "knowledge/Culture/藍染.md",
+"sha": "bd084966137816ba43d9ed8304bbdc87e1feead6",
+"size": 35123
+},
+{
+"path": "knowledge/Culture/藍白拖.md",
+"sha": "f2318676ac565231de7dd8135d626a8982640808",
+"size": 17110
+},
+{
+"path": "knowledge/Culture/語言多樣性與母語文化.md",
+"sha": "1688addf5f4ddab857b58927c8571e2622426964",
+"size": 13791
+},
+{
+"path": "knowledge/Culture/誠品書店.md",
+"sha": "666d85d1dff44c4ed40d3e183d9e1b7b2c5217b3",
+"size": 29453
+},
+{
+"path": "knowledge/Culture/貓眼石.md",
+"sha": "5bfcdd508e713dabceebbf4afc21ab9f8777d240",
+"size": 28575
+},
+{
+"path": "knowledge/Culture/農曆七月.md",
+"sha": "e08a0f6ae5c1e647394678353b90516e11c5ab9e",
+"size": 9771
+},
+{
+"path": "knowledge/Culture/鄒族戰祭.md",
+"sha": "d02373e8330512d057eb831a186bf0f70c56f186",
+"size": 16913
+},
+{
+"path": "knowledge/Culture/金鐘獎.md",
+"sha": "3cd959b24d1f1325087d00bc875f8f9ad78d757e",
+"size": 45540
+},
+{
+"path": "knowledge/Culture/鐵窗花.md",
+"sha": "51fe439b12ec6a591633cecb1fefb00743fe6286",
+"size": 16005
+},
+{
+"path": "knowledge/Culture/長輩圖.md",
+"sha": "08fb839ad22ee9e28f088041e50d5711300dcaba",
+"size": 8734
+},
+{
+"path": "knowledge/Culture/關聖帝君信仰.md",
+"sha": "09eefe458a8a9cd9f327fa12d165001a47504d8c",
+"size": 10617
+},
+{
+"path": "knowledge/Culture/阿美族年齡階級.md",
+"sha": "f6b641ac63a1996ecc41ac46eb0845293438bc44",
+"size": 19716
+},
+{
+"path": "knowledge/Culture/阿貴動畫.md",
+"sha": "2018c06a528ad20df77c1c57279fed5936d59b11",
+"size": 16533
+},
+{
+"path": "knowledge/Culture/雜誌.md",
+"sha": "94e4743d364a022348e0e2447589800e1a1d948c",
+"size": 16753
+},
+{
+"path": "knowledge/Culture/電視布袋戲.md",
+"sha": "59afb903c5a9a0514e2bcac643e91adb7342b75e",
+"size": 8544
+},
+{
+"path": "knowledge/Culture/電鍋.md",
+"sha": "9cc973fbaf0a27eeac1c634168e02eab906c720f",
+"size": 19546
+},
+{
+"path": "knowledge/Culture/香蕉白話.md",
+"sha": "e186a4c0f14897f2be7557b651de7db40ee7661e",
+"size": 13709
+},
+{
+"path": "knowledge/Culture/高雄港.md",
+"sha": "b3cc047abef194d0dbcff263e1d194539ae1e957",
+"size": 26513
+},
+{
+"path": "knowledge/Culture/魯凱族百合花.md",
+"sha": "579e0a84685555bb5b0ed53fe13ef84741892939",
+"size": 14538
+},
+{
+"path": "knowledge/Culture/鹽水蜂炮.md",
+"sha": "45272ecef2e9226101d64529916b9da043713691",
+"size": 11910
+},
+{
+"path": "knowledge/Culture/黑白大廚在台灣.md",
+"sha": "55cbd7f738c1e66baea62361f201da32ec285258",
+"size": 23356
+},
+{
+"path": "knowledge/Economy/AAMA台北搖籃計畫.md",
+"sha": "d11c151b6e57dd9060678717ae18c764ae3fd33c",
+"size": 34769
+},
+{
+"path": "knowledge/Economy/NET.md",
+"sha": "91b62080363a4d4c5eaa3f6b89e76b6cb364908f",
+"size": 13406
+},
+{
+"path": "knowledge/Economy/Pinkoi.md",
+"sha": "6b99732dd717b33c36ad2b1ed5f88761e6d7deef",
+"size": 20466
+},
+{
+"path": "knowledge/Economy/SLP台北創業領導計畫.md",
+"sha": "b920091459bbadb71abf5da437dcd0d1383a2312",
+"size": 33717
+},
+{
+"path": "knowledge/Economy/Shopee.md",
+"sha": "b0771654fd71e2bb1aa6873010d8764f64036a52",
+"size": 9706
+},
+{
+"path": "knowledge/Economy/Yahoo-kimo.md",
+"sha": "e487e48fa31e1699df10066388a531a630639124",
+"size": 17939
+},
+{
+"path": "knowledge/Economy/三商.md",
+"sha": "1a7a46e19c6714d16f37fd7b5c19c63f7d2f5c95",
+"size": 22661
+},
+{
+"path": "knowledge/Economy/中壢.md",
+"sha": "0deb917d0edf76b65aee4918e6b6055c22379f2d",
+"size": 31539
+},
+{
+"path": "knowledge/Economy/中華菱利.md",
+"sha": "520d49677e49e8294629ee41b74cbc30decd088e",
+"size": 7104
+},
+{
+"path": "knowledge/Economy/全聯福利中心.md",
+"sha": "beb031b77e75b31b4d01649a50113d593224b966",
+"size": 8200
+},
+{
+"path": "knowledge/Economy/勇鷹高教機.md",
+"sha": "228b88c76812d59a74586c10fba8102ab8f95b5e",
+"size": 8455
+},
+{
+"path": "knowledge/Economy/博客來.md",
+"sha": "636b4cca2cf29b76a78abe6e658cd717a4e3a6f4",
+"size": 10666
+},
+{
+"path": "knowledge/Economy/口罩國家隊.md",
+"sha": "3da3b63b445f8f09366010d4b7b92d614b4ebbdd",
+"size": 22966
+},
+{
+"path": "knowledge/Economy/台灣中小企業與隱形冠軍.md",
+"sha": "5b6e1829aa7ac7ff03203a2d7664fc45a785b415",
+"size": 9728
+},
+{
+"path": "knowledge/Economy/台灣企業：中華電信.md",
+"sha": "918f465c3fe544e44ce393833bbfda136b0a3ce8",
+"size": 10877
+},
+{
+"path": "knowledge/Economy/台灣企業：中鋼.md",
+"sha": "781c812e95ebe7a4ac9f11209f790c990f9c1073",
+"size": 6647
+},
+{
+"path": "knowledge/Economy/台灣企業：仁寶電腦.md",
+"sha": "e4c1251efccd4567e87a5bacfd517add5c961874",
+"size": 12487
+},
+{
+"path": "knowledge/Economy/台灣企業：兆豐金控.md",
+"sha": "7f3f176de6dc1a628606bcabd91d3fe1127be429",
+"size": 11997
+},
+{
+"path": "knowledge/Economy/台灣企業：台塑集團.md",
+"sha": "b42debee12fc0050f4d19ac3b7b1f44d02d7a8c0",
+"size": 11532
+},
+{
+"path": "knowledge/Economy/台灣企業：台泥.md",
+"sha": "1fc9e2c4886075886d0d8307c1b40de7645e876e",
+"size": 9756
+},
+{
+"path": "knowledge/Economy/台灣企業：台積電.md",
+"sha": "ccc1a4339c03a4d3fa2269061b2e82c71587816e",
+"size": 33207
+},
+{
+"path": "knowledge/Economy/台灣企業：台達電子.md",
+"sha": "7b2397255cd8bc6c097701a0c7ae749d3097bfad",
+"size": 16664
+},
+{
+"path": "knowledge/Economy/台灣企業：和碩聯合.md",
+"sha": "8afbb40a6b10dd3f2243c890d1f9e173958157c4",
+"size": 13242
+},
+{
+"path": "knowledge/Economy/台灣企業：國泰金控.md",
+"sha": "fd8710769c2b4d41f7df74bf674d3334f263fdd6",
+"size": 11438
+},
+{
+"path": "knowledge/Economy/台灣企業：大立光電.md",
+"sha": "30c8a6db8c9077adb88696df43a27b77b1654f88",
+"size": 16560
+},
+{
+"path": "knowledge/Economy/台灣企業：奇美實業.md",
+"sha": "7e4b04177f6a6fb87e8203e437fbaafb35b2ea07",
+"size": 10262
+},
+{
+"path": "knowledge/Economy/台灣企業：宏碁.md",
+"sha": "d019eb175091219d090a453696f3d58f7a006f1d",
+"size": 46972
+},
+{
+"path": "knowledge/Economy/台灣企業：宏達電.md",
+"sha": "ffa72de06a6f67f20ba6fcf2b1d402adcf7ebec6",
+"size": 11216
+},
+{
+"path": "knowledge/Economy/台灣企業：富邦金控.md",
+"sha": "292baf86cfe64953f0c10d29359ad8d83975cc1b",
+"size": 15215
+},
+{
+"path": "knowledge/Economy/台灣企業：巨大機械.md",
+"sha": "b66d8a3f93ff8f36be7a7b716e9cf62eb9f849fd",
+"size": 16831
+},
+{
+"path": "knowledge/Economy/台灣企業：廣達電腦.md",
+"sha": "9e58cbc23faab8104a8def89d677edad31c01665",
+"size": 9380
+},
+{
+"path": "knowledge/Economy/台灣企業：日月光半導體.md",
+"sha": "bf8557625623e3917f710101df2684b05c4d12dd",
+"size": 8963
+},
+{
+"path": "knowledge/Economy/台灣企業：玉山金控.md",
+"sha": "55d0347e2c14b56cfb66959ef1a1f0d9b091496f",
+"size": 10198
+},
+{
+"path": "knowledge/Economy/台灣企業：瑞昱半導體.md",
+"sha": "b5745e757aae2ccb6a1098f5ecf25243d38894aa",
+"size": 8414
+},
+{
+"path": "knowledge/Economy/台灣企業：研華科技.md",
+"sha": "e43485751d531bfecb3e07084afa40d73b02f5f4",
+"size": 10490
+},
+{
+"path": "knowledge/Economy/台灣企業：統一企業.md",
+"sha": "43fafc1a7c17410bd436bf4ede7ef60b4e6a6dfe",
+"size": 49724
+},
+{
+"path": "knowledge/Economy/台灣企業：緯創資通.md",
+"sha": "038589b5096a353588ebfaa53ae1d65ae63aa3b4",
+"size": 12771
+},
+{
+"path": "knowledge/Economy/台灣企業：義美食品.md",
+"sha": "84c275c67fa7883a1692f5261c70491b9c559b32",
+"size": 12221
+},
+{
+"path": "knowledge/Economy/台灣企業：聯發科技.md",
+"sha": "26dcf3c0cd5f1839d77d1768cc6f9fad03d6baa7",
+"size": 11850
+},
+{
+"path": "knowledge/Economy/台灣企業：聯華電子.md",
+"sha": "70f54c9b42eca94b053805b3c068297fb4c53d6d",
+"size": 9218
+},
+{
+"path": "knowledge/Economy/台灣企業：華碩.md",
+"sha": "77e76aac07d632fe232ea7540e5101befacbb376",
+"size": 12408
+},
+{
+"path": "knowledge/Economy/台灣企業：遠東集團.md",
+"sha": "05c850fc534eda99370dbcd3e9146d4de5f72f9f",
+"size": 14769
+},
+{
+"path": "knowledge/Economy/台灣企業：長春石化.md",
+"sha": "8638bf1065e826f73b186ea5b97704e623c60a6a",
+"size": 9720
+},
+{
+"path": "knowledge/Economy/台灣企業：長榮海運.md",
+"sha": "2d95b8bd9a75d8f7527fa842095ebc1d78745b28",
+"size": 9789
+},
+{
+"path": "knowledge/Economy/台灣企業：鴻海精密.md",
+"sha": "2149043283b6c0b00609f26f41b771782ca3fa83",
+"size": 18797
+},
+{
+"path": "knowledge/Economy/台灣前50大企業.md",
+"sha": "f5da1f72185f8c82d9fc2fa638f1784b2ed0977e",
+"size": 30100
+},
+{
+"path": "knowledge/Economy/台灣動畫代工.md",
+"sha": "539767c5b2611720d57b6e25561706337cbffcd8",
+"size": 6142
+},
+{
+"path": "knowledge/Economy/台灣啤酒.md",
+"sha": "dd944325fa9d4e9fcc844569402e456cc252666b",
+"size": 20803
+},
+{
+"path": "knowledge/Economy/台灣國際貿易政策.md",
+"sha": "9367052df2af12800ede42b29177257bb65836fd",
+"size": 14999
+},
+{
+"path": "knowledge/Economy/台灣外貿與全球供應鏈.md",
+"sha": "59800c8ed99dc6e767723af4fe0898ceb22d6818",
+"size": 16092
+},
+{
+"path": "knowledge/Economy/台灣循環經濟與資源再利用.md",
+"sha": "b0b1ec5ba79ac3b3883074e995a9241c5053699f",
+"size": 15086
+},
+{
+"path": "knowledge/Economy/台灣機械工具產業.md",
+"sha": "ba2f0b50b21a476bee1851672d1eb93697740f40",
+"size": 20707
+},
+{
+"path": "knowledge/Economy/台灣油價機制與中油.md",
+"sha": "2908279b51c02e9437f0151b89ce984360b15c9b",
+"size": 46616
+},
+{
+"path": "knowledge/Economy/台灣產業轉型升級.md",
+"sha": "a0cd80e610c6bad3d03c3fd298458135025e4c05",
+"size": 23638
+},
+{
+"path": "knowledge/Economy/台灣科技園區外圍商圈生態.md",
+"sha": "a081b127698546bdd91f6232cf7413dba1db8d0e",
+"size": 20786
+},
+{
+"path": "knowledge/Economy/台灣糖業.md",
+"sha": "d9cd6fadba474e34deb999faa6f716aea5d3754f",
+"size": 26979
+},
+{
+"path": "knowledge/Economy/台灣股市與資本市場.md",
+"sha": "61311fbce7355786c7e4a928958fb4b86c7d3f23",
+"size": 23470
+},
+{
+"path": "knowledge/Economy/台灣自媒體創作者經濟.md",
+"sha": "566095fae65d66bd281cf4e3cac88483b4528faa",
+"size": 13504
+},
+{
+"path": "knowledge/Economy/台灣蘭花.md",
+"sha": "2a993bb5c47c1bbcf1be6db291c649156b9107de",
+"size": 14521
+},
+{
+"path": "knowledge/Economy/台灣農業現代化發展.md",
+"sha": "4297e8c98dedef6d1aa3ca915a3f1b4b6e11abc4",
+"size": 19101
+},
+{
+"path": "knowledge/Economy/台灣農業與農村再生.md",
+"sha": "cdb6e85faf2ed6c96a651d62930fc33d4dd6264f",
+"size": 12909
+},
+{
+"path": "knowledge/Economy/台灣造船業.md",
+"sha": "110122e9cb362d1f02c594aeb41391cab7d12370",
+"size": 17142
+},
+{
+"path": "knowledge/Economy/台灣金融科技發展.md",
+"sha": "acd3a21ba5cc8856b0e291bf6456eb56045de036",
+"size": 14229
+},
+{
+"path": "knowledge/Economy/台灣離岸風電.md",
+"sha": "f028dec9425d8b4120ef51b8513669d98cb38677",
+"size": 11500
+},
+{
+"path": "knowledge/Economy/台灣電價機制與台電.md",
+"sha": "5a6e25c87c4f046a6c13dbd3dd83017609b45722",
+"size": 22128
+},
+{
+"path": "knowledge/Economy/台糖.md",
+"sha": "433054adbd4ac0a2f3ea74287731c09ab2623d17",
+"size": 6762
+},
+{
+"path": "knowledge/Economy/夜市經濟學.md",
+"sha": "1c744309647d1e5202ae9930533d85d16ea8d803",
+"size": 10967
+},
+{
+"path": "knowledge/Economy/文化內容策進院.md",
+"sha": "af4382ea3d51780be70dba122b5f7f429d817497",
+"size": 44730
+},
+{
+"path": "knowledge/Economy/新創生態系.md",
+"sha": "2da19aa5fcc9f9e06e01b250a2bc0a47a4541f9f",
+"size": 19614
+},
+{
+"path": "knowledge/Economy/新台幣.md",
+"sha": "35c6f5ae22e2941740a95f296ecdb75fe5482ad4",
+"size": 15324
+},
+{
+"path": "knowledge/Economy/旺旺.md",
+"sha": "00d1d33297198cb71f3844c34edbc75634e366af",
+"size": 7623
+},
+{
+"path": "knowledge/Economy/生活市集.md",
+"sha": "28b7211f4b69c40d257b03b7a97b1033c94121b0",
+"size": 20217
+},
+{
+"path": "knowledge/Economy/發票.md",
+"sha": "43b04356ca5c6d596d1c2cdae734ec5ca9f4a1c9",
+"size": 47518
+},
+{
+"path": "knowledge/Economy/紡織業.md",
+"sha": "e3b42d00df34e8dc37ffd3e9fbca9722e5422a67",
+"size": 7795
+},
+{
+"path": "knowledge/Economy/經濟奇蹟.md",
+"sha": "7bc7e48b36c9b9858a7ede7ba3817363c0520dc5",
+"size": 25661
+},
+{
+"path": "knowledge/Economy/羊奶.md",
+"sha": "eba063815dcf7522fb3c10db4c6e0c133995d25c",
+"size": 14265
+},
+{
+"path": "knowledge/Economy/萊爾富.md",
+"sha": "1389b0de3a43230ea4bcb5e70c6e13c058be41f9",
+"size": 10903
+},
+{
+"path": "knowledge/Economy/螺絲.md",
+"sha": "6dc98054cd229d69a7258540bd2333ca4b592db7",
+"size": 10359
+},
+{
+"path": "knowledge/Economy/農業科技與精緻農業.md",
+"sha": "f5842b966d66f1c59ef0ec5db6f8ba0fc1b97478",
+"size": 14568
+},
+{
+"path": "knowledge/Economy/造紙.md",
+"sha": "73b42854a273b8a5e2f8aaa90d07e35d819ee91e",
+"size": 23770
+},
+{
+"path": "knowledge/Food/三峽茶.md",
+"sha": "7db08aa9ce262c27ff03faf1f7fef9776bbd2cab",
+"size": 13530
+},
+{
+"path": "knowledge/Food/丹丹漢堡.md",
+"sha": "61e2e52941781c58e12751f638fc2a236fec5315",
+"size": 25539
+},
+{
+"path": "knowledge/Food/刈包.md",
+"sha": "6ffdea04a7f6678a31940b76ac0156aa335f2bf7",
+"size": 29179
+},
+{
+"path": "knowledge/Food/叭噗冰.md",
+"sha": "c03b9f12a5044c6c5342b063923a1c52c7af9d89",
+"size": 32325
+},
+{
+"path": "knowledge/Food/台南中西區美食小吃文化.md",
+"sha": "f8a4291b4faf6f6d821362ea91e061f33dea61b0",
+"size": 12250
+},
+{
+"path": "knowledge/Food/台灣冰品文化.md",
+"sha": "09d1d634d6cb54ed8f2603cb251320b21ca9e64d",
+"size": 11737
+},
+{
+"path": "knowledge/Food/台灣原住民飲食文化.md",
+"sha": "9afa517ab4760f4c6e55e686a39fb0f057e46296",
+"size": 12507
+},
+{
+"path": "knowledge/Food/台灣咖啡文化.md",
+"sha": "bc87921662c61153633b99edf53bcbfd232a2c8f",
+"size": 12514
+},
+{
+"path": "knowledge/Food/台灣咖啡產業.md",
+"sha": "32655095c05bc769b8d848739785c1f2c36e6d08",
+"size": 14416
+},
+{
+"path": "knowledge/Food/台灣小吃.md",
+"sha": "52a22025c2a86a81f360a6c62ad1c978ffa18ef8",
+"size": 14554
+},
+{
+"path": "knowledge/Food/台灣手搖飲文化.md",
+"sha": "f6be5f650754172303e497e0fafc7f749400beae",
+"size": 14400
+},
+{
+"path": "knowledge/Food/台灣手路菜.md",
+"sha": "dfa7fff0ae7548462a6a718d8bbe38dacceb736d",
+"size": 11550
+},
+{
+"path": "knowledge/Food/台灣新住民美食融合.md",
+"sha": "3cf76d068a2cba445cc34c4dc135c5e8ea8aa09b",
+"size": 18528
+},
+{
+"path": "knowledge/Food/台灣早餐文化.md",
+"sha": "15bc8c53c9120bfb3f2bb8b1d6ddf6c14fb698dd",
+"size": 45995
+},
+{
+"path": "knowledge/Food/台灣水果王國.md",
+"sha": "e41db21bb2f4ee168b9f4d28f8f3619c248ece54",
+"size": 39220
+},
+{
+"path": "knowledge/Food/台灣海鮮文化.md",
+"sha": "dbd3c3f1b8debe63bbf0c17c7473465d5c052a2d",
+"size": 7272
+},
+{
+"path": "knowledge/Food/台灣滷味.md",
+"sha": "618f6f85ee207409b62038b2e7ff80b4f8eb37c0",
+"size": 19088
+},
+{
+"path": "knowledge/Food/台灣滷肉飯.md",
+"sha": "d104b9a42c8b358b618cb47e5e91841aa4ca6fc5",
+"size": 8392
+},
+{
+"path": "knowledge/Food/台灣火鍋.md",
+"sha": "0a9414135359836047fe85b9f75b174d0c392fef",
+"size": 8277
+},
+{
+"path": "knowledge/Food/台灣發酵食品與醃製文化.md",
+"sha": "181e395dcc6149de05c05fc96f297069ef710ba2",
+"size": 10047
+},
+{
+"path": "knowledge/Food/台灣眷村菜.md",
+"sha": "1d7dcbf8c9f9166c217ce1d019480aef741cfe50",
+"size": 12863
+},
+{
+"path": "knowledge/Food/台灣米其林與精緻餐飲.md",
+"sha": "8ce4bd9ee447b343cf8c13c79421b3ecd8bb6f0b",
+"size": 19115
+},
+{
+"path": "knowledge/Food/台灣米食文化.md",
+"sha": "680184002df45e25b9d12b8574c1fcfac73426ff",
+"size": 10763
+},
+{
+"path": "knowledge/Food/台灣糕餅文化.md",
+"sha": "2068781b606114cdd85c96991316d21f830f8831",
+"size": 22851
+},
+{
+"path": "knowledge/Food/台灣素食文化.md",
+"sha": "2b1f8525f8d598b451ad50756ee61493efa9b211",
+"size": 9573
+},
+{
+"path": "knowledge/Food/台灣美食總覽.md",
+"sha": "97a114d36841657b8dd50f87b4df80d1f18c294f",
+"size": 56848
+},
+{
+"path": "knowledge/Food/台灣辦桌文化.md",
+"sha": "ea2d35f8335089955d908565630c29e687dd9384",
+"size": 37589
+},
+{
+"path": "knowledge/Food/台灣醬料與調味.md",
+"sha": "971968c1b0c960a1213e72eb3db467af3142e723",
+"size": 6108
+},
+{
+"path": "knowledge/Food/台灣鐵路便當.md",
+"sha": "ae149719022297d90952b29161f0fbc89eecb047",
+"size": 21386
+},
+{
+"path": "knowledge/Food/台灣鹽酥雞.md",
+"sha": "c659096e922b8e1b8ff5dcecbe75c1ecd25f80a2",
+"size": 9366
+},
+{
+"path": "knowledge/Food/台灣麵包與烘焙.md",
+"sha": "ac79a0a3a61824c70ab590c44b27d1af00bc4917",
+"size": 10762
+},
+{
+"path": "knowledge/Food/台灣麵食文化.md",
+"sha": "95e2276b635c7b6ac2cc8ed2fc045fa495bd9d70",
+"size": 12938
+},
+{
+"path": "knowledge/Food/名間埔中茶.md",
+"sha": "5303bd12466aab4dde7ef712dced10e888383831",
+"size": 8249
+},
+{
+"path": "knowledge/Food/嘉義火雞肉飯.md",
+"sha": "8b0798767259385c424dac36722a2a74841c63b3",
+"size": 9290
+},
+{
+"path": "knowledge/Food/國際品牌在地化.md",
+"sha": "44e2cf249b73b46f684b33e74f10bd6505a4ed75",
+"size": 22752
+},
+{
+"path": "knowledge/Food/地瓜球.md",
+"sha": "4ca008abb649d6b202b192f5d6ebb8d0c771d7fa",
+"size": 35604
+},
+{
+"path": "knowledge/Food/埔里紹興酒.md",
+"sha": "efa16c5053415d3f4973dc6c1ad9b8ba19b11c91",
+"size": 14804
+},
+{
+"path": "knowledge/Food/夜市文化.md",
+"sha": "5171bd9dd88eed80c808d6533473834f89ea98a5",
+"size": 13803
+},
+{
+"path": "knowledge/Food/大溪豆乾.md",
+"sha": "9dad2f46956ca39371c8e218ab97351afdf37142",
+"size": 17045
+},
+{
+"path": "knowledge/Food/大腸包小腸.md",
+"sha": "bf75e07a2231259cb439451620347fc7b43e482f",
+"size": 16429
+},
+{
+"path": "knowledge/Food/太陽餅.md",
+"sha": "de9fe45d4758ebb8af79f761e033863571df5c89",
+"size": 7513
+},
+{
+"path": "knowledge/Food/奇拿富.md",
+"sha": "88d13ecf64aed4aacdd06fba5f2404157fa60283",
+"size": 34148
+},
+{
+"path": "knowledge/Food/客家飲食文化.md",
+"sha": "25c5855cb523d4684d89dbe521c620d4777816f9",
+"size": 13979
+},
+{
+"path": "knowledge/Food/彈珠汽水.md",
+"sha": "ffa7bf871bbef668ff1df0c90db98b9d553e2aac",
+"size": 8605
+},
+{
+"path": "knowledge/Food/擂茶.md",
+"sha": "67b9e3341d4e59a74ed005eb2b0116238f1b4bdd",
+"size": 17751
+},
+{
+"path": "knowledge/Food/擔仔麵.md",
+"sha": "0ce1d874cffe707cc235e04f6906f78029c0b421",
+"size": 13487
+},
+{
+"path": "knowledge/Food/新港飴.md",
+"sha": "644845dbbe1080da768386644bf3fee87dcbde08",
+"size": 7331
+},
+{
+"path": "knowledge/Food/新竹米粉.md",
+"sha": "e4786fea96ae17e2b7449d0db946f831f2b3ca20",
+"size": 12648
+},
+{
+"path": "knowledge/Food/棺材板.md",
+"sha": "4abffa82387fb0516a01dc67b4a147d5904d259a",
+"size": 6887
+},
+{
+"path": "knowledge/Food/池上便當.md",
+"sha": "cbeb00d4853614ed59377b41e4d892f5dcc5a13f",
+"size": 12349
+},
+{
+"path": "knowledge/Food/油飯.md",
+"sha": "ff04d150f4600c3b6be9ebc2cfdd2233cf368981",
+"size": 8948
+},
+{
+"path": "knowledge/Food/烏魚子.md",
+"sha": "7b116aba2b9a651ed8e239b2fc8abfc61ea30e84",
+"size": 14064
+},
+{
+"path": "knowledge/Food/燒臘便當.md",
+"sha": "27b3b835d0e0e6dda1235232a213701c6ffe111d",
+"size": 16107
+},
+{
+"path": "knowledge/Food/營養午餐.md",
+"sha": "8a65c8830c5a1521caf479551beb56ead299d444",
+"size": 36986
+},
+{
+"path": "knowledge/Food/牛肉湯.md",
+"sha": "26be078910b0dd75d9e597eedfe9b20654f2bb40",
+"size": 6411
+},
+{
+"path": "knowledge/Food/牛肉麵.md",
+"sha": "60e64ab088bf3265b6c3b170d5d9fc124e14ef2c",
+"size": 13192
+},
+{
+"path": "knowledge/Food/珍珠奶茶.md",
+"sha": "2e84814811c2b00c5bc277db40ed6637cdbaa310",
+"size": 13385
+},
+{
+"path": "knowledge/Food/竹筒飯.md",
+"sha": "cbfacf6c1e903fef5f7840a347c50c681a1e5661",
+"size": 10048
+},
+{
+"path": "knowledge/Food/粽子.md",
+"sha": "06f3f638b78dbc6e6cdf62ba0cc0d4106c0758d6",
+"size": 10192
+},
+{
+"path": "knowledge/Food/糖蔥.md",
+"sha": "e9c20f39b546c984c7f2a59bd1225ca72d5d97e2",
+"size": 9917
+},
+{
+"path": "knowledge/Food/紅麴.md",
+"sha": "97bf36396e8fe326aa88431b40018fc29c312c0f",
+"size": 22935
+},
+{
+"path": "knowledge/Food/肉圓.md",
+"sha": "737e4e69a92e9576f6d2086a85b179ac70a1f143",
+"size": 8070
+},
+{
+"path": "knowledge/Food/臭豆腐.md",
+"sha": "0d79c88947b09f03049ccf9d9a00aac2b98d47cf",
+"size": 8924
+},
+{
+"path": "knowledge/Food/茶文化.md",
+"sha": "66a9926dd0d53e6a3b2d5f39bc2b2e94e4c20468",
+"size": 8772
+},
+{
+"path": "knowledge/Food/茶葉蛋.md",
+"sha": "6263eebfbf91cf2dc1095157a8c70d71a7554452",
+"size": 16616
+},
+{
+"path": "knowledge/Food/蘋果西打.md",
+"sha": "e8fea8c4cf8e5eb664cb87d85233a271186088c3",
+"size": 31182
+},
+{
+"path": "knowledge/Food/蘋果麵包.md",
+"sha": "e7fb3bbee56661a5ad33a48181d9451018b32979",
+"size": 9891
+},
+{
+"path": "knowledge/Food/蘿蔔糕.md",
+"sha": "6e14ba98804b74c4de5b1023f2e31d3953d55ce8",
+"size": 12581
+},
+{
+"path": "knowledge/Food/虱目魚粥.md",
+"sha": "d7e7334ef6c5dc90decf283b4ce5a31083c0f6c2",
+"size": 6062
+},
+{
+"path": "knowledge/Food/蚵仔煎.md",
+"sha": "b02276f47b2f2ea331f356f393e75c8aba93da95",
+"size": 11271
+},
+{
+"path": "knowledge/Food/蛋撻.md",
+"sha": "5f640070b3aa4601fd58bcda793c3979f3d86ddf",
+"size": 12223
+},
+{
+"path": "knowledge/Food/豆花.md",
+"sha": "84a9c20bae045f75879db2bf43332abc10f79793",
+"size": 21077
+},
+{
+"path": "knowledge/Food/豬心冬粉.md",
+"sha": "935620de479a68744d1d930ae5e78791a397985c",
+"size": 5642
+},
+{
+"path": "knowledge/Food/車輪餅.md",
+"sha": "3340a2bce81de269cb95924e2f19104b64fb3d6c",
+"size": 7686
+},
+{
+"path": "knowledge/Food/醬油.md",
+"sha": "9eaf52711563a45ebbe22d2a431a4cb5079ee7ff",
+"size": 15306
+},
+{
+"path": "knowledge/Food/金牛角.md",
+"sha": "c45368e27546ce2554e423b6f48946a63f0ee60e",
+"size": 7530
+},
+{
+"path": "knowledge/Food/金門高粱.md",
+"sha": "5b92148acb4203cf361e1e31df72a4da115515e1",
+"size": 15407
+},
+{
+"path": "knowledge/Food/阿婆鐵蛋.md",
+"sha": "ab98a4f23c09b15cdde9a241f05d2c78d533b1ab",
+"size": 9557
+},
+{
+"path": "knowledge/Food/青草茶.md",
+"sha": "bdd1c6d12c777c913f852b33708698b66508f511",
+"size": 16504
+},
+{
+"path": "knowledge/Food/飛魚.md",
+"sha": "57e754365a0e9fdbb2653d77b7c9b2caafa007b8",
+"size": 17290
+},
+{
+"path": "knowledge/Food/飯糰.md",
+"sha": "bb39b535d7f0d993ac7bf0d990bb878cb1d85037",
+"size": 9694
+},
+{
+"path": "knowledge/Food/香蕉王國.md",
+"sha": "ab883042322f975f8b7cee44b9d5e3a951b436ce",
+"size": 15521
+},
+{
+"path": "knowledge/Food/鬍鬚張.md",
+"sha": "81102b21637321543c0726da8ae7924923f61c77",
+"size": 17629
+},
+{
+"path": "knowledge/Food/鱔魚意麵.md",
+"sha": "b61dcf90d7b85283b2faa63da4117e73d71dc211",
+"size": 30435
+},
+{
+"path": "knowledge/Food/鳳梨罐頭.md",
+"sha": "ba334499f4a5a5f9d41906173d105d8f21dd2761",
+"size": 15244
+},
+{
+"path": "knowledge/Food/鳳梨酥.md",
+"sha": "8fe67dc3f46619af146737a4fb11c62d4a7bfddd",
+"size": 8396
+},
+{
+"path": "knowledge/Food/麥當樂.md",
+"sha": "94b792c4f328191bb633347b12c46a8aad445404",
+"size": 26836
+},
+{
+"path": "knowledge/Food/麻芛湯.md",
+"sha": "85fca4e0aaa0084a33a8258286717ab12ca09632",
+"size": 11504
+},
+{
+"path": "knowledge/Food/黑松.md",
+"sha": "82c6e4e54a59d4762e9ded7917f2ceac9f666943",
+"size": 9285
+},
+{
+"path": "knowledge/Food/鼎泰豐.md",
+"sha": "64f4b7abeca1b1a2150df5e5f94b25d47d4293b9",
+"size": 11581
+},
+{
+"path": "knowledge/Geography/三鶯線.md",
+"sha": "e3f26533dab352ebfd0505f9b182f525a9fe146d",
+"size": 29069
+},
+{
+"path": "knowledge/Geography/中山北路條通.md",
+"sha": "b9a989d94023d75449d2559cd6163e1c58313f63",
+"size": 46966
+},
+{
+"path": "knowledge/Geography/中華民國美學.md",
+"sha": "a5cd9637595a7e7b0800aa8a0ceaab45a35002fe",
+"size": 25171
+},
+{
+"path": "knowledge/Geography/九份.md",
+"sha": "09a6eb05622492eda498690f51e4509879b376bf",
+"size": 19758
+},
+{
+"path": "knowledge/Geography/公館.md",
+"sha": "3909696bbf334328d07d6b1eaca21641825f7055",
+"size": 54120
+},
+{
+"path": "knowledge/Geography/北大特區.md",
+"sha": "b6951bb4aa52c82c879e9a01cc1165f3966c380e",
+"size": 27376
+},
+{
+"path": "knowledge/Geography/北投溫泉街.md",
+"sha": "ad2270cb0669685ee16fa5ab21bb0f304e41e4f7",
+"size": 51219
+},
+{
+"path": "knowledge/Geography/南投縣.md",
+"sha": "0ee85ef755ae3bfb159f266699a975499a8fbe2b",
+"size": 40837
+},
+{
+"path": "knowledge/Geography/台中市.md",
+"sha": "5a879e5d12cce5cfb07c7d3fbe26b4431c3760c9",
+"size": 48642
+},
+{
+"path": "knowledge/Geography/台中捷運.md",
+"sha": "b337eab6d9553f6877f87b34d90ff91438134b44",
+"size": 22768
+},
+{
+"path": "knowledge/Geography/台北101.md",
+"sha": "c9e6348e39a97b5b55d62c464e71ceacd773f1e9",
+"size": 15502
+},
+{
+"path": "knowledge/Geography/台北市.md",
+"sha": "6b4750f29ebca4a06a7cba9911ce6aae3c8275c2",
+"size": 46467
+},
+{
+"path": "knowledge/Geography/台南市.md",
+"sha": "8fb3144dc46c190881163638e83c0c144ddaf98d",
+"size": 50084
+},
+{
+"path": "knowledge/Geography/台東縣.md",
+"sha": "846a8db49ec9fcf69afb6f7ba87d80f5ac3c1d93",
+"size": 47310
+},
+{
+"path": "knowledge/Geography/台灣五大地形與地理結構.md",
+"sha": "6c58f84836e26b317abe9dc3333a272a0406534b",
+"size": 13423
+},
+{
+"path": "knowledge/Geography/台灣國家風景區系統.md",
+"sha": "fd84e5450217867c87efc47d91c0676e1c3483c4",
+"size": 11034
+},
+{
+"path": "knowledge/Geography/台灣地圖怎麼讀.md",
+"sha": "42c6e86795d520d0977347dc0974a7e07d919fa7",
+"size": 14433
+},
+{
+"path": "knowledge/Geography/台灣島嶼地理特色與形成.md",
+"sha": "d61aa141883088fc80c3932e49eb1bd095d881bc",
+"size": 13727
+},
+{
+"path": "knowledge/Geography/台灣板塊運動與地震活動.md",
+"sha": "a11828d43c8a92596329450c7ec64e035d277d8e",
+"size": 11952
+},
+{
+"path": "knowledge/Geography/台灣水庫與水資源管理.md",
+"sha": "198730242c8645628187f6f78d2defae72718a82",
+"size": 17058
+},
+{
+"path": "knowledge/Geography/台灣河川系統與水文特色.md",
+"sha": "4a820cd07fcd516136f6cbef024c49d9b51af0af",
+"size": 19930
+},
+{
+"path": "knowledge/Geography/台灣海岸地形與海洋地景.md",
+"sha": "7e9e6522f3808f48cfe5e84f0ae8349063e9c942",
+"size": 8811
+},
+{
+"path": "knowledge/Geography/台灣溫泉地景.md",
+"sha": "b938d810280e1ea8abb6661a86e0666d7d3f781f",
+"size": 14481
+},
+{
+"path": "knowledge/Geography/台灣生態多樣性熱點.md",
+"sha": "4ad5f5ff0853f987ecf43122850c559cc0051dcb",
+"size": 10104
+},
+{
+"path": "knowledge/Geography/台灣行政區劃.md",
+"sha": "e926892f4d67ec935537b0255c78c9ff95d2f91a",
+"size": 11480
+},
+{
+"path": "knowledge/Geography/台灣農業地景與產業分布.md",
+"sha": "ffdb532b419fa6ed9b9c834f53dbf4f9afe5592d",
+"size": 10435
+},
+{
+"path": "knowledge/Geography/台灣都市發展與城鄉差距.md",
+"sha": "a632be90e44c157228bf258625c3e3da994e8a87",
+"size": 14000
+},
+{
+"path": "knowledge/Geography/嘉義市.md",
+"sha": "7a9014f4d5254d2371bf95f1ef6bd650b9dbe39e",
+"size": 37862
+},
+{
+"path": "knowledge/Geography/嘉義縣.md",
+"sha": "d1f8730e3a345d7ca092600bfd74c88293d0146a",
+"size": 42261
+},
+{
+"path": "knowledge/Geography/四四南村.md",
+"sha": "e87588d7bd573c36be2b646387bd3c006f3d1c34",
+"size": 37186
+},
+{
+"path": "knowledge/Geography/地形與地質.md",
+"sha": "08e5a588854ade54b77c9d665f4fd85e84cb05f7",
+"size": 10529
+},
+{
+"path": "knowledge/Geography/城市特色與區域文化.md",
+"sha": "9f4023603cfe8010b3614e8f5cef65960402c0b8",
+"size": 20194
+},
+{
+"path": "knowledge/Geography/基隆市.md",
+"sha": "98b804e0fbe059b127f623cceb50e0f244820d67",
+"size": 31804
+},
+{
+"path": "knowledge/Geography/士林.md",
+"sha": "50799e428d6b7bce08016736ed5a0a4c81e413a5",
+"size": 44341
+},
+{
+"path": "knowledge/Geography/大稻埕.md",
+"sha": "078030ac128fd5d3a77ec4c269bce0fc0cab0c45",
+"size": 39094
+},
+{
+"path": "knowledge/Geography/大龍峒.md",
+"sha": "a16bbda897fd1f94159ec4e61784bb3be2b3c993",
+"size": 49148
+},
+{
+"path": "knowledge/Geography/安坑輕軌.md",
+"sha": "f45f466101dc7aa6c2bd3a3cb613c405cfda6ff0",
+"size": 21604
+},
+{
+"path": "knowledge/Geography/宜蘭縣.md",
+"sha": "2a93b255f0172fc3c9369b8ca6c0079459d7fe12",
+"size": 49642
+},
+{
+"path": "knowledge/Geography/寶藏巖.md",
+"sha": "6922dab241960ca44b176c85aeae77e345f13528",
+"size": 48755
+},
+{
+"path": "knowledge/Geography/屏東縣.md",
+"sha": "8361b43d6be796ac5c9df3f021aa6c27bf6de7a3",
+"size": 40507
+},
+{
+"path": "knowledge/Geography/彰化縣.md",
+"sha": "6dc9cd5368ab7f1872053ecbe474f0340cb699fb",
+"size": 34720
+},
+{
+"path": "knowledge/Geography/擎天崗.md",
+"sha": "96296a78098e54ad09a04c9fbdd62eced4b77329",
+"size": 17424
+},
+{
+"path": "knowledge/Geography/文湖線.md",
+"sha": "148cdf81ba0561b33039513eaf6f38c12614057c",
+"size": 19316
+},
+{
+"path": "knowledge/Geography/新北市.md",
+"sha": "e12cd834c31986649c3fa47ee227a7d0411875e9",
+"size": 58827
+},
+{
+"path": "knowledge/Geography/新竹市.md",
+"sha": "4dd243a327de2564ed6ba3f12ac4527467be3704",
+"size": 39173
+},
+{
+"path": "knowledge/Geography/新竹縣.md",
+"sha": "d1a98e277fa18a9948ab2c9342bd17eeca03e675",
+"size": 41197
+},
+{
+"path": "knowledge/Geography/日月潭.md",
+"sha": "d4b2339d0be6958e8409cd82898455c65d273cd8",
+"size": 14259
+},
+{
+"path": "knowledge/Geography/板南線.md",
+"sha": "44be7985b7f0c87a93281e20fe0856f8133129ce",
+"size": 25125
+},
+{
+"path": "knowledge/Geography/林口新市鎮.md",
+"sha": "26ee02479c4982fb6c3fb34ff4c682c9c49c2cb2",
+"size": 18479
+},
+{
+"path": "knowledge/Geography/林安泰古厝.md",
+"sha": "cc0a25497703018d1d6bfa5135781c7dac2ce4cb",
+"size": 23714
+},
+{
+"path": "knowledge/Geography/桃園埤塘.md",
+"sha": "ce27ae8d97fceafb4298f42b00896dd66c83d9e8",
+"size": 19375
+},
+{
+"path": "knowledge/Geography/桃園市.md",
+"sha": "bebb581e3a688f92204f85f313f71359634afa3b",
+"size": 39269
+},
+{
+"path": "knowledge/Geography/樂生療養院.md",
+"sha": "2f6c529863d7a4762e5a9537089a6f0d6c318ee0",
+"size": 23827
+},
+{
+"path": "knowledge/Geography/氣候.md",
+"sha": "f0d8d459b256bcc0030f4228824779316742b36c",
+"size": 12977
+},
+{
+"path": "knowledge/Geography/水往上流.md",
+"sha": "0c10dea286cc16ffc1bd2b07a5bb15981436add2",
+"size": 8337
+},
+{
+"path": "knowledge/Geography/永康街.md",
+"sha": "56250572c985232b47701d4c7db30408fd2671ce",
+"size": 42485
+},
+{
+"path": "knowledge/Geography/清水斷崖.md",
+"sha": "48aed93fe7e56fb17be64d1dc51e4f9515addc0c",
+"size": 10350
+},
+{
+"path": "knowledge/Geography/湖口老街.md",
+"sha": "ba26fc0cb7540b8d5b4826ba41b491cb6428bba7",
+"size": 11884
+},
+{
+"path": "knowledge/Geography/漯底山.md",
+"sha": "4e9e59a11f8f1c370ac36ce3b5149273a41ebe88",
+"size": 14205
+},
+{
+"path": "knowledge/Geography/澎湖縣.md",
+"sha": "10941849626599f10d86742334a15f0cab36dec2",
+"size": 40792
+},
+{
+"path": "knowledge/Geography/烏坵.md",
+"sha": "17e68fc43deb48693e59cb6873bee11c8fd021f3",
+"size": 9499
+},
+{
+"path": "knowledge/Geography/牯嶺街.md",
+"sha": "8eede386eb5a78cc34a5f56a9552e49a71fa5a3f",
+"size": 42283
+},
+{
+"path": "knowledge/Geography/猴硐.md",
+"sha": "cf2f1041989406031b822178e58a21eac55fc99b",
+"size": 31874
+},
+{
+"path": "knowledge/Geography/玉山.md",
+"sha": "342feb835c133a0d7026b00a3a7c68f0fd77c175",
+"size": 12245
+},
+{
+"path": "knowledge/Geography/玉山氣象站.md",
+"sha": "b2fb79e02f500f72971aedf10941ef535d8dbfc9",
+"size": 25437
+},
+{
+"path": "knowledge/Geography/用數據看台灣22縣市.md",
+"sha": "3acf76281eb927f24ad9c1fca8dd109093586288",
+"size": 23410
+},
+{
+"path": "knowledge/Geography/竹山鎮.md",
+"sha": "dbad63b92e8769d28d271ce50d5954af6457e336",
+"size": 13551
+},
+{
+"path": "knowledge/Geography/縱貫鐵路.md",
+"sha": "b4a2aeb94bae974663ae1fe77bf86163900dba64",
+"size": 17521
+},
+{
+"path": "knowledge/Geography/自來水.md",
+"sha": "d1008420f426fabae221ada57d0fecd0592d7cf4",
+"size": 17531
+},
+{
+"path": "knowledge/Geography/艋舺.md",
+"sha": "2d28e44e16293220fc7ed79a32bb555e147f2747",
+"size": 42915
+},
+{
+"path": "knowledge/Geography/花蓮縣.md",
+"sha": "d860dbfc1a2a9cc52e2f89874eb0ea4d729c52e7",
+"size": 51355
+},
+{
+"path": "knowledge/Geography/苗栗縣.md",
+"sha": "bdb7c9c3b1c30c5a0587dbddd7f4135f66d127a7",
+"size": 42416
+},
+{
+"path": "knowledge/Geography/蘇澳冷泉.md",
+"sha": "64e85947d6c40b235471a53a3123ab1d7ccd7879",
+"size": 15551
+},
+{
+"path": "knowledge/Geography/西螺鎮.md",
+"sha": "b601bb7482c97c6bcb63d35bc7cd8d357e470e12",
+"size": 11754
+},
+{
+"path": "knowledge/Geography/西門町.md",
+"sha": "d85384672f594bbf925788981efea56f5582dd5b",
+"size": 44067
+},
+{
+"path": "knowledge/Geography/連江縣.md",
+"sha": "6646190d0375a8cc79893070f14e3370ca6efc55",
+"size": 44212
+},
+{
+"path": "knowledge/Geography/野柳.md",
+"sha": "2246361c0fc2eff84962306be706d5dad1a9f506",
+"size": 7539
+},
+{
+"path": "knowledge/Geography/金瓜石.md",
+"sha": "978cd23bcfdb517dac1f56fe73ea5d6198d66544",
+"size": 42607
+},
+{
+"path": "knowledge/Geography/金門縣.md",
+"sha": "15a15eb82bb8c188b1e744bd2333881f9f0366e4",
+"size": 40630
+},
+{
+"path": "knowledge/Geography/阿里山林業鐵路.md",
+"sha": "4c03233c3bd855d518dcff8d685ef38c6ae645d9",
+"size": 17658
+},
+{
+"path": "knowledge/Geography/離島與海洋文化.md",
+"sha": "af26f8f6a8cd9e8a17348d28dcf4e43d812c49eb",
+"size": 20605
+},
+{
+"path": "knowledge/Geography/雲林縣.md",
+"sha": "5ad523393499fe02e04a7e0154cc572b020a0f06",
+"size": 44234
+},
+{
+"path": "knowledge/Geography/高雄市.md",
+"sha": "89f7576b1be82608d7fe146530f973c46c593e9c",
+"size": 49525
+},
+{
+"path": "knowledge/Geography/龜山島.md",
+"sha": "d2d50ec241f709d02a847153cd1cc126c0bb5340",
+"size": 45837
+},
+{
+"path": "knowledge/History/1935新竹臺中地震.md",
+"sha": "e3db306787c8d57b0e28477eedc8f39ff4920a9f",
+"size": 22296
+},
+{
+"path": "knowledge/History/19世紀的樟腦戰爭.md",
+"sha": "3f7299f3a340cae66329626b074bbe59a965530e",
+"size": 17451
+},
+{
+"path": "knowledge/History/823砲戰.md",
+"sha": "55ba3fdd51f91abd6aecaaa000d03a311887b91b",
+"size": 19996
+},
+{
+"path": "knowledge/History/87水災.md",
+"sha": "637540e19bb9516ff7d4f57e6c56a6f0e3bfec6a",
+"size": 19575
+},
+{
+"path": "knowledge/History/三個外國人看乙未.md",
+"sha": "37c2298fd50b63b029774ecf65a233eb041ccfa5",
+"size": 13942
+},
+{
+"path": "knowledge/History/三峽老街.md",
+"sha": "5c36beab375624e6a1d43cc8436b33bfc78cb37b",
+"size": 8187
+},
+{
+"path": "knowledge/History/中壢事件.md",
+"sha": "f02ffd970d52c3243adbd251fbda81118f7f7e49",
+"size": 22552
+},
+{
+"path": "knowledge/History/中正紀念堂.md",
+"sha": "f0bb49c063235fa237602ff106a2df0e0e533dae",
+"size": 9190
+},
+{
+"path": "knowledge/History/乙未之役.md",
+"sha": "bf7cce244995611f4ae2ce0b3619d201a596776e",
+"size": 13973
+},
+{
+"path": "knowledge/History/九二一集集地震.md",
+"sha": "947130375b6099300972b192ca09689d39cf232a",
+"size": 19132
+},
+{
+"path": "knowledge/History/二二八事件.md",
+"sha": "fb40a6dcec95c56d145542a75f0a329eec3fb4b1",
+"size": 21141
+},
+{
+"path": "knowledge/History/亞泥新城山礦場事件.md",
+"sha": "409dd83b56bda74a4b08a64859a8f346f73794f2",
+"size": 21307
+},
+{
+"path": "knowledge/History/八仙塵爆.md",
+"sha": "2803c73e38e04d41217b6d99f34b993d1612a7b5",
+"size": 12815
+},
+{
+"path": "knowledge/History/動保.md",
+"sha": "b71205b46006fcb5ddefacf307b5f021a55b4d20",
+"size": 8665
+},
+{
+"path": "knowledge/History/北一女.md",
+"sha": "cd30065b542f3d50e755d330ffbb20db051a90d3",
+"size": 11604
+},
+{
+"path": "knowledge/History/十大建設.md",
+"sha": "763193bb54a9e0da4aa6f2010509a2ea053cf3bc",
+"size": 12923
+},
+{
+"path": "knowledge/History/台中州廳.md",
+"sha": "9c76f4be6bd3d2a58ac8bd3cd1ae568c111f1968",
+"size": 19031
+},
+{
+"path": "knowledge/History/台中港.md",
+"sha": "0e5257bfe6b84c52cc950c59a70557617138fc93",
+"size": 20537
+},
+{
+"path": "knowledge/History/台北車站.md",
+"sha": "f6f6e76139f33f83c3f705bcbd2668881035e241",
+"size": 22553
+},
+{
+"path": "knowledge/History/台海危機與兩岸關係發展.md",
+"sha": "253119cd09a267c669a5ce1177a9a113406cb204",
+"size": 16504
+},
+{
+"path": "knowledge/History/台灣出國史.md",
+"sha": "de8ea554cf70f0bb8ab888f4a85528c4cf388910",
+"size": 24498
+},
+{
+"path": "knowledge/History/台灣原住民族歷史與正名運動.md",
+"sha": "7220b06f387339075f197630c8b8c57e45655725",
+"size": 10908
+},
+{
+"path": "knowledge/History/台灣古蹟保存運動史.md",
+"sha": "04c09d59730ce1b9b69563330fb915da7805e056",
+"size": 10966
+},
+{
+"path": "knowledge/History/台灣土地改革.md",
+"sha": "698b4062fff4ee9e419989724681da8301994eaf",
+"size": 14524
+},
+{
+"path": "knowledge/History/台灣島史觀.md",
+"sha": "1ec621ee4b2b7a5a19138984046ff9c0bb2a3535",
+"size": 21591
+},
+{
+"path": "knowledge/History/台灣廣播史.md",
+"sha": "1c6729983bd64e7be3ee7639b99fa2775483735b",
+"size": 16800
+},
+{
+"path": "knowledge/History/台灣森林開發史.md",
+"sha": "adc4c51747ac93b014a8ed802388e010ec153208",
+"size": 8712
+},
+{
+"path": "knowledge/History/台灣民主轉型.md",
+"sha": "1faba67f873b4a6f510778aa70b64ea1db37b5e5",
+"size": 20773
+},
+{
+"path": "knowledge/History/台灣海洋貿易史.md",
+"sha": "09824230f97d34af81dbe1be9691f7ca059a186c",
+"size": 8041
+},
+{
+"path": "knowledge/History/台灣漁業現代化.md",
+"sha": "d2e9b263f13df49cb437240d92d29ed31e2a3efb",
+"size": 21743
+},
+{
+"path": "knowledge/History/台灣漁業起源.md",
+"sha": "14f047ac904d41d2f2efddecd9d6eb9a9b73b5fa",
+"size": 19486
+},
+{
+"path": "knowledge/History/台灣白色恐怖.md",
+"sha": "b32fa326d48373330147690066d10d3b8229d077",
+"size": 19446
+},
+{
+"path": "knowledge/History/台灣盜版史.md",
+"sha": "184714d84097e7b14fff704697fabe2b5605c5d2",
+"size": 25476
+},
+{
+"path": "knowledge/History/台灣眷村歷史.md",
+"sha": "1693e00fe60bd80d5ca41b71186ebb515d27db64",
+"size": 18058
+},
+{
+"path": "knowledge/History/台灣糖業鐵路.md",
+"sha": "1cf3adef99b49261e85c12fc32480eda6ee4061c",
+"size": 14820
+},
+{
+"path": "knowledge/History/台灣與北朝鮮關係.md",
+"sha": "fc31ed17bda39315cd3a3c892341d25646f7d364",
+"size": 18301
+},
+{
+"path": "knowledge/History/台灣轉型正義.md",
+"sha": "5a393a1483036cc1bd471a336a5e794826eded0f",
+"size": 17533
+},
+{
+"path": "knowledge/History/台灣農會史.md",
+"sha": "f67f04f93323438618ad1807fe3f62c5a3980155",
+"size": 17798
+},
+{
+"path": "knowledge/History/台灣選舉與政黨政治.md",
+"sha": "8c970a459d82f53822bd42dfbdca664feed98cb7",
+"size": 30364
+},
+{
+"path": "knowledge/History/台灣鐵道史.md",
+"sha": "39ada550226bf45705e5dd5762eba3178ec49aed",
+"size": 27843
+},
+{
+"path": "knowledge/History/台灣鹽業.md",
+"sha": "2545363a782ac20333e51fbd19722bf8f60f7313",
+"size": 15142
+},
+{
+"path": "knowledge/History/史前時代與原住民.md",
+"sha": "c210c70a84e82b9c4e477e0f4d5777238fb13ca8",
+"size": 7790
+},
+{
+"path": "knowledge/History/吳鳳傳說.md",
+"sha": "5f7f2b3ab47f8e7d256db139b874f11192ec6500",
+"size": 20857
+},
+{
+"path": "knowledge/History/嘉南大圳.md",
+"sha": "e4f4900fda06bc58a0e42ed614379922994bff2d",
+"size": 19725
+},
+{
+"path": "knowledge/History/嘉義農林.md",
+"sha": "5d4adb02c194a06b64866c8128dc766ea2d8af74",
+"size": 17155
+},
+{
+"path": "knowledge/History/國家人權博物館.md",
+"sha": "3b633d25098a4e40a3470e05982fa7a57da30ef9",
+"size": 47656
+},
+{
+"path": "knowledge/History/國家鐵道博物館.md",
+"sha": "596135fd57c8bbb44b59e69b5eddeb4e46a85d3d",
+"size": 16993
+},
+{
+"path": "knowledge/History/國民政府遷台與戰後重建.md",
+"sha": "a4da3a6a51988c44fc0098de92b94fe530f03a5d",
+"size": 12334
+},
+{
+"path": "knowledge/History/圓山大飯店.md",
+"sha": "64c2d66dc803c86e2b719803f1594d5604740fea",
+"size": 9303
+},
+{
+"path": "knowledge/History/大罷免.md",
+"sha": "f0062b4e4b9419c4d7193bff2c0f4b571d9a3773",
+"size": 41331
+},
+{
+"path": "knowledge/History/太平輪.md",
+"sha": "af0de53e1a9e5eb6b147785ba2be933c4f102867",
+"size": 15000
+},
+{
+"path": "knowledge/History/婦女運動.md",
+"sha": "3df73cb78cdbec991cf1e45bd2b4b3845c202649",
+"size": 26990
+},
+{
+"path": "knowledge/History/平埔族.md",
+"sha": "6829f815c9dbe6685dc2b48c354b4be146998386",
+"size": 12177
+},
+{
+"path": "knowledge/History/心戰.md",
+"sha": "7921b80db58ac5284692e281b9d2d1361cccca7c",
+"size": 8559
+},
+{
+"path": "knowledge/History/戒嚴時期.md",
+"sha": "2536f5cfecc043d76af96b8c4813b463be979f59",
+"size": 11240
+},
+{
+"path": "knowledge/History/日治時期.md",
+"sha": "983d53d5b0ff9c6bc2c5b2f870212f368013c7af",
+"size": 7480
+},
+{
+"path": "knowledge/History/日治時期臺灣社會運動.md",
+"sha": "a35ff3a92989636d926e75b49dd1e25d133d9b9a",
+"size": 16313
+},
+{
+"path": "knowledge/History/東寧王國.md",
+"sha": "426f171f616a4902b105fcd6658bec708b5c23cf",
+"size": 9561
+},
+{
+"path": "knowledge/History/林爽文事件.md",
+"sha": "37ee0e4424e11f434c6313929e050bcdeac34397",
+"size": 14388
+},
+{
+"path": "knowledge/History/森山松之助與日治州廳建築.md",
+"sha": "46de4425cc531e2320531c7c00ebc6706db7fae1",
+"size": 9210
+},
+{
+"path": "knowledge/History/民主化.md",
+"sha": "2a4a1eec9a7e2db84bed47803b551d311c533b9d",
+"size": 13177
+},
+{
+"path": "knowledge/History/消失的遊樂園.md",
+"sha": "202b5fc3f6018b723a474ef38eaa1e5a86b4cad5",
+"size": 8134
+},
+{
+"path": "knowledge/History/淡江中學.md",
+"sha": "47731698817f2e7aebbbaa17f17d3d5330b93da8",
+"size": 10933
+},
+{
+"path": "knowledge/History/清治時期.md",
+"sha": "2a7ff1c51bf2c18f37bdc6d0e0486c3f46fecbb6",
+"size": 8704
+},
+{
+"path": "knowledge/History/清法戰爭.md",
+"sha": "3e71c2ec90e5a7f17f9c432f3889239a115e08a4",
+"size": 16392
+},
+{
+"path": "knowledge/History/湖口營區與勝利路記憶.md",
+"sha": "9d7d5fcfc862904e48066dbe7ab1a0bdb6192d8f",
+"size": 3683
+},
+{
+"path": "knowledge/History/源興牛與牛肉湯的歷史.md",
+"sha": "61828dcccc904c485a82ce283ce5e34a258ff7b4",
+"size": 14980
+},
+{
+"path": "knowledge/History/熱蘭遮城.md",
+"sha": "662d95f8e2ae9927b76fc046d6730749dae4760b",
+"size": 7684
+},
+{
+"path": "knowledge/History/牡丹社事件.md",
+"sha": "34be5bc6d661d1718ffd6a3a189fe1d9cb16be88",
+"size": 8865
+},
+{
+"path": "knowledge/History/瘧疾根除.md",
+"sha": "417282644dd30991be402381d026071bb922271f",
+"size": 20495
+},
+{
+"path": "knowledge/History/石門水庫.md",
+"sha": "9e8161495c417d34912f8f6fbe63e2cdf87b01ee",
+"size": 21448
+},
+{
+"path": "knowledge/History/福爾摩沙.md",
+"sha": "989e61a51d6497b50e04df148928dc3e95a33a90",
+"size": 13474
+},
+{
+"path": "knowledge/History/綠島監獄.md",
+"sha": "ba7e73e2e52eb921e4c404d0d63b622656393426",
+"size": 17319
+},
+{
+"path": "knowledge/History/羅發號事件與卓杞篤.md",
+"sha": "afa02aafcb36c773f30f68cc3c43712346e7fa6d",
+"size": 10767
+},
+{
+"path": "knowledge/History/美援.md",
+"sha": "865495423ac57d7e1e0e7701f8f1397f501f362d",
+"size": 22846
+},
+{
+"path": "knowledge/History/美麗島事件.md",
+"sha": "a4088bcb5de89e1ee19d657843f6c6eaca604b60",
+"size": 16324
+},
+{
+"path": "knowledge/History/臺灣前途決議文.md",
+"sha": "7e3e414d2165b56fe0517fd9d104d8fcaa6ed7b1",
+"size": 22811
+},
+{
+"path": "knowledge/History/臺灣民報.md",
+"sha": "a62328cd845078e7f9a655ae34eb7aa5a46ec004",
+"size": 18295
+},
+{
+"path": "knowledge/History/臺灣議會設置請願運動.md",
+"sha": "11fd78c0ab465dfbd7469961693fd0af4f2b273f",
+"size": 21101
+},
+{
+"path": "knowledge/History/荷西明鄭時期.md",
+"sha": "3d9ef030e24532edb886d589b7d9aeb9f46d59f2",
+"size": 12809
+},
+{
+"path": "knowledge/History/莫拉克風災.md",
+"sha": "7e92a2b956fc7205ebf808a64a03e11726a9b7d7",
+"size": 10877
+},
+{
+"path": "knowledge/History/蓬萊米.md",
+"sha": "dd664633c6822937f6f09595685eaa77f90d45eb",
+"size": 17870
+},
+{
+"path": "knowledge/History/蘭嶼核廢料.md",
+"sha": "b5704e16a31f5abdcebaac88846b419e51f7ee45",
+"size": 13964
+},
+{
+"path": "knowledge/History/西班牙北台灣十六年.md",
+"sha": "78907c21227ee9336003e441408118b6b5cdb078",
+"size": 8157
+},
+{
+"path": "knowledge/History/西螺大橋.md",
+"sha": "5d3514977c282cdcedc4765ead1671a7214d236e",
+"size": 17186
+},
+{
+"path": "knowledge/History/跨黨派的好政策.md",
+"sha": "fa3d6a8338ebd649ddf10d7353b7d9b9a27d151c",
+"size": 56539
+},
+{
+"path": "knowledge/History/迪士尼.md",
+"sha": "4ed3fe6a5cec102226ea0f92805f4d66cd3b8a05",
+"size": 20061
+},
+{
+"path": "knowledge/History/退出聯合國.md",
+"sha": "b35b73e0da71e042146c1347801c1b045d944d29",
+"size": 19427
+},
+{
+"path": "knowledge/History/阿里山：帝國的林場與高一生的山.md",
+"sha": "99cdc0c623e69b1172c091e70e803abfc344ced3",
+"size": 11134
+},
+{
+"path": "knowledge/History/高雄加工出口區.md",
+"sha": "ac8fe9fab08e53521caeeb2cd5bf27838a396f4a",
+"size": 15816
+},
+{
+"path": "knowledge/History/鶯歌陶瓷老街.md",
+"sha": "760f2d57da6761340f14d43e183f4a7d6bc06f22",
+"size": 15940
+},
+{
+"path": "knowledge/History/黑蝙蝠中隊.md",
+"sha": "f637aa2a53a65973a00c7c2b70e18756b45e48a2",
+"size": 8066
+},
+{
+"path": "knowledge/Lifestyle/307taipeibus.md",
+"sha": "7c184ebb855dc6bcbdd5453e71dad8243599d5a5",
+"size": 19187
+},
+{
+"path": "knowledge/Lifestyle/LINE.md",
+"sha": "4fb10402070fb2955382b1422d5acaa0a45d9682",
+"size": 14217
+},
+{
+"path": "knowledge/Lifestyle/MTV包廂.md",
+"sha": "37cc83b816509934a4ec60038bb7b9cc6920098d",
+"size": 16969
+},
+{
+"path": "knowledge/Lifestyle/中華民國台灣護照.md",
+"sha": "5f17ca37863b6a3dfbda800ff399fed29580596c",
+"size": 25256
+},
+{
+"path": "knowledge/Lifestyle/保齡球.md",
+"sha": "0b1a3f8c9e104ff07f1ce73e9eeb02e7e3542499",
+"size": 8035
+},
+{
+"path": "knowledge/Lifestyle/全民健保.md",
+"sha": "1632eba1007687e3f99dc6be6c013285e46a8d60",
+"size": 9062
+},
+{
+"path": "knowledge/Lifestyle/六福村.md",
+"sha": "b3a4d0f6976cda24b4641761c681b9050733899a",
+"size": 19341
+},
+{
+"path": "knowledge/Lifestyle/台北橋機車瀑布.md",
+"sha": "b4839828b9771fe224a7faf92537f4859a961722",
+"size": 10187
+},
+{
+"path": "knowledge/Lifestyle/台灣YouBike文化與城市微交通革命.md",
+"sha": "9af88c0a9a1384039c136b1daf0ecf9dc2025f16",
+"size": 8047
+},
+{
+"path": "knowledge/Lifestyle/台灣交通系統.md",
+"sha": "e08832f85935097ff117bf67012ad59354c77940",
+"size": 20661
+},
+{
+"path": "knowledge/Lifestyle/台灣便利商店文化.md",
+"sha": "97370a3dae2a8a26060ade8b323dad54d9d980b8",
+"size": 14441
+},
+{
+"path": "knowledge/Lifestyle/台灣公園與日常休閒.md",
+"sha": "a2c74410e9bddd4b8fdd4e36c4b9dba205c60d63",
+"size": 10598
+},
+{
+"path": "knowledge/Lifestyle/台灣回收與資源循環文化.md",
+"sha": "3846606cc5115c69d3d95ff02280481caaa3abe9",
+"size": 9452
+},
+{
+"path": "knowledge/Lifestyle/台灣垃圾車音樂.md",
+"sha": "6f03e76a939d4d375af24c6172071e31fd088755",
+"size": 16538
+},
+{
+"path": "knowledge/Lifestyle/台灣市場文化與傳統市場.md",
+"sha": "ac1e5b61650bf4a02bba02886ec255171b74fb54",
+"size": 15265
+},
+{
+"path": "knowledge/Lifestyle/台灣捷運發展史.md",
+"sha": "4c58665afe8521bb71cc4a5586cd3b7edc0bb3d6",
+"size": 21285
+},
+{
+"path": "knowledge/Lifestyle/台灣教育制度.md",
+"sha": "f52cec4826660d065fc98beff3141cea4e3e1126",
+"size": 16987
+},
+{
+"path": "knowledge/Lifestyle/台灣機車文化.md",
+"sha": "0bedd11ccab53a8b61dc58b2468eaf5333f5a9dc",
+"size": 12535
+},
+{
+"path": "knowledge/Lifestyle/台灣海關報關制度與EZWAY.md",
+"sha": "a3cfe4a7327e1e40cd8da1e8c9d57ef3eb90929e",
+"size": 46533
+},
+{
+"path": "knowledge/Lifestyle/台灣的公車系統.md",
+"sha": "6cc0efd0c1bbd45da0742ce9e4cdfe0e490a1aa0",
+"size": 41446
+},
+{
+"path": "knowledge/Lifestyle/台灣行道樹.md",
+"sha": "f70d94e0368ea6d9735f8b55216cc1238b015497",
+"size": 70898
+},
+{
+"path": "knowledge/Lifestyle/台灣進屋脫鞋.md",
+"sha": "6aec00839a8cfdd09e0879655c88ca5724e45796",
+"size": 20594
+},
+{
+"path": "knowledge/Lifestyle/台灣郵政.md",
+"sha": "8d1eb06619b9eae70f615e6c80b254a75d216e27",
+"size": 16412
+},
+{
+"path": "knowledge/Lifestyle/台灣醫療與全民健保.md",
+"sha": "8832f352cb273c9cd9ad55446743d1961c8863c6",
+"size": 49503
+},
+{
+"path": "knowledge/Lifestyle/台灣騎樓文化與街景.md",
+"sha": "3be11d172fd33a8a61f9b45b30027b3246332357",
+"size": 8342
+},
+{
+"path": "knowledge/Lifestyle/台灣高鐵.md",
+"sha": "579d61d681375b508e69dc34b77e61c4f682312b",
+"size": 23270
+},
+{
+"path": "knowledge/Lifestyle/台灣髮型介紹.md",
+"sha": "d2391883c5280a49852f956afad039101aa7d47e",
+"size": 14433
+},
+{
+"path": "knowledge/Lifestyle/台灣麻將與明星三缺一.md",
+"sha": "9aaef1e163d7b9cf13dea3bc997a22f8b26a5d22",
+"size": 13449
+},
+{
+"path": "knowledge/Lifestyle/台鐵鳴日號.md",
+"sha": "bb145f5ea66dabe603501d60b1552fe692680913",
+"size": 12390
+},
+{
+"path": "knowledge/Lifestyle/合作社.md",
+"sha": "0402150e6f90997548729ee226ca2af3f7ec020d",
+"size": 13895
+},
+{
+"path": "knowledge/Lifestyle/吉祥物.md",
+"sha": "ab721a4e8d4cdb84cc884014a18e33ad286c78ff",
+"size": 32127
+},
+{
+"path": "knowledge/Lifestyle/外送平台.md",
+"sha": "59a587a2016046264dda5b8133be6a63fb406366",
+"size": 23502
+},
+{
+"path": "knowledge/Lifestyle/夜生活與KTV文化.md",
+"sha": "974786fa1f7c4e2c0862265694d1bc89a6f59308",
+"size": 11045
+},
+{
+"path": "knowledge/Lifestyle/小北百貨.md",
+"sha": "eea8aadc8d9b4bfbb21c374b85e44a9bbf627c8c",
+"size": 7867
+},
+{
+"path": "knowledge/Lifestyle/小綠人.md",
+"sha": "75d20777d94cf5fa6e6c6cd5bd6669849dea3d34",
+"size": 19043
+},
+{
+"path": "knowledge/Lifestyle/尪仔標.md",
+"sha": "85d257bb8f801c6ea33a6c39b38568c9eee1e5ac",
+"size": 9738
+},
+{
+"path": "knowledge/Lifestyle/急診壅塞.md",
+"sha": "7ee36036324523896bdd6c3f84945e159a55ac81",
+"size": 7733
+},
+{
+"path": "knowledge/Lifestyle/戰鬥陀螺.md",
+"sha": "3d5ae5f983c8a3948186b5414948331384e8795f",
+"size": 15553
+},
+{
+"path": "knowledge/Lifestyle/排隊.md",
+"sha": "7b84f1fe88596ec7172aa607d69da5beb36391f2",
+"size": 50134
+},
+{
+"path": "knowledge/Lifestyle/收費站.md",
+"sha": "9de1feaeb61d6b65005aef2f47505934974ff6c2",
+"size": 33697
+},
+{
+"path": "knowledge/Lifestyle/桃園機場.md",
+"sha": "1e29094f0814e3f27de84deaa2adf00658c8b67e",
+"size": 6908
+},
+{
+"path": "knowledge/Lifestyle/溫泉文化.md",
+"sha": "807254710cb2206ca66a856c3ca37818dfe038f0",
+"size": 14472
+},
+{
+"path": "knowledge/Lifestyle/遊覽車.md",
+"sha": "126a39003661a8ad95fd25c9b4ddef8c37d17ec7",
+"size": 27030
+},
+{
+"path": "knowledge/Lifestyle/郵局.md",
+"sha": "f7f97a681bc90ec2cb7a9f2ff2b03899efa9a735",
+"size": 16417
+},
+{
+"path": "knowledge/Lifestyle/電競.md",
+"sha": "74cf137782e1fde9d79336335cd9f2f902276149",
+"size": 18772
+},
+{
+"path": "knowledge/Lifestyle/電線桿與變電箱.md",
+"sha": "11b682dec5a252d5660345afdb3b2638e64380b3",
+"size": 21367
+},
+{
+"path": "knowledge/Lifestyle/高速公路.md",
+"sha": "1232748b45f570bd41ed8ca0128d0cd1c5e74459",
+"size": 50104
+},
+{
+"path": "knowledge/Music/五月天.md",
+"sha": "39d9eaaea25652cf534087e13085a8ec49d3fa0e",
+"size": 11079
+},
+{
+"path": "knowledge/Music/交工樂隊.md",
+"sha": "08dec92a804b48f1457413fd9068af6c082f4d79",
+"size": 8839
+},
+{
+"path": "knowledge/Music/八部合音.md",
+"sha": "b04817d996e2085d20be14435fb41ee8fe07df10",
+"size": 7009
+},
+{
+"path": "knowledge/Music/台灣KTV文化.md",
+"sha": "2af70557f10c7a3108c93ac5993d1a67edece536",
+"size": 19435
+},
+{
+"path": "knowledge/Music/台灣原住民音樂傳統.md",
+"sha": "4d0e0889d72b9a0ddae67546ac1606d9956bce94",
+"size": 15654
+},
+{
+"path": "knowledge/Music/台灣台語歌曲演進.md",
+"sha": "edef6311a75bc94388e2e8e5dbaccade4ebc2b8a",
+"size": 13587
+},
+{
+"path": "knowledge/Music/台灣嘻哈與饒舌發展.md",
+"sha": "c474fa5c87a8af26cc2f1d91bf5f3821552ec1f7",
+"size": 55276
+},
+{
+"path": "knowledge/Music/台灣國樂.md",
+"sha": "36e7a4c2403e72db2e5a5f719c434d6982c01d77",
+"size": 21691
+},
+{
+"path": "knowledge/Music/台灣客家音樂.md",
+"sha": "e7933c88642aaaf2b6769b3bc760ea9ddac3bbdf",
+"size": 8743
+},
+{
+"path": "knowledge/Music/台灣影視配樂.md",
+"sha": "b45508ff16f7c011907a4d743ce89e5535af0e7e",
+"size": 33317
+},
+{
+"path": "knowledge/Music/台灣搖滾樂發展史.md",
+"sha": "327c72ad9f0fb595f2ed440bd48ad414e8cd6d58",
+"size": 13082
+},
+{
+"path": "knowledge/Music/台灣樂器製造.md",
+"sha": "47ecef178001658143d728166f865417f15a33af",
+"size": 35064
+},
+{
+"path": "knowledge/Music/台灣民歌運動.md",
+"sha": "614acbd89377e0f14cb99ee1c3d0b95e432ebb01",
+"size": 12612
+},
+{
+"path": "knowledge/Music/台灣民謠與歌謠.md",
+"sha": "428ea45cd1292c8dfe660f20f072e9d85d969b7b",
+"size": 10195
+},
+{
+"path": "knowledge/Music/台灣流行音樂.md",
+"sha": "89ec857189ad6c90ea101e18a11e507abf6d8bae",
+"size": 42495
+},
+{
+"path": "knowledge/Music/台灣獨立音樂.md",
+"sha": "7870864a0e022fb04d5e9741d626e57eb839b811",
+"size": 32927
+},
+{
+"path": "knowledge/Music/台灣聲音地景.md",
+"sha": "2ee4d4d13234061517dc1606805494329205faed",
+"size": 21320
+},
+{
+"path": "knowledge/Music/台灣電子音樂與派對文化.md",
+"sha": "5563233d2afc3886d9189ee80b4cd1f1fc5557f7",
+"size": 9556
+},
+{
+"path": "knowledge/Music/台灣音樂產業與串流時代.md",
+"sha": "0772280de14acebba89f51c7402b318aa4b87286",
+"size": 12589
+},
+{
+"path": "knowledge/Music/台灣音樂祭文化.md",
+"sha": "87d93d79f2c466effdfea60602143fe4f5162393",
+"size": 15262
+},
+{
+"path": "knowledge/Music/合唱團.md",
+"sha": "7b75e9a23a064778bbd26f6472c846f24de043f9",
+"size": 18937
+},
+{
+"path": "knowledge/Music/周蕙.md",
+"sha": "1d724dc8d6a24ff14736ec9796c3dd65d1118fc6",
+"size": 44657
+},
+{
+"path": "knowledge/Music/大港開唱.md",
+"sha": "4ccee1f7620ec806f9c68333df7eae05c3a81c53",
+"size": 12714
+},
+{
+"path": "knowledge/Music/大象體操.md",
+"sha": "47401d0db4162e398371a7f99917ed0c32f0a227",
+"size": 38764
+},
+{
+"path": "knowledge/Music/小虎隊.md",
+"sha": "eea2e4168d842ad8885f69a1e07f27ddd893e7ab",
+"size": 29317
+},
+{
+"path": "knowledge/Music/張懸與安溥.md",
+"sha": "21d6446e4717f2105f7ee6541d81d9fae053b294",
+"size": 43856
+},
+{
+"path": "knowledge/Music/拍謝少年.md",
+"sha": "742be27e54c0843f2bef25bffe41ac0bd076c79f",
+"size": 8900
+},
+{
+"path": "knowledge/Music/滅火器樂團.md",
+"sha": "f9c423966819645b634b937168954aa5a58666aa",
+"size": 16361
+},
+{
+"path": "knowledge/Music/濁水溪公社.md",
+"sha": "5d123d0f9a449c70f07caa1c3111ad064eca078a",
+"size": 9034
+},
+{
+"path": "knowledge/Music/當代原住民創作歌手.md",
+"sha": "6e445e29adefd6ce15dc7a18f6fb9e9f538e4bc5",
+"size": 21974
+},
+{
+"path": "knowledge/Music/茄子蛋.md",
+"sha": "e7b2ec1bb827294c856522936d63e8cc7f58f8bf",
+"size": 8897
+},
+{
+"path": "knowledge/Music/落日飛車.md",
+"sha": "ec53b3bd5b31a3fe093fc40d3a9d87953f26133b",
+"size": 37889
+},
+{
+"path": "knowledge/Music/蘇打綠.md",
+"sha": "7fda69f2f14975350afaccdcdb826a7a02f0374c",
+"size": 56366
+},
+{
+"path": "knowledge/Music/農村武裝青年.md",
+"sha": "f3225731729b1d9da5e4d08514e9604f3e939304",
+"size": 10091
+},
+{
+"path": "knowledge/Music/金曲獎.md",
+"sha": "23d0b1e1081273ff9f695d4573a8ef3069948b4c",
+"size": 39071
+},
+{
+"path": "knowledge/Music/閃靈.md",
+"sha": "016ef45a07ef5e2fd5d9c8fce7182be1d6810419",
+"size": 25067
+},
+{
+"path": "knowledge/Music/陳嫺靜.md",
+"sha": "0c7ed4edba47fcc8a638ba7568abb0140d30a4d8",
+"size": 38736
+},
+{
+"path": "knowledge/Nature/Palakaw.md",
+"sha": "3eb758557eeea22df8ac4d98959ec9f002f15092",
+"size": 10202
+},
+{
+"path": "knowledge/Nature/台灣原住民生態智慧與環境保育.md",
+"sha": "1087e568082809c9ec3d9e7e2e1204d4427b6b6a",
+"size": 15577
+},
+{
+"path": "knowledge/Nature/台灣國家公園.md",
+"sha": "631c206366759b8e2c9951458cc5200a7caf0f75",
+"size": 9970
+},
+{
+"path": "knowledge/Nature/台灣山岳與登山文化.md",
+"sha": "3255cf829fb49a82bf94aadd98acd452d855b509",
+"size": 14240
+},
+{
+"path": "knowledge/Nature/台灣山椒魚.md",
+"sha": "23a69f03523d64c3f566eef0edfcb0c79130ef7e",
+"size": 18909
+},
+{
+"path": "knowledge/Nature/台灣島嶼博物學.md",
+"sha": "64f24aa459745dda471c81ee403811fd6893a03e",
+"size": 6698
+},
+{
+"path": "knowledge/Nature/台灣森林生態系.md",
+"sha": "4f2cfe3b01be28ac64fd3ac6b1b27276a1778e28",
+"size": 16047
+},
+{
+"path": "knowledge/Nature/台灣步道文化與公民守護.md",
+"sha": "ac91889e573b4736267ff826af76479ee5843923",
+"size": 16753
+},
+{
+"path": "knowledge/Nature/台灣氣候危機與淨零轉型.md",
+"sha": "641db77d74c24f4cee145f08fd4421c0c449e1fe",
+"size": 53225
+},
+{
+"path": "knowledge/Nature/台灣水鹿.md",
+"sha": "02f31ae214b5fadd0bc098f9263b40e31b3c84e9",
+"size": 14926
+},
+{
+"path": "knowledge/Nature/台灣海洋保育與挑戰.md",
+"sha": "d4b63f5093163ab3f57ef7c03ca6d1e944d76cf5",
+"size": 11246
+},
+{
+"path": "knowledge/Nature/台灣海洋污染治理與保育挑戰.md",
+"sha": "f993fd788ebfbcc082f8e103308cf4bcd734b133",
+"size": 22813
+},
+{
+"path": "knowledge/Nature/台灣海洋生態.md",
+"sha": "698a35e0b71150722343525bee77e2d2e56dd42c",
+"size": 15337
+},
+{
+"path": "knowledge/Nature/台灣海洋生態與珊瑚礁保育.md",
+"sha": "3aae17453692abb02aae9c152511d2c553f365e8",
+"size": 14676
+},
+{
+"path": "knowledge/Nature/台灣溫泉與地熱.md",
+"sha": "0904e5fa8ee1c016d4ae0556a9fcc48f3100b4f1",
+"size": 13483
+},
+{
+"path": "knowledge/Nature/台灣獼猴.md",
+"sha": "d2acd2daa5c896c974c2b49a2c8d7a3a650a95cc",
+"size": 10881
+},
+{
+"path": "knowledge/Nature/台灣環境運動史.md",
+"sha": "4e48333b5a0d1978f2ffaa608ccff027f024183f",
+"size": 8885
+},
+{
+"path": "knowledge/Nature/台灣白海豚.md",
+"sha": "a681419a097de122178b32404b43df372400c534",
+"size": 32331
+},
+{
+"path": "knowledge/Nature/台灣皇蛾.md",
+"sha": "890f2264095c9681a23b650d599f4beedb357d65",
+"size": 10051
+},
+{
+"path": "knowledge/Nature/台灣石虎保育.md",
+"sha": "60a9dc392a295bd38dacd27d35701a47b18c7d4a",
+"size": 12234
+},
+{
+"path": "knowledge/Nature/台灣穿山甲.md",
+"sha": "fc48ce5e3f08f465d1f0ac9d6e96b3d4dcf0b898",
+"size": 9884
+},
+{
+"path": "knowledge/Nature/台灣藍鵲.md",
+"sha": "c2f7c883c388239307ac081fb5cb628ae80ffc1c",
+"size": 23257
+},
+{
+"path": "knowledge/Nature/台灣高山生態系與冰河孑遺.md",
+"sha": "dcde50714353877526f92f64ee826b2e0992cd6d",
+"size": 13113
+},
+{
+"path": "knowledge/Nature/台灣鳥類窗殺議題.md",
+"sha": "55a58477922c03402445a9c10a3f70a72fd4d33a",
+"size": 5907
+},
+{
+"path": "knowledge/Nature/台灣黑熊.md",
+"sha": "0919a4fd820c119fd678b4af40f70bdd24492dd5",
+"size": 27749
+},
+{
+"path": "knowledge/Nature/國家公園.md",
+"sha": "fec4fc8a0a4f18f16e0f90a4f9d1ef9285ccae31",
+"size": 13966
+},
+{
+"path": "knowledge/Nature/大安溪倚天劍.md",
+"sha": "363494b6abbc54b2969c21a4172280fbf32c5d7d",
+"size": 48338
+},
+{
+"path": "knowledge/Nature/帝雉.md",
+"sha": "f429dc88d301faaad4cf3a2589d143c22cd1de41",
+"size": 15255
+},
+{
+"path": "knowledge/Nature/杉林溪.md",
+"sha": "0010d682303513414def2d0a16b595b56b6d083d",
+"size": 21081
+},
+{
+"path": "knowledge/Nature/梅雨.md",
+"sha": "0734f469da8776315d051834e6c0d00dd0fae781",
+"size": 18506
+},
+{
+"path": "knowledge/Nature/櫻花鉤吻鮭.md",
+"sha": "08f584908c6a6fb5ba2adf0bc944c97e68440e42",
+"size": 12995
+},
+{
+"path": "knowledge/Nature/水獺.md",
+"sha": "36a3036b6704b03ff7e8c168e517da90a3b14f30",
+"size": 8259
+},
+{
+"path": "knowledge/Nature/特有種.md",
+"sha": "ba1d43c470f697f991b6aa712008d9b99f2b22f8",
+"size": 9647
+},
+{
+"path": "knowledge/Nature/生態多樣性.md",
+"sha": "2d6cb61e1d353c949c86b38109ba7b50e5d95a28",
+"size": 8484
+},
+{
+"path": "knowledge/Nature/福爾摩沙鳥類學.md",
+"sha": "b80eafd03dbe40f2262c047fde2a5bc0d78d0756",
+"size": 22200
+},
+{
+"path": "knowledge/Nature/臺灣的鯨豚.md",
+"sha": "58616ffa43a87297e598a2c2a4dd05b5ce743a72",
+"size": 8327
+},
+{
+"path": "knowledge/Nature/蘭嶼生態系.md",
+"sha": "7d92c5ee93783f205f1b12fccbc6f40bbd4d4a6f",
+"size": 7150
+},
+{
+"path": "knowledge/Nature/颱風.md",
+"sha": "4578c2da667dffae111c464f1a158cfdd680584e",
+"size": 25846
+},
+{
+"path": "knowledge/Nature/黃魚鴞.md",
+"sha": "94d636dfa0eb944b679c14aeb99687338b489fec",
+"size": 22439
+},
+{
+"path": "knowledge/Nature/黑冠麻鷺.md",
+"sha": "c1a867d05d878a40ba81f04ff78e3715d2cfbcca",
+"size": 21542
+},
+{
+"path": "knowledge/Nature/黑面琵鷺.md",
+"sha": "c798f63ee35b5026e03d4d78aaf58e95490e3448",
+"size": 7582
+},
+{
+"path": "knowledge/People/3度C.md",
+"sha": "9ca7d1ee0575356fb0901356ce6030fef47485ea",
+"size": 12933
+},
+{
+"path": "knowledge/People/Ceylan.md",
+"sha": "c284c0f6dba35a1a968fdec597fad91221ade34a",
+"size": 22577
+},
+{
+"path": "knowledge/People/Cheap.md",
+"sha": "936c41b3612c1740f9b0c49dd90bdd97d8f25fcd",
+"size": 24275
+},
+{
+"path": "knowledge/People/Cicada.md",
+"sha": "4135d2a921324e6c6677389ac0303e6ca7f22c09",
+"size": 43449
+},
+{
+"path": "knowledge/People/HUR-plus.md",
+"sha": "3078ad444665414d6751fe430d478b4baaa49ab9",
+"size": 19045
+},
+{
+"path": "knowledge/People/Hello-Nico.md",
+"sha": "6241841fd8878ee2ffa10760fc09ab410cb89e95",
+"size": 7009
+},
+{
+"path": "knowledge/People/Howhow.md",
+"sha": "e9cce6473bfb917b5c60c122329c5ff88c1b61b3",
+"size": 29668
+},
+{
+"path": "knowledge/People/Joeman.md",
+"sha": "0705be3ee067959f14ad98fcc691203136598825",
+"size": 22479
+},
+{
+"path": "knowledge/People/Ray.md",
+"sha": "045cfbf05d54c6de534b6b6c45750716a31e3fdf",
+"size": 5101
+},
+{
+"path": "knowledge/People/VH.md",
+"sha": "a6d45f21484309ed1b56e7a2dfdd22d220528047",
+"size": 9229
+},
+{
+"path": "knowledge/People/丁日昌.md",
+"sha": "9161f6561a6dbcfa08504a0b8d53887b4c90794d",
+"size": 22148
+},
+{
+"path": "knowledge/People/三毛.md",
+"sha": "da4eea46abbd2bd687b8e0f2c6587906c7e5d932",
+"size": 22223
+},
+{
+"path": "knowledge/People/伍佰.md",
+"sha": "c9a7710c1a1caa3e84c572b6fffb1e85e336be12",
+"size": 8008
+},
+{
+"path": "knowledge/People/何飛鵬.md",
+"sha": "ecff91cbfa3687531e7c36f7e0af98d32f92f037",
+"size": 4458
+},
+{
+"path": "knowledge/People/侯孝賢.md",
+"sha": "145bfb323ed33b493a547002cd3864278de0b3e1",
+"size": 19831
+},
+{
+"path": "knowledge/People/傅兆玄.md",
+"sha": "313aebe6b1aaef48882552b4457c1d9711ffb382",
+"size": 8254
+},
+{
+"path": "knowledge/People/傅崐萁.md",
+"sha": "251a818413cd01a658f1997101ae43e4e1d172f0",
+"size": 6292
+},
+{
+"path": "knowledge/People/八炯.md",
+"sha": "9de82ceb9f18a6e02cf84d8e7d97d712d4269f1c",
+"size": 29864
+},
+{
+"path": "knowledge/People/八田與一.md",
+"sha": "2154d603493a9564fd1c48e9c384012c2bd00769",
+"size": 14437
+},
+{
+"path": "knowledge/People/六指淵.md",
+"sha": "f4be03fa7d4b700aba4aacb6f79b64822f4605e1",
+"size": 20712
+},
+{
+"path": "knowledge/People/凹與山.md",
+"sha": "9c02f01283926bac2210d3d1ee2895352944aaf2",
+"size": 17952
+},
+{
+"path": "knowledge/People/劉安婷.md",
+"sha": "d6011aa7fd2f6f39162cddd7ae2f63184cfc7c8c",
+"size": 26867
+},
+{
+"path": "knowledge/People/劉德音.md",
+"sha": "83223332d9ca30150eaa0c25ddc64e2dcba23240",
+"size": 12181
+},
+{
+"path": "knowledge/People/劉銘傳.md",
+"sha": "ef639b56b171a80dff0cc73d4fd560490bfebd36",
+"size": 8358
+},
+{
+"path": "knowledge/People/區秀詒.md",
+"sha": "0b94caac818996329ff1a6fc49807add60820645",
+"size": 35375
+},
+{
+"path": "knowledge/People/千千進食中.md",
+"sha": "5fc2cfe5cd55673a324d5996d4d78b5d868fbe44",
+"size": 11805
+},
+{
+"path": "knowledge/People/卓榮泰.md",
+"sha": "b7fe4751378ae561bd33f03882204e31fada5be3",
+"size": 26954
+},
+{
+"path": "knowledge/People/南珉貞.md",
+"sha": "6c24790971fc1a8d7fe34086460281b929950fc7",
+"size": 3530
+},
+{
+"path": "knowledge/People/史明.md",
+"sha": "3f04bcd6efc77b11ca9df0ccc604756f84b55f0c",
+"size": 21385
+},
+{
+"path": "knowledge/People/史溫侯.md",
+"sha": "ecbc1f0183ee65113283682eb64a13ee281753c0",
+"size": 15905
+},
+{
+"path": "knowledge/People/吳哲宇.md",
+"sha": "fb847f8281d4fa8ff90b547202ee82f70d77487b",
+"size": 56179
+},
+{
+"path": "knowledge/People/吳大猷.md",
+"sha": "a95fe4ad0f4ab3e5b39a1b080b5ab3cb72686529",
+"size": 7627
+},
+{
+"path": "knowledge/People/吳季剛.md",
+"sha": "cf9de166ade690804d35e976263fc278f54409ab",
+"size": 24031
+},
+{
+"path": "knowledge/People/吳寶春.md",
+"sha": "16b458f7ee897611b0d051f44203664bc1ab24d1",
+"size": 8437
+},
+{
+"path": "knowledge/People/吳明益.md",
+"sha": "279a4ea819e3addcc66b40cb17a5e60e58c2e02b",
+"size": 33882
+},
+{
+"path": "knowledge/People/吳百福.md",
+"sha": "a37c136a38b5cd3dcbea4c8ccaf71955b6a55a56",
+"size": 13101
+},
+{
+"path": "knowledge/People/呂冠緯.md",
+"sha": "a2e8b83ad41dc8ddd8cce1877000c7c80b52aba9",
+"size": 41101
+},
+{
+"path": "knowledge/People/呂捷.md",
+"sha": "66d99d6e657386bed52111d85d3ec46ecc53b568",
+"size": 21008
+},
+{
+"path": "knowledge/People/呂秀蓮.md",
+"sha": "513f4e57b6dd59c853ce0a38115dbf69d006e24b",
+"size": 8683
+},
+{
+"path": "knowledge/People/周天成.md",
+"sha": "8c311307c940dd6bbf573a31a536eb2d6c80746d",
+"size": 19638
+},
+{
+"path": "knowledge/People/周子瑜.md",
+"sha": "79f5e9ebd6f8a4f107fb532671c4c8d7329c1f28",
+"size": 25509
+},
+{
+"path": "knowledge/People/周杰倫.md",
+"sha": "eb001bf1449471d1f7a6b58d05fe79cb53d7f29a",
+"size": 19798
+},
+{
+"path": "knowledge/People/呱吉.md",
+"sha": "683583b9d7a3d183eca1bac32ad5c090e325e7a0",
+"size": 17330
+},
+{
+"path": "knowledge/People/唐鳳.md",
+"sha": "4ea6af04a1c18239dda3dc44c3db849eee1d71ed",
+"size": 42989
+},
+{
+"path": "knowledge/People/啾啾鞋.md",
+"sha": "ad2c695ea8ba782bdd57a983e9a6170e17f91d22",
+"size": 17721
+},
+{
+"path": "knowledge/People/嚴長壽.md",
+"sha": "96e8e461f79036fe766bd69a4ffab42140fb7646",
+"size": 17156
+},
+{
+"path": "knowledge/People/囧星人.md",
+"sha": "2f70372c3c73c5b619ba05a96c5e7116793df841",
+"size": 19000
+},
+{
+"path": "knowledge/People/壞特.md",
+"sha": "1dd7cdc50b33ead9fcbba4de1102ae6dc273d620",
+"size": 54549
+},
+{
+"path": "knowledge/People/多米多羅.md",
+"sha": "feb1089f1e43c3381d8f5cba57421eab892e946b",
+"size": 16644
+},
+{
+"path": "knowledge/People/大支.md",
+"sha": "95878c4169480144e25327c9d2a3335af68edd34",
+"size": 20827
+},
+{
+"path": "knowledge/People/妮妃雅.md",
+"sha": "e6813a05f7f475c4ee0bfb1abade2c847fc99a72",
+"size": 10384
+},
+{
+"path": "knowledge/People/季麟連.md",
+"sha": "eb4d73a22fe582e2f3ae99f8a4af980d2bf08381",
+"size": 24288
+},
+{
+"path": "knowledge/People/孫燕姿.md",
+"sha": "8b59a55592d86101bbab5b68c4e9c3a8934a3464",
+"size": 15861
+},
+{
+"path": "knowledge/People/孫運璿.md",
+"sha": "5c03c2165ce14e819539676548e3054fbae189dc",
+"size": 8874
+},
+{
+"path": "knowledge/People/安芝儇.md",
+"sha": "822c15a0ae1db0a607ef65764681cccb6f39ad45",
+"size": 3154
+},
+{
+"path": "knowledge/People/尊.md",
+"sha": "e7c8cf306944923432568a3dbc93bdc674adefc1",
+"size": 21013
+},
+{
+"path": "knowledge/People/尹衍樑.md",
+"sha": "b42d0f31ddd8f1b7a5f032d2a094f8905d6da3e7",
+"size": 32901
+},
+{
+"path": "knowledge/People/尼克星.md",
+"sha": "063a7365f186f4ef09af7cb638d226b5bf747651",
+"size": 28572
+},
+{
+"path": "knowledge/People/席慕蓉.md",
+"sha": "55a79d57a195808f65d0d2b8a967755501b26b10",
+"size": 7330
+},
+{
+"path": "knowledge/People/幾米.md",
+"sha": "5b1fb7b002cd961828116d60434518e4d5803c02",
+"size": 37053
+},
+{
+"path": "knowledge/People/康士坦的變化球.md",
+"sha": "4b534ec76a5e4ffef376c62f7acbc66b62208c78",
+"size": 19822
+},
+{
+"path": "knowledge/People/廖添丁.md",
+"sha": "7e11cee5541a79cbe22d942cf41f6ae591758e44",
+"size": 18745
+},
+{
+"path": "knowledge/People/廖瓊枝.md",
+"sha": "1d063956739710ef3e34ad5d90b24fffe050dcdf",
+"size": 15469
+},
+{
+"path": "knowledge/People/廖鴻基.md",
+"sha": "5c2d496bd181b46004beda452b46ff59e4e41403",
+"size": 9072
+},
+{
+"path": "knowledge/People/張志祺.md",
+"sha": "6bbc6f41de48f47dee10059e0143ff287cdaab37",
+"size": 12282
+},
+{
+"path": "knowledge/People/張忠仁與張忠義.md",
+"sha": "874f5340b0a9e47f099dce3c5b28cd6b3998b260",
+"size": 23362
+},
+{
+"path": "knowledge/People/張忠謀.md",
+"sha": "0b92511eb7a3d84d8dd64af2080c6488d63332de",
+"size": 40886
+},
+{
+"path": "knowledge/People/張惠妹.md",
+"sha": "7f29535048405ef5cdecfa9ac84fcecf32d8d597",
+"size": 8601
+},
+{
+"path": "knowledge/People/張明正.md",
+"sha": "5d658fb1c55af3c0aec0e3359f438d85464c01e3",
+"size": 9444
+},
+{
+"path": "knowledge/People/張艾嘉.md",
+"sha": "496548b9e80e72d6c8b2d012e78bae2a0100fc4f",
+"size": 8257
+},
+{
+"path": "knowledge/People/張雨生.md",
+"sha": "37b7fcf2a6fbee9088170fd2a6b72323bc4c8c5a",
+"size": 13916
+},
+{
+"path": "knowledge/People/彎彎.md",
+"sha": "eb2771c751cb66103f8070885d4b95f17f0200d4",
+"size": 30829
+},
+{
+"path": "knowledge/People/徐佳瑩.md",
+"sha": "b79f351f784f0f10823b2661e3873be275b0dcb3",
+"size": 14654
+},
+{
+"path": "knowledge/People/徐巧芯.md",
+"sha": "5d0073cbef760fd7b822120705a21af0e58600e0",
+"size": 27614
+},
+{
+"path": "knowledge/People/徐熙媛.md",
+"sha": "39f6687066924bba7eabe939c5673da5a67f5f43",
+"size": 5844
+},
+{
+"path": "knowledge/People/戴資穎.md",
+"sha": "45d404f5b33c7abd9323f18ee226870a4d5e1909",
+"size": 11270
+},
+{
+"path": "knowledge/People/方序中.md",
+"sha": "c96997c9883bd44c4bbf83dc48e36e0af2d97b10",
+"size": 13638
+},
+{
+"path": "knowledge/People/施振榮.md",
+"sha": "0addf4a33619d21fdbd98061b433f747584a8fed",
+"size": 49697
+},
+{
+"path": "knowledge/People/施明德.md",
+"sha": "ac1321f83f6dda12f7492c0effe79c73b85201db",
+"size": 11160
+},
+{
+"path": "knowledge/People/施琅.md",
+"sha": "ce5caf3c320187cad6fdc5e89cee6bedf751c607",
+"size": 16361
+},
+{
+"path": "knowledge/People/明華園.md",
+"sha": "d43d2e7aff21c7502788a40315073711f99707d7",
+"size": 9246
+},
+{
+"path": "knowledge/People/曹興誠.md",
+"sha": "e3bbb59340d29077fdb9792aa9b1a281ce208727",
+"size": 15327
+},
+{
+"path": "knowledge/People/曾博恩.md",
+"sha": "30dca6a890d433398c8e41fcdd6a03c2c21987ca",
+"size": 37539
+},
+{
+"path": "knowledge/People/曾雅妮.md",
+"sha": "2b4d81ac31f9317fc148c7833eea3bf38a950792",
+"size": 12602
+},
+{
+"path": "knowledge/People/有感筆電.md",
+"sha": "54dd1f222f24e51e228a0534f05fa92d6e12fc04",
+"size": 7007
+},
+{
+"path": "knowledge/People/木曜4超玩.md",
+"sha": "95e502dea9083b55911f4211c5918df098fcf3b4",
+"size": 20894
+},
+{
+"path": "knowledge/People/朱一貴.md",
+"sha": "cf3f749ae1649b147a70f0a70ae8cc09064416f1",
+"size": 3514
+},
+{
+"path": "knowledge/People/朱天文.md",
+"sha": "682bcde124efdbfa8dd26158b2d1cb45ae240fae",
+"size": 8291
+},
+{
+"path": "knowledge/People/朱宗慶.md",
+"sha": "5674d291605aa55317a53fb2f46066cf06e6b523",
+"size": 11197
+},
+{
+"path": "knowledge/People/朱經武.md",
+"sha": "c0466ef9b2313a63f486fdd5702ff7991eb5a10b",
+"size": 9345
+},
+{
+"path": "knowledge/People/朴旻曙.md",
+"sha": "22a0a8f862310fd87bfc901a241b9fb88d0cfc9e",
+"size": 2696
+},
+{
+"path": "knowledge/People/朴星垠.md",
+"sha": "2fdbfe66c32b4a09f173839ce070ca59fc6a0bbc",
+"size": 3985
+},
+{
+"path": "knowledge/People/李仙得.md",
+"sha": "c02007383843cfe97185282eb4947ea232240405",
+"size": 14979
+},
+{
+"path": "knowledge/People/李國修.md",
+"sha": "23dacd81384cfaeb654dd77549b4981ee73041f9",
+"size": 7604
+},
+{
+"path": "knowledge/People/李多慧.md",
+"sha": "1be7e20fffa45054739ac96c0eba5ab6fb83e2fe",
+"size": 5237
+},
+{
+"path": "knowledge/People/李安.md",
+"sha": "db394f042837679ad3ee30f5dba62e878e98ca3b",
+"size": 41363
+},
+{
+"path": "knowledge/People/李宗盛.md",
+"sha": "2cab9043e9134ecc94d89e1c6b8e709f29d70fff",
+"size": 30506
+},
+{
+"path": "knowledge/People/李昂.md",
+"sha": "4b327da8c9722eafd65fdd02e352c0041113774e",
+"size": 8798
+},
+{
+"path": "knowledge/People/李昌鈺.md",
+"sha": "736baeb854e713a4a1c81182bd6e4a66543c594e",
+"size": 10160
+},
+{
+"path": "knowledge/People/李晧禎.md",
+"sha": "e97ebf0661d4fedf0724e305c4b7505cdac78597",
+"size": 3734
+},
+{
+"path": "knowledge/People/李智凱.md",
+"sha": "f500cd8742536d98faf673aba01dd58fa5ba63f6",
+"size": 10741
+},
+{
+"path": "knowledge/People/李梅樹.md",
+"sha": "b9c4a1f6d2c699b464a909c6ace70f9f66c7d7e2",
+"size": 7038
+},
+{
+"path": "knowledge/People/李洋.md",
+"sha": "721c73913efbc7b80431dbdf2777b779116ef89a",
+"size": 37317
+},
+{
+"path": "knowledge/People/李灝宇.md",
+"sha": "34701eb38687d7b933e8de36f6afea358e257f06",
+"size": 8606
+},
+{
+"path": "knowledge/People/李珠珢.md",
+"sha": "490fd3275cc53e1c583c96948fabca1e98ef113a",
+"size": 4206
+},
+{
+"path": "knowledge/People/李登輝.md",
+"sha": "7d52f83590b5106dc930cd0d269f316b505c3fb4",
+"size": 11931
+},
+{
+"path": "knowledge/People/李遠哲.md",
+"sha": "c9d57818a1ab4064cbd57afe18081eded03b4276",
+"size": 7218
+},
+{
+"path": "knowledge/People/李雅英.md",
+"sha": "cecaa59b4949131f88575eabe7e1f5979df4442a",
+"size": 3827
+},
+{
+"path": "knowledge/People/杜奕瑾.md",
+"sha": "3eb86d7ddfad0f6bac8eb007ccc02e65d67e9f4c",
+"size": 11812
+},
+{
+"path": "knowledge/People/杜潘芳格.md",
+"sha": "9b88e589a8716328a4b80a7d497c8080a17055c1",
+"size": 23623
+},
+{
+"path": "knowledge/People/杜聰明.md",
+"sha": "78fb536d7b764566a6399b9ef1f2389453b752e4",
+"size": 9860
+},
+{
+"path": "knowledge/People/林佳辰.md",
+"sha": "0f985bf492732483a4178441c9c909586c018578",
+"size": 21452
+},
+{
+"path": "knowledge/People/林俊傑.md",
+"sha": "81a40efc9ea987979ed86c40713af7ec0fd1b615",
+"size": 3017
+},
+{
+"path": "knowledge/People/林啟維.md",
+"sha": "f278e4798a350682ff562bd95b1602514b1aeca0",
+"size": 17360
+},
+{
+"path": "knowledge/People/林央敏.md",
+"sha": "20e15e9411f26f507dd5889bc5eca0555c6426c3",
+"size": 8551
+},
+{
+"path": "knowledge/People/林宥嘉.md",
+"sha": "2ddd3a79003b58018e621eeadb50a59d32c7c20d",
+"size": 16704
+},
+{
+"path": "knowledge/People/林強.md",
+"sha": "03a6efa26570672c1bf24c97961d389e729f79ba",
+"size": 13979
+},
+{
+"path": "knowledge/People/林心如.md",
+"sha": "66b0c8f3d833e957c0a286c2db511940c4e007f2",
+"size": 18260
+},
+{
+"path": "knowledge/People/林懷民.md",
+"sha": "018d608e8be3a48229d0b78b5a9a6e67bd561a75",
+"size": 9858
+},
+{
+"path": "knowledge/People/林昶佐.md",
+"sha": "5aab78be7c8b1e8b6dd807131ae5a0a971f903a8",
+"size": 32267
+},
+{
+"path": "knowledge/People/林書豪.md",
+"sha": "e6b165156ff30d0d68d94d66f1e7ebe964d2a2fa",
+"size": 11111
+},
+{
+"path": "knowledge/People/林獻堂.md",
+"sha": "80701254675d8c8ec20fac80c86b6bfe89df0b86",
+"size": 21666
+},
+{
+"path": "knowledge/People/林琪兒.md",
+"sha": "c9afea7c15e8e7489fef05484b66398c955b270e",
+"size": 32846
+},
+{
+"path": "knowledge/People/林百里.md",
+"sha": "9433e135a5f2effae32a1ed69002ea387b76e01c",
+"size": 6810
+},
+{
+"path": "knowledge/People/林義傑.md",
+"sha": "910048b0b6d9fab5d6158e810ab4f1afdf3de7d5",
+"size": 8051
+},
+{
+"path": "knowledge/People/林義雄.md",
+"sha": "55e2ae8e6305e079b7e0cc1b64247598b217c194",
+"size": 8668
+},
+{
+"path": "knowledge/People/林良.md",
+"sha": "b4d0085d32abe17dc95b6fddd7a52eeb2e06efcc",
+"size": 24829
+},
+{
+"path": "knowledge/People/林郁婷.md",
+"sha": "0706d89d9f9a760d09842ee4967afd4f6c31bf17",
+"size": 22274
+},
+{
+"path": "knowledge/People/林青霞.md",
+"sha": "597c9d9dd0baf7aef8fd9652598f47210acfec8a",
+"size": 9918
+},
+{
+"path": "knowledge/People/柯文哲.md",
+"sha": "aece76018f7417f26d3cbfe7b1d9ff67f9388222",
+"size": 9771
+},
+{
+"path": "knowledge/People/柯智棠.md",
+"sha": "492fdae53fd37dc146149d05822265e994e6187f",
+"size": 42390
+},
+{
+"path": "knowledge/People/桂綸鎂.md",
+"sha": "1332831c09c6bfaa27b8d24465efa27aecfdfe28",
+"size": 4408
+},
+{
+"path": "knowledge/People/楊丞琳.md",
+"sha": "3cec3950a59ec8abc89ff547b796baa4075c6f3e",
+"size": 28648
+},
+{
+"path": "knowledge/People/楊傳廣.md",
+"sha": "c44caba3dddc725382fb3b5de1c1a225fd811c00",
+"size": 13027
+},
+{
+"path": "knowledge/People/楊勇緯.md",
+"sha": "99c50651a98a41044ba2e79b2a1e76cbfd7dfe75",
+"size": 10688
+},
+{
+"path": "knowledge/People/楊右任.md",
+"sha": "3289df68e9af807e6612a692b96f0e1d96345c29",
+"size": 5120
+},
+{
+"path": "knowledge/People/楊德昌.md",
+"sha": "3640aa5e5de3c3f2611c8ed709cab177d2667d35",
+"size": 53757
+},
+{
+"path": "knowledge/People/楊深坑.md",
+"sha": "4c5aca38e84550d236bbd138580a09c8be99285e",
+"size": 8481
+},
+{
+"path": "knowledge/People/楊維哲.md",
+"sha": "b63d18990fcae30a5141843e1ccb0e8edac50ffe",
+"size": 40461
+},
+{
+"path": "knowledge/People/楊致遠.md",
+"sha": "f4de774e377aa7ddb330576a61b694887ad191f9",
+"size": 9660
+},
+{
+"path": "knowledge/People/殷海光.md",
+"sha": "2577a6aeb6488372d98cf93715b79be59125b2d2",
+"size": 14378
+},
+{
+"path": "knowledge/People/江振誠.md",
+"sha": "1ea7174ad5cbcbad04c0bff4b100485e8f677be3",
+"size": 40762
+},
+{
+"path": "knowledge/People/江蕙.md",
+"sha": "e34bc0b9da73187ae81b812c2526ebd8d1db1b35",
+"size": 4320
+},
+{
+"path": "knowledge/People/沈伯洋.md",
+"sha": "6133b3a54972386220c8a89f240f77c64c415d42",
+"size": 149956
+},
+{
+"path": "knowledge/People/沈文程.md",
+"sha": "cc8291f187b0e4e36cdddc69221579e32b7246a0",
+"size": 6982
+},
+{
+"path": "knowledge/People/沈聖博.md",
+"sha": "2573009a4c513f1ac01aef5adaa6f7e3090d2329",
+"size": 13183
+},
+{
+"path": "knowledge/People/沈葆楨.md",
+"sha": "6807d3e1d6f040f6e64e8bfb824c13103ab4acf9",
+"size": 22302
+},
+{
+"path": "knowledge/People/波特王.md",
+"sha": "bbb35d6793569e76aa759615673d1eff752b795d",
+"size": 9675
+},
+{
+"path": "knowledge/People/洪婕倪.md",
+"sha": "6906884f51e180e1074fef56b476f4fbd5cde2a5",
+"size": 15840
+},
+{
+"path": "knowledge/People/洪醒夫.md",
+"sha": "e22dfdef719ac64d48d5592631089709c39263ff",
+"size": 22537
+},
+{
+"path": "knowledge/People/王冠閎.md",
+"sha": "44c4322506a41986d268d0c795dc253197814b24",
+"size": 9700
+},
+{
+"path": "knowledge/People/王大閎.md",
+"sha": "b373dbacd9d7137c64110ebe65887132477ccb6c",
+"size": 11200
+},
+{
+"path": "knowledge/People/王小棣.md",
+"sha": "7b986e8ec89297862572586c4e4dbce031abe325",
+"size": 12891
+},
+{
+"path": "knowledge/People/王建民.md",
+"sha": "da58fdf7cb69650ef4322fae5a1834f089d7fa28",
+"size": 15347
+},
+{
+"path": "knowledge/People/王永慶.md",
+"sha": "06579fcaa95c5362b53e9b1afce310c6a0818cf7",
+"size": 12530
+},
+{
+"path": "knowledge/People/王福瑞.md",
+"sha": "52abed26595cec4144eb84a8688300a3e3f84bd3",
+"size": 25897
+},
+{
+"path": "knowledge/People/理科太太.md",
+"sha": "c11429371452539732d0fbda3c2906ec4afa7656",
+"size": 22507
+},
+{
+"path": "knowledge/People/田馥甄.md",
+"sha": "ac8fc0b8d39659317715537b0981ee15853763e1",
+"size": 30256
+},
+{
+"path": "knowledge/People/瘂弦.md",
+"sha": "c29fd3335aaa9d5c4d21a60a7e7be6fd74c659f1",
+"size": 25926
+},
+{
+"path": "knowledge/People/白先勇.md",
+"sha": "805e63b969dd86bab2f7c5c33e816dc9f79df039",
+"size": 8542
+},
+{
+"path": "knowledge/People/白癡公主.md",
+"sha": "401278a2f24a3e60f1f41d6ff5e7c3a9efb3920c",
+"size": 20580
+},
+{
+"path": "knowledge/People/百靈果 News.md",
+"sha": "348a9f81cdcd354cc3acbf348cbba7be56c84217",
+"size": 15431
+},
+{
+"path": "knowledge/People/盧廣仲.md",
+"sha": "7c89de880ea7bd25b500d1252cb75851944cca7c",
+"size": 14824
+},
+{
+"path": "knowledge/People/盧彥勳.md",
+"sha": "01a7e3f06040a516e18f1c1c2eeb11d32db1fb9b",
+"size": 11634
+},
+{
+"path": "knowledge/People/盧秀燕.md",
+"sha": "859b906d3fbba65d200d2d6f0962b28639ca1f63",
+"size": 27760
+},
+{
+"path": "knowledge/People/童子賢.md",
+"sha": "ff07e880106c83b2cf54fc0ed3869b3d2974e95a",
+"size": 10197
+},
+{
+"path": "knowledge/People/簡立峰.md",
+"sha": "17b757236cb587d591534c7184a3e91b3d81ada5",
+"size": 24588
+},
+{
+"path": "knowledge/People/紀懷新.md",
+"sha": "814f92f48876315e738d42e7efc6e1fdb573d126",
+"size": 30701
+},
+{
+"path": "knowledge/People/紀政.md",
+"sha": "37a8020376339b8719e52c092123b38f77cb7fe0",
+"size": 12527
+},
+{
+"path": "knowledge/People/羅大佑.md",
+"sha": "c779da48bbfacb5abf224063942b1ab5e9ad9d2f",
+"size": 30410
+},
+{
+"path": "knowledge/People/翁啟惠.md",
+"sha": "c3951df78a5d9c419c52537aaefae49741ec5512",
+"size": 10431
+},
+{
+"path": "knowledge/People/聖凱師.md",
+"sha": "e9949b7e88e0960583f9c006568e67de8c1bf228",
+"size": 16151
+},
+{
+"path": "knowledge/People/聶永真.md",
+"sha": "4d66000bd1029591775d6fcb743e2bf9c20cc706",
+"size": 34922
+},
+{
+"path": "knowledge/People/肌肉山山.md",
+"sha": "18e1d761cbfe8cade6c1857505e22531de050a8d",
+"size": 15210
+},
+{
+"path": "knowledge/People/范曉萱.md",
+"sha": "ecb526fa3325afc19daba465fb4997cfd6206c6d",
+"size": 15103
+},
+{
+"path": "knowledge/People/草東沒有派對.md",
+"sha": "f26e5f76866ebaccd655630897bda8b32964abe5",
+"size": 35487
+},
+{
+"path": "knowledge/People/莊智淵.md",
+"sha": "500273aaa9532d6d7c97ffd2701a6913342f33fe",
+"size": 11703
+},
+{
+"path": "knowledge/People/莊朱玉女.md",
+"sha": "17a85edbcb9c4f0fded49a0abc2fbcad50839f08",
+"size": 8756
+},
+{
+"path": "knowledge/People/莫那·魯道.md",
+"sha": "17d49fac15d0b163ae32a2e9481a45ce4c82fe8f",
+"size": 62046
+},
+{
+"path": "knowledge/People/莫那能.md",
+"sha": "f6f0ac668b71a5b2127789c4a157411851841ac9",
+"size": 27469
+},
+{
+"path": "knowledge/People/葉丙成.md",
+"sha": "ad0dfe3331beec7cfc2a5d32cee4ac31c4679c05",
+"size": 3853
+},
+{
+"path": "knowledge/People/葉國一.md",
+"sha": "b062cc177d4420867466c4f11e8a7887fbd41e7c",
+"size": 13482
+},
+{
+"path": "knowledge/People/蒼藍鴿.md",
+"sha": "37ce373ad532aeea16f2da123a6621e21cd405a4",
+"size": 23459
+},
+{
+"path": "knowledge/People/蔡依林.md",
+"sha": "5d20ced23d51b9d0ac7c80f11439b26ca49279e3",
+"size": 2663
+},
+{
+"path": "knowledge/People/蔡健雅.md",
+"sha": "799c92961585fc6bdeb3071a892e4341212bbdbd",
+"size": 20043
+},
+{
+"path": "knowledge/People/蔡同榮.md",
+"sha": "b0e5ad8fc104bb4e5c14194f68e9e40fb41602fc",
+"size": 21762
+},
+{
+"path": "knowledge/People/蔡培火.md",
+"sha": "e285f041c50e30e480666194d61d2fbc4c87efb4",
+"size": 21209
+},
+{
+"path": "knowledge/People/蔡明亮.md",
+"sha": "41a05d6d5016e0b726a86fcefc32cc95f53ddaaa",
+"size": 9269
+},
+{
+"path": "knowledge/People/蔡瑞月.md",
+"sha": "b3cb09ad876ea72a6ddb076f575d227ae68b1de0",
+"size": 19965
+},
+{
+"path": "knowledge/People/蔡英文.md",
+"sha": "917bcc257b9dd381ee9c7e1f9f7222a05d7c6345",
+"size": 24469
+},
+{
+"path": "knowledge/People/蔡衍明.md",
+"sha": "6dbe3d1b62ddb417b9d58a2842741bd0683e09ad",
+"size": 19796
+},
+{
+"path": "knowledge/People/蔡阿嘎.md",
+"sha": "09c1f36415d50aea0db10e6fe9876d71ca8ce2f5",
+"size": 9780
+},
+{
+"path": "knowledge/People/蔡黑皮.md",
+"sha": "8b0cdb45270a311f99cfcddf716f466b41e5d3f1",
+"size": 31679
+},
+{
+"path": "knowledge/People/蔣中正.md",
+"sha": "d7a9489d7a31c2c706e4751340237517220d6672",
+"size": 18040
+},
+{
+"path": "knowledge/People/蔣渭水.md",
+"sha": "c8161af4f9ca3208b2f331f3b9bb65c0d207cb0a",
+"size": 8876
+},
+{
+"path": "knowledge/People/蔣為文.md",
+"sha": "40a2832fdbd60823c16a7759fbfb6247ee452c33",
+"size": 8305
+},
+{
+"path": "knowledge/People/蔣經國.md",
+"sha": "7c7b7f7ced17d371914f54fb8c0717d2ddf6dfd8",
+"size": 16172
+},
+{
+"path": "knowledge/People/蔣萬安.md",
+"sha": "14a0dcdbd3b6fd1f4496d55fab3a79177d417c3b",
+"size": 155255
+},
+{
+"path": "knowledge/People/蕭上農.md",
+"sha": "185e87c6e5f2df18885c3a03852cd58dba1f4fc8",
+"size": 10947
+},
+{
+"path": "knowledge/People/蕭敬騰.md",
+"sha": "aab7050322bb296e8b2abc14455afd6b12197820",
+"size": 3830
+},
+{
+"path": "knowledge/People/蕭煌奇.md",
+"sha": "b447bc7df18ee97e18249ddc0fcaea4889d77214",
+"size": 9173
+},
+{
+"path": "knowledge/People/蕭美琴.md",
+"sha": "dc312282f6836d30830e7864db31ea50c101c3aa",
+"size": 19254
+},
+{
+"path": "knowledge/People/蕭青陽.md",
+"sha": "c27d129a897a5e67de082ea96e52a0d4fdf8e6c2",
+"size": 6342
+},
+{
+"path": "knowledge/People/蘇巧慧.md",
+"sha": "9546822f2cb9c58d6f022080ffcc4496f8a9d321",
+"size": 14452
+},
+{
+"path": "knowledge/People/蘇貞昌.md",
+"sha": "5e74adc1a9853352d7a5a763a1e6e690301ab449",
+"size": 8982
+},
+{
+"path": "knowledge/People/許倬雲.md",
+"sha": "77c8148f8acdd957196e19196eb9b4bbd4d2a6a3",
+"size": 59137
+},
+{
+"path": "knowledge/People/許文龍.md",
+"sha": "657318f4faa975c3111774eeb139b08a9330772c",
+"size": 9548
+},
+{
+"path": "knowledge/People/許淑淨.md",
+"sha": "c695bf1b659f1a419b4f5f9fff25130c1c602564",
+"size": 8437
+},
+{
+"path": "knowledge/People/許美華.md",
+"sha": "e0210e2d4e739afe4deac02a0c4a5e850d419b62",
+"size": 15092
+},
+{
+"path": "knowledge/People/許芳宜.md",
+"sha": "188d8518716a29ea854978ca78c9fde28104e85c",
+"size": 9175
+},
+{
+"path": "knowledge/People/諸葛四郎.md",
+"sha": "82ece18b49b2e8972b19ae350d307aac30d90ce0",
+"size": 13158
+},
+{
+"path": "knowledge/People/謝淑薇.md",
+"sha": "ed3294f58523f951437b45d5e61f77a87ae468b5",
+"size": 10002
+},
+{
+"path": "knowledge/People/豬哥亮.md",
+"sha": "207a64c627a3dfc0f0c673058cb8fa23811e13db",
+"size": 8552
+},
+{
+"path": "knowledge/People/賈永婕.md",
+"sha": "aad27298c0d7a0686410de07c6a91d900ab6a444",
+"size": 23870
+},
+{
+"path": "knowledge/People/賴和.md",
+"sha": "7ff353a0bf9576a5c6099f6cd6cfbdd935787b7a",
+"size": 9627
+},
+{
+"path": "knowledge/People/賴清德.md",
+"sha": "59692d3a151087aa9e0725cb2e7f0efebe22ee37",
+"size": 14729
+},
+{
+"path": "knowledge/People/賴聲川.md",
+"sha": "cdea28242cde3323d743aba7029c5cc8135b262a",
+"size": 9912
+},
+{
+"path": "knowledge/People/趙自強.md",
+"sha": "a43059ae86431b82a7ece118cb84bf28a575f221",
+"size": 10561
+},
+{
+"path": "knowledge/People/這群人.md",
+"sha": "803ff2bf57bfb3a21b2b2a7f0ebea566c7981a47",
+"size": 46274
+},
+{
+"path": "knowledge/People/連穎.md",
+"sha": "8165d33b586a115a0103c5c0293be5d9702e19d1",
+"size": 15039
+},
+{
+"path": "knowledge/People/邊荷律.md",
+"sha": "40fa249908ee04c3602f4b168579a30b2298050a",
+"size": 3589
+},
+{
+"path": "knowledge/People/邱繼弘.md",
+"sha": "f191cb39887cfa219fe19e365167d45054bc04e3",
+"size": 18911
+},
+{
+"path": "knowledge/People/邵友濂.md",
+"sha": "d4ef5a29a50258c243c46e485da3c6dd494f6039",
+"size": 10274
+},
+{
+"path": "knowledge/People/郁永河.md",
+"sha": "387732697170472c8522ccefdb98b344211d7e95",
+"size": 10912
+},
+{
+"path": "knowledge/People/郭台銘.md",
+"sha": "77b4b12b4cc4a36310374d7da4654e961d2ff7e2",
+"size": 11448
+},
+{
+"path": "knowledge/People/郭婞淳.md",
+"sha": "a2071a20d1919177e392f31ab66267ef184448bd",
+"size": 13853
+},
+{
+"path": "knowledge/People/郭正光.md",
+"sha": "418b521376b1e98c041a464987d4f73ccf53d8b4",
+"size": 7506
+},
+{
+"path": "knowledge/People/郭泓志.md",
+"sha": "4735444aba43feac0969e78ecc45f28d54eaf519",
+"size": 13541
+},
+{
+"path": "knowledge/People/郭金發.md",
+"sha": "a277efa0bfeae79a882565f48b998d9d03bbc8e1",
+"size": 6822
+},
+{
+"path": "knowledge/People/鄧雨賢.md",
+"sha": "44c12a9aa4d6216bef555090c2391eb1211672b9",
+"size": 9227
+},
+{
+"path": "knowledge/People/鄧麗君.md",
+"sha": "e56630bd0f982d33a2df71ee1cd869deb4607450",
+"size": 23012
+},
+{
+"path": "knowledge/People/鄭兆村.md",
+"sha": "9b712ff082423394685a16e56c35762fe408b86d",
+"size": 10156
+},
+{
+"path": "knowledge/People/鄭南榕.md",
+"sha": "f2cbb0962c7998ba8a0598e7bda7c2c88dd0b6fa",
+"size": 10812
+},
+{
+"path": "knowledge/People/鄭宜農.md",
+"sha": "7308fd42b1a3dbc93207d00bb0482d47fcdffa6e",
+"size": 23536
+},
+{
+"path": "knowledge/People/鄭愁予.md",
+"sha": "599ca44a7b3482ecda9d0022fb4d1375edd76ac0",
+"size": 23540
+},
+{
+"path": "knowledge/People/鄭成功.md",
+"sha": "dcedd48cd4e4d5dbbd9d839e7a438a758683fe86",
+"size": 15621
+},
+{
+"path": "knowledge/People/鄭文琦.md",
+"sha": "f51685bfcd106dbc6ac95a0b17a6b327c0ed231d",
+"size": 20562
+},
+{
+"path": "knowledge/People/鄭麗文.md",
+"sha": "44493adac7637727758e7bb2d2c75ce7b77b450e",
+"size": 21664
+},
+{
+"path": "knowledge/People/酷的夢.md",
+"sha": "a513e050693b3a58c4e6129eb145198a12bfdee9",
+"size": 24024
+},
+{
+"path": "knowledge/People/金城武.md",
+"sha": "2e34a7e5022c8ed1f31b04d886c166cdbf13a829",
+"size": 10128
+},
+{
+"path": "knowledge/People/金針菇.md",
+"sha": "5e69339283c913fbd14918eccf149a0170eecb04",
+"size": 4203
+},
+{
+"path": "knowledge/People/鈕承澤.md",
+"sha": "c99160e87c7b7a1dcabe09fa57a60646e4698949",
+"size": 8901
+},
+{
+"path": "knowledge/People/鍾理和.md",
+"sha": "c2eef7e45129c075ba9d182d601dd1b1f935f54b",
+"size": 9055
+},
+{
+"path": "knowledge/People/鍾肇政.md",
+"sha": "e8f22cffa4a3d3cd30fd8f5972b9f6b7e795e8f3",
+"size": 20286
+},
+{
+"path": "knowledge/People/鐵牛杰哥.md",
+"sha": "067bb871425e6ca3572c692e3cacd91f14b990d5",
+"size": 38480
+},
+{
+"path": "knowledge/People/阿滴.md",
+"sha": "995b79130e683d1b7e889d5ed3553b4af768e754",
+"size": 8153
+},
+{
+"path": "knowledge/People/阿爆.md",
+"sha": "c831c434ed7ea962778621e91c4dede185957d94",
+"size": 23243
+},
+{
+"path": "knowledge/People/阿神.md",
+"sha": "f2e8e1eaafa71d645411a25e2ed62f87bec27694",
+"size": 25575
+},
+{
+"path": "knowledge/People/阿翰.md",
+"sha": "17ed967a8aaddb7ff1499dcaa533a2cec9abf5ca",
+"size": 10569
+},
+{
+"path": "knowledge/People/陳三火.md",
+"sha": "0cef0ae0f16731886160407487e7d54ff8d40d19",
+"size": 14630
+},
+{
+"path": "knowledge/People/陳俊良.md",
+"sha": "08c290664e3a15305011cf681901091ac0685593",
+"size": 6872
+},
+{
+"path": "knowledge/People/陳偉殷.md",
+"sha": "667043034c240fb788a97eac4527180f87ee879f",
+"size": 7113
+},
+{
+"path": "knowledge/People/陳士駿.md",
+"sha": "8622697bcfca34330fd02c6f32bda5c23e07c54e",
+"size": 11757
+},
+{
+"path": "knowledge/People/陳子見.md",
+"sha": "4c0b8136e9a19eb6a92fcc199d9a211cbdba15e8",
+"size": 14093
+},
+{
+"path": "knowledge/People/陳幸妤.md",
+"sha": "b903e36453a087765e4bfa868624bb26cb559372",
+"size": 15704
+},
+{
+"path": "knowledge/People/陳建仁.md",
+"sha": "41cd080e097622ed88dc01e3e20d2ee42014d50e",
+"size": 9901
+},
+{
+"path": "knowledge/People/陳建年.md",
+"sha": "d6d0ed5bd5d043e73bacf49307d40fe680ccb50c",
+"size": 34752
+},
+{
+"path": "knowledge/People/陳建騏.md",
+"sha": "f342abd40a7370fc1509782e6b455fd7172cf199",
+"size": 23747
+},
+{
+"path": "knowledge/People/陳思宏.md",
+"sha": "97bd775c57bfc2bff3ad1d06161c043e2a9d32b8",
+"size": 18895
+},
+{
+"path": "knowledge/People/陳文郁.md",
+"sha": "1726ad9bfba8337d3547e7c4c1e0e897a7343ca1",
+"size": 27439
+},
+{
+"path": "knowledge/People/陳昇.md",
+"sha": "68dcf1193c3a8b2fd67785fbf36bb8b389145232",
+"size": 12709
+},
+{
+"path": "knowledge/People/陳映真.md",
+"sha": "e46b8fa0b1d73d4b8ea2113d1040cc13fe4d0b89",
+"size": 15362
+},
+{
+"path": "knowledge/People/陳樹菊.md",
+"sha": "804d5e85f5f8e5c1dd98813b09a169b6cbb5ddea",
+"size": 8358
+},
+{
+"path": "knowledge/People/陳水扁.md",
+"sha": "3752bd8841d8675cbcf964fff7c56ae71494b96e",
+"size": 17345
+},
+{
+"path": "knowledge/People/陳澄波.md",
+"sha": "97917393f25e1ad44c2b5f6d9570fd9d665566eb",
+"size": 14260
+},
+{
+"path": "knowledge/People/陳玉勳.md",
+"sha": "4bc2fadd2577df53fa1fa648251f419d0f19f5c9",
+"size": 9039
+},
+{
+"path": "knowledge/People/陳致中.md",
+"sha": "163f7a3add7f98ae7630b1b2d09f2490c33a6e1a",
+"size": 50934
+},
+{
+"path": "knowledge/People/陳菊.md",
+"sha": "aaa0e11fcbf2ac7d03661e4eabab33dd7b49b6b7",
+"size": 6958
+},
+{
+"path": "knowledge/People/陽岱鋼.md",
+"sha": "46f8203ec437beb2e9a73bc20d7d255116c1d6ea",
+"size": 6827
+},
+{
+"path": "knowledge/People/韋宗成.md",
+"sha": "aa6bc67b77bb964095f24a76c2c4c93ee1a7b437",
+"size": 23455
+},
+{
+"path": "knowledge/People/韓國瑜.md",
+"sha": "fec85d6d860e6a9fe6d1241c5bda725c22bbb6a1",
+"size": 17049
+},
+{
+"path": "knowledge/People/館長陳之漢.md",
+"sha": "c23115bede0da8fd895e401f8803e31d5fe0a252",
+"size": 15068
+},
+{
+"path": "knowledge/People/馬偕.md",
+"sha": "0539e0a27054ce69e25a2737de29e69ba6560aed",
+"size": 7674
+},
+{
+"path": "knowledge/People/馬英九.md",
+"sha": "9774cb9691ffcc9b41f47045d73a553cea5a833d",
+"size": 42862
+},
+{
+"path": "knowledge/People/高俊明.md",
+"sha": "cc6b77921fc091b695ab1b7e83d4cad901611fb6",
+"size": 9955
+},
+{
+"path": "knowledge/People/魏哲家.md",
+"sha": "b7984f2f99991408b2d65d18741a8ac77d63583b",
+"size": 7160
+},
+{
+"path": "knowledge/People/魏如萱.md",
+"sha": "93c1f0f3e3353669d223bc81dae2e54714e8e1e4",
+"size": 29024
+},
+{
+"path": "knowledge/People/魏德聖.md",
+"sha": "f18eaf116731f12bcf6e626edaa13b7263a6515b",
+"size": 10128
+},
+{
+"path": "knowledge/People/魚條.md",
+"sha": "0e003c4c73e6ec512e743731f3b0d09cca4040cd",
+"size": 7740
+},
+{
+"path": "knowledge/People/麟洋配.md",
+"sha": "8a511f02294e3822bf5a6e7ca59ae735e2a49c8d",
+"size": 17950
+},
+{
+"path": "knowledge/People/黃仁勳.md",
+"sha": "b775e14354cb9fedb89ce36521c4438121efb0c8",
+"size": 24836
+},
+{
+"path": "knowledge/People/黃光雄.md",
+"sha": "dccb76d9d1dcd4f40364b04d22db9691cfd26f3c",
+"size": 8941
+},
+{
+"path": "knowledge/People/黃國珍.md",
+"sha": "20ae8bbb39504f97fb48389533341ccd5ba5cc40",
+"size": 2404
+},
+{
+"path": "knowledge/People/黃土水.md",
+"sha": "bede7d15fdbdc0d847193c2442b3fcf307db92cc",
+"size": 19346
+},
+{
+"path": "knowledge/People/黃大煒.md",
+"sha": "d21e3f35d2aefb85630d52feb626cd9b3d01520e",
+"size": 34603
+},
+{
+"path": "knowledge/People/黃少雍.md",
+"sha": "651d9cdabae13463bb042b7848e7215604906772",
+"size": 15943
+},
+{
+"path": "knowledge/People/黃山料.md",
+"sha": "6228c2b0ade64a69fb06b9974c220e4e7f1ca8a9",
+"size": 39508
+},
+{
+"path": "knowledge/People/黃崇仁.md",
+"sha": "908dce28dcdf1f4e34e6c9be413cedb81af84f27",
+"size": 54631
+},
+{
+"path": "knowledge/People/黃春明.md",
+"sha": "89df1a30950e92ef5c8cdb321b5f5b2b38e6ecca",
+"size": 9101
+},
+{
+"path": "knowledge/People/黃氏兄弟.md",
+"sha": "5ffe7a15fcdf5dc17db7f967c7f0c232dcea1553",
+"size": 9509
+},
+{
+"path": "knowledge/People/黃玉嬌.md",
+"sha": "4929feeb1dc1930c26c0eee54eac3bce78df5ad7",
+"size": 11167
+},
+{
+"path": "knowledge/People/黃聲遠.md",
+"sha": "e08407872d6b915cf72140b2c88a1bb3a247ad75",
+"size": 10449
+},
+{
+"path": "knowledge/People/黃震南.md",
+"sha": "acec132a2fd9d8e41a21d961d185e17e9b3af6c4",
+"size": 5629
+},
+{
+"path": "knowledge/People/黑貓老師.md",
+"sha": "b52f24345d241e7d4a74e955f4f12cdc100a2d25",
+"size": 17033
+},
+{
+"path": "knowledge/People/齊柏林.md",
+"sha": "7a2016f056222af8ceba3f4a39c6bfbfb3057dc6",
+"size": 45342
+},
+{
+"path": "knowledge/People/龍應台.md",
+"sha": "2f1c3d2aae7812ad779bc79f542568621bf2be34",
+"size": 10276
+},
+{
+"path": "knowledge/Politics/2026 九合一選舉.md",
+"sha": "69ee36421fb0ab70990a7f4db4659942eca55169",
+"size": 41480
+},
+{
+"path": "knowledge/Politics/309本里長帳簿.md",
+"sha": "0096f3b371a397a29fe88a9f1ae32990548a8600",
+"size": 13387
+},
+{
+"path": "knowledge/Politics/中央政府總預算.md",
+"sha": "72a7b606d671ea522fd4cc47d30b51956a7d3be2",
+"size": 12110
+},
+{
+"path": "knowledge/Politics/中選會制度.md",
+"sha": "edb2fe86944159850475281d6afa155faf80caf6",
+"size": 17731
+},
+{
+"path": "knowledge/Politics/九合一選舉是什麼.md",
+"sha": "6ac11e885f3b5f97070d9e62df5ba9a75c0dc29d",
+"size": 17927
+},
+{
+"path": "knowledge/Politics/來來來怎麼樣怎麼樣.md",
+"sha": "636c5735a5427e72d99006243e03e2a702364591",
+"size": 11973
+},
+{
+"path": "knowledge/Politics/原住民族正名.md",
+"sha": "7d4a2d1c1bae86010d67c50cc2c6b57d9fe0567a",
+"size": 24493
+},
+{
+"path": "knowledge/Politics/台灣不在籍投票.md",
+"sha": "14360e80cba3752256987648889b29683b9f08b0",
+"size": 19762
+},
+{
+"path": "knowledge/Politics/台灣公投制度.md",
+"sha": "bec4be4ba65e94c0fc69ec37178f5c6b1b4d177b",
+"size": 14314
+},
+{
+"path": "knowledge/Politics/投票權門檻歷史.md",
+"sha": "1aa5697a23327bf5ba9b9394f8feda4aeb5a1404",
+"size": 21767
+},
+{
+"path": "knowledge/Politics/政治獻金透明度.md",
+"sha": "17d34c8964efe85b579713274420e59cd1c024af",
+"size": 22111
+},
+{
+"path": "knowledge/Politics/村里長制度.md",
+"sha": "a7e7c157b4efadcfa6f0a239cc22df762ee626e2",
+"size": 25492
+},
+{
+"path": "knowledge/Politics/歡樂無法黨.md",
+"sha": "0d47236e75379da04432e25bf2cd7cf346d8bdad",
+"size": 18434
+},
+{
+"path": "knowledge/Politics/直轄市山地原住民區長.md",
+"sha": "e53e661558b636ef9fb67b8633146080d18f8fa6",
+"size": 28822
+},
+{
+"path": "knowledge/Politics/立法院不分區立委.md",
+"sha": "cdf7ebb70d89889a2ddd3a934bd6814b65413355",
+"size": 15551
+},
+{
+"path": "knowledge/Politics/第一次總統直選.md",
+"sha": "717f126753b655c007d240d194f00438a36b678f",
+"size": 19613
+},
+{
+"path": "knowledge/Politics/總統的寵物.md",
+"sha": "9969109b19da57e7bc2228edff785536056806e9",
+"size": 10259
+},
+{
+"path": "knowledge/Politics/議員制度.md",
+"sha": "4387f145ef453165761ae57ce6b5c092bd80c388",
+"size": 25521
+},
+{
+"path": "knowledge/Politics/選舉公報.md",
+"sha": "94d8779229094611ee3188602e644f50dc1cb8bd",
+"size": 22245
+},
+{
+"path": "knowledge/Politics/選舉造勢.md",
+"sha": "5d5afe1cd84a5ee66ae59ea482c6b008890f78a8",
+"size": 15875
+},
+{
+"path": "knowledge/Politics/選舉過程.md",
+"sha": "c40c39395b6b64120dbb095b96cf6bea2e503cd2",
+"size": 12197
+},
+{
+"path": "knowledge/Society/2026年分科爭議.md",
+"sha": "9ea4f401e62bec1ee366e6467ccf3a57200ddd73",
+"size": 12764
+},
+{
+"path": "knowledge/Society/2026鄭習會與國共十年再會.md",
+"sha": "834f13e7b409faf3cacc1ad2d847c8f01ce14d66",
+"size": 21739
+},
+{
+"path": "knowledge/Society/LGBTQ.md",
+"sha": "7260f230d54bc0e31c6367becd490410231e4184",
+"size": 11405
+},
+{
+"path": "knowledge/Society/TikTok.md",
+"sha": "1400d01944e6875a89a245eb5ff0115bb957f684",
+"size": 14111
+},
+{
+"path": "knowledge/Society/一個教師的誕生：台灣師資培育制度.md",
+"sha": "e8126d158371654ac72ccd61f8c20b83261e1744",
+"size": 29444
+},
+{
+"path": "knowledge/Society/中央研究院.md",
+"sha": "a95a0dd1d149560428f38e0875147700978ea050",
+"size": 56087
+},
+{
+"path": "knowledge/Society/中華台北.md",
+"sha": "3da98360d4b7746614d09a4205ac516d45eb1d96",
+"size": 39265
+},
+{
+"path": "knowledge/Society/人權與性別平等.md",
+"sha": "2d0f78b2f83ddad43a6673ebfd39e021e46ca88b",
+"size": 9710
+},
+{
+"path": "knowledge/Society/偏遠地區學校教育發展條例全解.md",
+"sha": "178cedd94d7bee5174cb56e5c95763becd19d1a9",
+"size": 35153
+},
+{
+"path": "knowledge/Society/全社會防衛韌性.md",
+"sha": "e2de3476f0bbd2828d675aaeefb6f6b933b130a3",
+"size": 7994
+},
+{
+"path": "knowledge/Society/公共政策網路參與平臺.md",
+"sha": "d3d6252fb3e5052f459b905704e4c1d8455b1271",
+"size": 13587
+},
+{
+"path": "knowledge/Society/公視.md",
+"sha": "932902fd96a5985cce5527464c8778192fa77586",
+"size": 34699
+},
+{
+"path": "knowledge/Society/冷氣與能源貧窮議題.md",
+"sha": "64b280f951e5b2d3f86823e17d7f4dcbf176d49b",
+"size": 20975
+},
+{
+"path": "knowledge/Society/動物園與展演動物倫理.md",
+"sha": "62dc6e0eac6f82b0e2d5a202070d7f320c8e8391",
+"size": 13493
+},
+{
+"path": "knowledge/Society/台北吸菸室.md",
+"sha": "dbad3b8d3602eea9b00c0f027b9b9bbbf0403fdc",
+"size": 41953
+},
+{
+"path": "knowledge/Society/台北鼠患.md",
+"sha": "170726c26d3b5df7064f944f8ddd933e22522013",
+"size": 19111
+},
+{
+"path": "knowledge/Society/台南鐵路地下化.md",
+"sha": "e2b6c40f8dce1006ca02621fff98637d390c2d19",
+"size": 10032
+},
+{
+"path": "knowledge/Society/台灣人工生殖.md",
+"sha": "bc169ce9c89ff7c63c2981479fa12c4f5585252c",
+"size": 15030
+},
+{
+"path": "knowledge/Society/台灣偏鄉教育.md",
+"sha": "1ea6fae1a427fb50c0f6560cf8a7c46eb778831c",
+"size": 14993
+},
+{
+"path": "knowledge/Society/台灣全齡共融旅遊與生活文化.md",
+"sha": "ec59b77c9c0920cca249a6d20f3133c3fce51030",
+"size": 14297
+},
+{
+"path": "knowledge/Society/台灣公共衛生與防疫體系.md",
+"sha": "9ca46da5f6f9a4e6a80fe57df452bc1c482a578c",
+"size": 10274
+},
+{
+"path": "knowledge/Society/台灣再生醫療雙法沿革從業人員告白.md",
+"sha": "9e450d5671f81447cb14bad1b9908a2bf62be17b",
+"size": 39489
+},
+{
+"path": "knowledge/Society/台灣動物用藥爭議.md",
+"sha": "79ecaa83971725ab2472603241c9ce6842e43d56",
+"size": 37143
+},
+{
+"path": "knowledge/Society/台灣原住民族土地正義與傳統領域.md",
+"sha": "28629dcc56e3d5257f2e2ed7b44dd0049e78a530",
+"size": 12349
+},
+{
+"path": "knowledge/Society/台灣原住民族教育與語言復振的交界.md",
+"sha": "05c703ce0eefb3c8ca65029072586d19d0395640",
+"size": 31806
+},
+{
+"path": "knowledge/Society/台灣司法改革與預防性羈押制度.md",
+"sha": "3b5b6c2fe4a7cbea81361dd1204a66f042d5ce4b",
+"size": 19022
+},
+{
+"path": "knowledge/Society/台灣同婚與性別平權.md",
+"sha": "812f6d5223610031e0d18ac1e8f6041cde18de6d",
+"size": 13404
+},
+{
+"path": "knowledge/Society/台灣國防與軍事現代化.md",
+"sha": "5fba768669e924f5f48a8343069594dec3a603cc",
+"size": 24928
+},
+{
+"path": "knowledge/Society/台灣在國際標準中的標示問題.md",
+"sha": "453a3d232cb6c2c95f182fc2f1039862795687ef",
+"size": 8510
+},
+{
+"path": "knowledge/Society/台灣媒體總史.md",
+"sha": "b21b848f3bd0f3e0f7c0af11a4d7706039cb1833",
+"size": 9541
+},
+{
+"path": "knowledge/Society/台灣媒體與新聞自由.md",
+"sha": "82d760c4b83fabefcc97f00d64804c10e29b9a67",
+"size": 12423
+},
+{
+"path": "knowledge/Society/台灣學校輔導室的前世今生.md",
+"sha": "3d029ca11abc2937eda61f553eda7ffcbb44461b",
+"size": 13389
+},
+{
+"path": "knowledge/Society/台灣少子化危機.md",
+"sha": "afaeb8ab2ad93d80108c97651bc70b6cac007af6",
+"size": 44109
+},
+{
+"path": "knowledge/Society/台灣平均餘命.md",
+"sha": "17c4427ce1094e35a09595a1667d00991e76853e",
+"size": 10748
+},
+{
+"path": "knowledge/Society/台灣志工文化與公益參與.md",
+"sha": "ac6ed34724d121ba2e0063190e7cdfa317a8ffa5",
+"size": 9601
+},
+{
+"path": "knowledge/Society/台灣拔河.md",
+"sha": "de86287f9ce45fee26e63c7962ce0af8d8c6869f",
+"size": 8658
+},
+{
+"path": "knowledge/Society/台灣捐血.md",
+"sha": "06f4e731899a771f11d68ac35efb7b42f1a77aa8",
+"size": 8522
+},
+{
+"path": "knowledge/Society/台灣政治環境與選舉制度.md",
+"sha": "8833576031b1aeec5e78825ea4b97df60333e7ac",
+"size": 10034
+},
+{
+"path": "knowledge/Society/台灣教師的管教困境.md",
+"sha": "7ad35b7b4a818b224fadb8229e479e8a27cb52cd",
+"size": 12284
+},
+{
+"path": "knowledge/Society/台灣斜槓世代.md",
+"sha": "7202aabc10d2bfa8b46fe2f661f8685e200c4a0f",
+"size": 11834
+},
+{
+"path": "knowledge/Society/台灣新冠疫情與疫苗.md",
+"sha": "231ba1528352c3f74703a5560b093af1eaf013b7",
+"size": 106916
+},
+{
+"path": "knowledge/Society/台灣月老地圖.md",
+"sha": "5a02fbf54e59232c2df73beb8163c5b25998febd",
+"size": 24602
+},
+{
+"path": "knowledge/Society/台灣有哪些動物園.md",
+"sha": "4e91fc77dcbe2728ecb493b2d5e5520e9bd04c99",
+"size": 22544
+},
+{
+"path": "knowledge/Society/台灣流浪動物文化.md",
+"sha": "92c89e312d3f4032e6283337491225b0d0adadc5",
+"size": 37849
+},
+{
+"path": "knowledge/Society/台灣海外僑民與離散社群.md",
+"sha": "1cc19deb4712f8b3599358d6dd13c895dfc1dd41",
+"size": 12652
+},
+{
+"path": "knowledge/Society/台灣災難志工文化.md",
+"sha": "987216a00ded01b9aecc2281d14cf4b5ad708583",
+"size": 27465
+},
+{
+"path": "knowledge/Society/台灣環境正義與鄰避爭議.md",
+"sha": "962022999ad60368cdeba0bd8fe6b4afd753e4de",
+"size": 17784
+},
+{
+"path": "knowledge/Society/台灣的年級生世代.md",
+"sha": "2c91f11cc1efc93e506b0812199c19f41454f0ca",
+"size": 32687
+},
+{
+"path": "knowledge/Society/台灣的道德課去哪了.md",
+"sha": "f1755ba29c340c0b2888234805fa9ef3d896eae4",
+"size": 20402
+},
+{
+"path": "knowledge/Society/台灣省籍矛盾.md",
+"sha": "092d709473ad36efa5561f78c8f1738047f6c1b5",
+"size": 14790
+},
+{
+"path": "knowledge/Society/台灣社區大學.md",
+"sha": "13a51310bf091043c06e6b44ad2a79a4d75dfa78",
+"size": 18609
+},
+{
+"path": "knowledge/Society/台灣社區與里文化.md",
+"sha": "f1bba241ab7e6d46e7347f5f6c4393284cc05d18",
+"size": 15634
+},
+{
+"path": "knowledge/Society/台灣統獨光譜.md",
+"sha": "f03fee49bb1f380e4e255982dd695816609b3253",
+"size": 31006
+},
+{
+"path": "knowledge/Society/台灣與亞運.md",
+"sha": "e88f3a466bbe8d324bbca01712772550c002f5a7",
+"size": 11480
+},
+{
+"path": "knowledge/Society/台灣與史瓦帝尼.md",
+"sha": "1644d0740cb8e90e09c43bd96149ad848e57542b",
+"size": 30159
+},
+{
+"path": "knowledge/Society/台灣與核能的討論.md",
+"sha": "c48de459a80a7d848da4b6ea030177057b4fbc13",
+"size": 65296
+},
+{
+"path": "knowledge/Society/台灣與立陶宛.md",
+"sha": "e2145dc1d94420bff8bb52dc6eb7e8af3d8cae1d",
+"size": 8365
+},
+{
+"path": "knowledge/Society/台灣補習班文化.md",
+"sha": "1744f21fa51fb8aa5cbeabcf250060545851b315",
+"size": 11164
+},
+{
+"path": "knowledge/Society/台灣設計研究院.md",
+"sha": "650884cdf41823da8aa52e7e361be93052f49b41",
+"size": 33104
+},
+{
+"path": "knowledge/Society/台灣邦交國與國際外交.md",
+"sha": "c797c39f486d0848f5843a75152bc7798b884eea",
+"size": 31064
+},
+{
+"path": "knowledge/Society/台灣長期照顧制度發展.md",
+"sha": "2a97fefd6a37bd312edb0119d157eeac860a7df3",
+"size": 14652
+},
+{
+"path": "knowledge/Society/台灣電視分級制度.md",
+"sha": "4fa0429fac89d0db98d041569ef25a04b1c3f268",
+"size": 8105
+},
+{
+"path": "knowledge/Society/台灣青年的生涯迷航.md",
+"sha": "e1945c479e26639e5e7d1842012f1d3a8fa455b0",
+"size": 14315
+},
+{
+"path": "knowledge/Society/台灣體育發展與奧運.md",
+"sha": "fad39b471e893f59f7f50e92adc5c7630b74158b",
+"size": 29123
+},
+{
+"path": "knowledge/Society/台灣高等教育擴張與退場.md",
+"sha": "6998c4ef068efdf5e268323d6e9d096b0d9537c3",
+"size": 43706
+},
+{
+"path": "knowledge/Society/名間焚化爐.md",
+"sha": "2e3e908bad88d5a972ed375990190c679d67203d",
+"size": 9565
+},
+{
+"path": "knowledge/Society/哈哈台.md",
+"sha": "b3fb8cded7c1e4e9185e13c36a18479f50c938d6",
+"size": 19375
+},
+{
+"path": "knowledge/Society/國中會考.md",
+"sha": "5c90b7f821dec63728522b2a378ec625604bff51",
+"size": 18000
+},
+{
+"path": "knowledge/Society/國宅與居住正義.md",
+"sha": "6f47cff645fbdf362a4cab9a5c07e979ba8d501e",
+"size": 46367
+},
+{
+"path": "knowledge/Society/國定假日.md",
+"sha": "60805274def92787f6aac6cae4a6325115a4531d",
+"size": 41347
+},
+{
+"path": "knowledge/Society/國立臺灣歷史博物館.md",
+"sha": "c552373a729ef525ea631cd920e8566a149ae42d",
+"size": 32743
+},
+{
+"path": "knowledge/Society/地震.md",
+"sha": "50d166a4443c4dc0b635d72c1788450e0213237d",
+"size": 9818
+},
+{
+"path": "knowledge/Society/報導者.md",
+"sha": "4da251624123abddf3b1a83caf6d37640104338b",
+"size": 45776
+},
+{
+"path": "knowledge/Society/外省人.md",
+"sha": "a11213d15140036943465a1a4a6745d7aa2cacb3",
+"size": 11467
+},
+{
+"path": "knowledge/Society/外送專法.md",
+"sha": "faf90b5fc88db55255a1359271e31abed86bbd2f",
+"size": 78191
+},
+{
+"path": "knowledge/Society/天下雜誌.md",
+"sha": "81f61b36fe85f465c218bd6cbd8dba221e09cde3",
+"size": 38602
+},
+{
+"path": "knowledge/Society/太陽花學運.md",
+"sha": "74c5f2e99703cac36affe1e647eaa8565f722fbb",
+"size": 18144
+},
+{
+"path": "knowledge/Society/婦女新知.md",
+"sha": "717cc0a94d6612f34332b237a57551dd92e05728",
+"size": 16757
+},
+{
+"path": "knowledge/Society/學測.md",
+"sha": "ef740cb25297b0f03c69406e9cb87c9dad8c30f3",
+"size": 19879
+},
+{
+"path": "knowledge/Society/學習貧窮.md",
+"sha": "6779113d120dc5572dbb2618c7da59af47c1c777",
+"size": 26589
+},
+{
+"path": "knowledge/Society/居住正義.md",
+"sha": "45f47eb035e1796e8ad10cbca74c7c6e1bd4617a",
+"size": 23936
+},
+{
+"path": "knowledge/Society/巴拉圭與台灣.md",
+"sha": "48684ec60090ac996480032638a39b9891c61e50",
+"size": 14102
+},
+{
+"path": "knowledge/Society/想想論壇.md",
+"sha": "b2c0f57ea16fa8c1a77f6b75d69ed86b08130aef",
+"size": 32488
+},
+{
+"path": "knowledge/Society/慈濟.md",
+"sha": "2dc5a7c12d85da3f647120fbefc1fcbdaa2bebdc",
+"size": 14565
+},
+{
+"path": "knowledge/Society/我是OO人.md",
+"sha": "598bf7425d10cdebf8c6e1ea4dcc116a9e5d819b",
+"size": 32144
+},
+{
+"path": "knowledge/Society/手語視訊轉譯.md",
+"sha": "e89c517927cb0a618be56d836d92ed73e6f6ff98",
+"size": 20625
+},
+{
+"path": "knowledge/Society/教育制度與升學文化.md",
+"sha": "abec9b6cadf9639419eaf7487f415ef412f77957",
+"size": 14378
+},
+{
+"path": "knowledge/Society/早餐店阿姨與社區情報網.md",
+"sha": "210a6c34c094fef86c5e3a6b9d577613a20c4f03",
+"size": 10615
+},
+{
+"path": "knowledge/Society/檳榔.md",
+"sha": "ece387d005ae734eda2c5ce18509225316a5b21b",
+"size": 9052
+},
+{
+"path": "knowledge/Society/毒馬鈴薯認知作戰.md",
+"sha": "1bda31833c2bd8e6c8459ba08bb36749bcd9e236",
+"size": 53814
+},
+{
+"path": "knowledge/Society/民主制度.md",
+"sha": "cc0ee413535b9228635f4201d7cb812f968c46c4",
+"size": 8328
+},
+{
+"path": "knowledge/Society/民主進步黨成立.md",
+"sha": "90a573a3bbabf3efe5b900886f6a33a8fc673c7c",
+"size": 22420
+},
+{
+"path": "knowledge/Society/水道頭.md",
+"sha": "3033d54269b901dcfafd764b670db283aa7076eb",
+"size": 19445
+},
+{
+"path": "knowledge/Society/沃草.md",
+"sha": "6a46bf6f4b7c1ddc37174a84df60f862f3a85625",
+"size": 9877
+},
+{
+"path": "knowledge/Society/法輪功在台灣.md",
+"sha": "64d2085c4b9bbaa4d772a29be27d92426201e30a",
+"size": 11012
+},
+{
+"path": "knowledge/Society/泛科學.md",
+"sha": "26fbaba84e3c936219176ed7ae9361db71fa5fa9",
+"size": 26486
+},
+{
+"path": "knowledge/Society/為台灣而教TFT.md",
+"sha": "d2662240922df705d929736ef048e95c73c302bc",
+"size": 16800
+},
+{
+"path": "knowledge/Society/環保與永續發展.md",
+"sha": "5eb237444cc64fbf32e5ae9ba8530e81a196cbb7",
+"size": 11791
+},
+{
+"path": "knowledge/Society/當兵.md",
+"sha": "289098f0569f270d3e9aeb021227bc5b7ba45bc1",
+"size": 9344
+},
+{
+"path": "knowledge/Society/疊杯.md",
+"sha": "70f73c42cd45039a31f5725877b0cc5956fcc2e9",
+"size": 7153
+},
+{
+"path": "knowledge/Society/社區大學黃武雄.md",
+"sha": "f4173d08314009501b3fd1c36688ff6e1d8d26c7",
+"size": 15235
+},
+{
+"path": "knowledge/Society/社會住宅與居住正義.md",
+"sha": "ba2468275e16b30a9f71bf905d8b3b362b2e039b",
+"size": 18101
+},
+{
+"path": "knowledge/Society/社會運動與公民參與.md",
+"sha": "1356db1f02d96f47eff0e0cb31ea1646ad6a8e64",
+"size": 17413
+},
+{
+"path": "knowledge/Society/移工.md",
+"sha": "17b9d05c28785f5bccc84b3745c7076bece41350",
+"size": 10705
+},
+{
+"path": "knowledge/Society/統戰團.md",
+"sha": "b147f72f17f96e1be62b94da72ec5599fee44190",
+"size": 16747
+},
+{
+"path": "knowledge/Society/義消.md",
+"sha": "8d6c64130652610dde489d3162f09fc37c1bfc90",
+"size": 21717
+},
+{
+"path": "knowledge/Society/自助餐阿姨的謎之目測精算能力.md",
+"sha": "0a5ae46a8f588518217555cc46721e74d3b15f66",
+"size": 7491
+},
+{
+"path": "knowledge/Society/臺灣大百科全書.md",
+"sha": "263c95b04a3a3d766ec44e1db58ae13bb162698b",
+"size": 10316
+},
+{
+"path": "knowledge/Society/苯駢芘食安事件.md",
+"sha": "0f8a3ac33f202ce06a25aaeae8c728e671cdbbf4",
+"size": 70881
+},
+{
+"path": "knowledge/Society/行車紀錄器.md",
+"sha": "191c9552ff9ef17e5b95c9e6c688b8e7f3857b22",
+"size": 12068
+},
+{
+"path": "knowledge/Society/複雜生活節.md",
+"sha": "26dbbc418ccb3a75f48b8f122e4dfe211ee28b62",
+"size": 58112
+},
+{
+"path": "knowledge/Society/認知作戰.md",
+"sha": "2406331699175c8d95f0bf8996b5b06b28567c2d",
+"size": 40838
+},
+{
+"path": "knowledge/Society/誰算低薪.md",
+"sha": "45da1964fbdc29ce333b0dc967c02c563733ae57",
+"size": 33287
+},
+{
+"path": "knowledge/Society/賽鴿.md",
+"sha": "7f3fe23381fb60a1fc251625eded47c84be48273",
+"size": 20389
+},
+{
+"path": "knowledge/Society/都市更新爭議.md",
+"sha": "a072a7fed86b7fa6ae3a0f87e0a5131b5296f90a",
+"size": 12286
+},
+{
+"path": "knowledge/Society/醫療法.md",
+"sha": "7f685bfaf63284d28d5c08ddb4e02b939b54aeb8",
+"size": 66023
+},
+{
+"path": "knowledge/Society/野百合學運.md",
+"sha": "b897ed7c62eb1461e38c66fd0075a5623ddaba32",
+"size": 11485
+},
+{
+"path": "knowledge/Society/鐵皮屋.md",
+"sha": "99985cb6baf64d4548c8d4a8ffdab6ef3d3692ce",
+"size": 15582
+},
+{
+"path": "knowledge/Society/防空避難.md",
+"sha": "cf88f28c5a050ee94a06f02d2d805f6b1707b589",
+"size": 13078
+},
+{
+"path": "knowledge/Society/雜學校.md",
+"sha": "250a9ac171987e458ad7529e1cfb1da9d8d6fffd",
+"size": 23117
+},
+{
+"path": "knowledge/Society/電網韌性.md",
+"sha": "b62df3525320e86de9dcf3a26054bf7842842fbc",
+"size": 23052
+},
+{
+"path": "knowledge/Society/韓國人在台灣.md",
+"sha": "84550ee473d5ea44f6b5703ef46478d36d7e3ee5",
+"size": 20709
+},
+{
+"path": "knowledge/Society/颱風假.md",
+"sha": "15fa8f556575473713577eb104a17bc470d40aac",
+"size": 17748
+},
+{
+"path": "knowledge/Society/馬英九迷因.md",
+"sha": "ef39951a53985a088b5ad919bd52486418b2d51e",
+"size": 25223
+},
+{
+"path": "knowledge/Society/黑熊學院.md",
+"sha": "377c93a67fab0209a0921d98d50b4d17fa2a6489",
+"size": 41244
+},
+{
+"path": "knowledge/Technology/AI人工智慧產業.md",
+"sha": "c446d0a697e2f14749515e1096946500f30d3ace",
+"size": 8253
+},
+{
+"path": "knowledge/Technology/AI供應鏈海外設廠.md",
+"sha": "90090815dd3aa440b6f5c1d62298108813d55d8a",
+"size": 23825
+},
+{
+"path": "knowledge/Technology/AI發展.md",
+"sha": "34673a4aabef813e87c2ab48e2fc8b1a5e7588b0",
+"size": 15681
+},
+{
+"path": "knowledge/Technology/AI硬體供應鏈.md",
+"sha": "065dd972245fe888f1883c607c741895043d44cb",
+"size": 24649
+},
+{
+"path": "knowledge/Technology/Computex.md",
+"sha": "bf119b5de06683434fa0572bb70cb8beb7ce135a",
+"size": 57290
+},
+{
+"path": "knowledge/Technology/Facebook.md",
+"sha": "27f441f4a89ec78219b77e33e1e8f2487c417ba4",
+"size": 13677
+},
+{
+"path": "knowledge/Technology/IG.md",
+"sha": "12825ea2046272f8fa09b4a3b4f1d6a8dbfe4c0f",
+"size": 8214
+},
+{
+"path": "knowledge/Technology/NVIDIA在台灣.md",
+"sha": "ba05fd23b163e46753c3af037ca660e89401a84a",
+"size": 56421
+},
+{
+"path": "knowledge/Technology/PTT批踢踢.md",
+"sha": "a10f0753bd2216464859af237a7361dc0e72bd5b",
+"size": 8376
+},
+{
+"path": "knowledge/Technology/Threads在台灣.md",
+"sha": "c0e3384eac1b31806ae9cc21f55a7759e3337f69",
+"size": 96695
+},
+{
+"path": "knowledge/Technology/justfont與台灣字體發展.md",
+"sha": "bc7635b8d90d41fb24c1eb5a899a6cd5158a7344",
+"size": 44474
+},
+{
+"path": "knowledge/Technology/mini-taiwan-pulse.md",
+"sha": "b18b9192c46f05e529d429b8468048e206737fa9",
+"size": 35093
+},
+{
+"path": "knowledge/Technology/不入地窖焉能睡覺.md",
+"sha": "1d232267de8e68181da63471d20d8d2786861fb5",
+"size": 14932
+},
+{
+"path": "knowledge/Technology/傳奇網路與台灣線上遊戲出海.md",
+"sha": "4fb22795d6429d05cacc5f09ea7bc8e494195c78",
+"size": 12894
+},
+{
+"path": "knowledge/Technology/功字裡的那根反斜線.md",
+"sha": "3211dbee1bfa68c4212d41c09681368688970dd4",
+"size": 11016
+},
+{
+"path": "knowledge/Technology/半導體產業.md",
+"sha": "e6f4cf90fa88baa35fbc10f8c7677f9ed74232de",
+"size": 42832
+},
+{
+"path": "knowledge/Technology/半導體用水與台灣水資源.md",
+"sha": "38ad043adc8c5ea4f25acc2de3ad45dbefbe3852",
+"size": 16643
+},
+{
+"path": "knowledge/Technology/台灣5G網路建設與數位轉型.md",
+"sha": "8587be49c8b413260e17c916d7c30fc0578a4f5d",
+"size": 16013
+},
+{
+"path": "knowledge/Technology/台灣AI日常.md",
+"sha": "e042d493aa34f207bc3501caed50c699c20984b7",
+"size": 13635
+},
+{
+"path": "knowledge/Technology/台灣BIM與營建科技.md",
+"sha": "9958ddcca69999f3411ae6e80b1f4e1316768a82",
+"size": 46940
+},
+{
+"path": "knowledge/Technology/台灣Game-Jam社群.md",
+"sha": "e46667fc9bdcb1fa70669ee37f0746a5beecc41b",
+"size": 9794
+},
+{
+"path": "knowledge/Technology/台灣VR元宇宙興衰史.md",
+"sha": "b9d2f93267afdc58832289bf2964d3872b462f7d",
+"size": 22970
+},
+{
+"path": "knowledge/Technology/台灣人工智慧學校.md",
+"sha": "a0b5240c17dc2f3bc9ea2bd8a8a21ae57dfafe24",
+"size": 32302
+},
+{
+"path": "knowledge/Technology/台灣人工智慧實驗室.md",
+"sha": "05a2bbc7f2bee32b60f9190b5df045685db85043",
+"size": 6157
+},
+{
+"path": "knowledge/Technology/台灣人工智慧發展與未來策略.md",
+"sha": "b24d838b8560eb10bced6657ae86e2ea520d0dfd",
+"size": 40395
+},
+{
+"path": "knowledge/Technology/台灣太空產業發展.md",
+"sha": "e0fd18696740eea1746ba2e8e54f7c4a72b2351f",
+"size": 16097
+},
+{
+"path": "knowledge/Technology/台灣技術年會文化.md",
+"sha": "f0046b6eccf8a29013a494353ca2ad957add5856",
+"size": 7727
+},
+{
+"path": "knowledge/Technology/台灣教師與AI教學.md",
+"sha": "e208444e8e26772b5e623d17b7ff6227254f7452",
+"size": 22032
+},
+{
+"path": "knowledge/Technology/台灣數位影像與動畫產業.md",
+"sha": "6fd6904dab4f20fefa73f5a4eaf2f2ba7b3af018",
+"size": 9816
+},
+{
+"path": "knowledge/Technology/台灣機器人產業.md",
+"sha": "29ba6101b49b81537a50a9745d47eacaae568632",
+"size": 17012
+},
+{
+"path": "knowledge/Technology/台灣災難醫療體系.md",
+"sha": "f42b8098b3925da6cf365aedf5cb4adc461f3531",
+"size": 10574
+},
+{
+"path": "knowledge/Technology/台灣無人機產業.md",
+"sha": "86e37f3737cccd7ad400d0261c339c1f6e266a96",
+"size": 28301
+},
+{
+"path": "knowledge/Technology/台灣玩家的瘋狂時刻.md",
+"sha": "e7aa4186693104f6de285ff5c5ff81589d8a1ed7",
+"size": 14111
+},
+{
+"path": "knowledge/Technology/台灣的電力與半導體.md",
+"sha": "95fa2a112d7ee8fd09800592a8931f890850502d",
+"size": 17904
+},
+{
+"path": "knowledge/Technology/台灣科技說故事.md",
+"sha": "7e32ab6f91a6cfe664b9dcdf363552b35a6986dd",
+"size": 27947
+},
+{
+"path": "knowledge/Technology/台灣網路社群遷徙史.md",
+"sha": "3f492b84255cce095f46fc040a87beb58d020e00",
+"size": 37397
+},
+{
+"path": "knowledge/Technology/台灣自行車產業.md",
+"sha": "b298857099039287c3592607e1a83a144761d07e",
+"size": 11820
+},
+{
+"path": "knowledge/Technology/台灣行動支付.md",
+"sha": "70f4a44d3876be9f2b3daeb81baecb9ec39ddd1a",
+"size": 22624
+},
+{
+"path": "knowledge/Technology/台灣資安產業發展.md",
+"sha": "96ea9099284f4875aed5937d1fac81855b92e812",
+"size": 17561
+},
+{
+"path": "knowledge/Technology/台灣軟體產業發展.md",
+"sha": "f04d71c636ef352469407d9223b467110fe0048b",
+"size": 12543
+},
+{
+"path": "knowledge/Technology/台灣遊戲產業與數位娛樂.md",
+"sha": "661eccb9c3f2662393f8d14a80027c183be64410",
+"size": 9250
+},
+{
+"path": "knowledge/Technology/台灣鎢供應鏈.md",
+"sha": "84e90492988490bf5b1d0b26e4473d9b4b6b8991",
+"size": 39793
+},
+{
+"path": "knowledge/Technology/台灣開源精神.md",
+"sha": "71cd9f85c30e779a8b959c360a9a9b242b9fadb7",
+"size": 11866
+},
+{
+"path": "knowledge/Technology/台灣電動車產業鏈發展.md",
+"sha": "3446fe3dee50f93233ef8b547d50037322301fe8",
+"size": 19183
+},
+{
+"path": "knowledge/Technology/台灣電視產業史.md",
+"sha": "881e5ecccbe5f87df26805ce1e02da81fd6f40c3",
+"size": 13004
+},
+{
+"path": "knowledge/Technology/台灣音響產業發展.md",
+"sha": "d52aafc20c8de5efd763f08877ea75c60c4f3a66",
+"size": 10496
+},
+{
+"path": "knowledge/Technology/台灣顯示器產業.md",
+"sha": "e7d4a2a4c4d7341524a992cdfd32b01ff388ee49",
+"size": 17724
+},
+{
+"path": "knowledge/Technology/國家太空中心.md",
+"sha": "3ccabb0cb8d30bf27e14a95b1fe836a8508fdc36",
+"size": 66044
+},
+{
+"path": "knowledge/Technology/國家文化記憶庫.md",
+"sha": "4290105dc288002e74140a11d8dca68be2c0e64a",
+"size": 7307
+},
+{
+"path": "knowledge/Technology/地震預警系統.md",
+"sha": "9911a8d50875f5b6765b8f4220e2a37f2f5568df",
+"size": 19131
+},
+{
+"path": "knowledge/Technology/均一教育平台.md",
+"sha": "0fe0dd65ea67cc1498d85445dc21384ca9cd583d",
+"size": 20532
+},
+{
+"path": "knowledge/Technology/報禁解除.md",
+"sha": "9dbda322ac1077513fec87160f7c2ce84c130347",
+"size": 16970
+},
+{
+"path": "knowledge/Technology/大宇雙劍.md",
+"sha": "ab043840167f4ac1be50c7072f32b1fed0e7fc4c",
+"size": 28283
+},
+{
+"path": "knowledge/Technology/數位身分證與數位政府.md",
+"sha": "f03a297b8afeb05eb5c271b019b0e424a891ade5",
+"size": 16226
+},
+{
+"path": "knowledge/Technology/東亞文字輸入法.md",
+"sha": "919da5df5a4839cff85e0463589f707beca80f86",
+"size": 16342
+},
+{
+"path": "knowledge/Technology/活俠傳.md",
+"sha": "eb9b620cad8deebd7325c81ade48e3e896a9e603",
+"size": 9309
+},
+{
+"path": "knowledge/Technology/海底電纜.md",
+"sha": "e8180bec080ba9537b5fe85f3c7eeeb9aaf94213",
+"size": 31096
+},
+{
+"path": "knowledge/Technology/淡江大橋.md",
+"sha": "6eb17941338a15d53edca3d4a7a6a323c1a34f61",
+"size": 9923
+},
+{
+"path": "knowledge/Technology/科技園區發展.md",
+"sha": "8593d32c95a616228dc21dba9d218ef3f4cd97ec",
+"size": 32456
+},
+{
+"path": "knowledge/Technology/維基百科.md",
+"sha": "9485ef5f1d5bced4e416ed0bedef8f7300c9b69d",
+"size": 11804
+},
+{
+"path": "knowledge/Technology/蕃薯藤.md",
+"sha": "697b05cab84e8dd0f9f18d1e74321d05f49d5743",
+"size": 12666
+},
+{
+"path": "knowledge/Technology/赤燭遊戲.md",
+"sha": "d3b94cd27febaa0ec91501d4d4330dc6b23a4a56",
+"size": 8984
+},
+{
+"path": "knowledge/Technology/迷音Miin.md",
+"sha": "af23c95fc79ef0d135e0e474104183d2b5fac388",
+"size": 28640
+},
+{
+"path": "knowledge/Technology/開放文化基金會.md",
+"sha": "c5a4b036008ee543b530882540f0291e86d67723",
+"size": 38371
+},
+{
+"path": "knowledge/Technology/開源社群與g0v.md",
+"sha": "beb4978b5fe130696ad52c75de32d8da60cf4a00",
+"size": 12643
+},
+{
+"path": "knowledge/Technology/雪山隧道.md",
+"sha": "19168cc93adb0f8d55dadde3a0ad20db12329bff",
+"size": 18583
+},
+{
+"path": "knowledge/Technology/雷亞遊戲.md",
+"sha": "b3a3c3f0ac7229a4e008c7d78719486c4f7e64eb",
+"size": 47509
+},
+{
+"path": "knowledge/Technology/電子商務與數位支付生態系.md",
+"sha": "8e17edf10da0830683374af5164f13963899628d",
+"size": 13635
+},
+{
+"path": "knowledge/Technology/飲料封膜機.md",
+"sha": "0487fb796acbfea4e2361b2f47f28131ec121d71",
+"size": 10173
+},
+{
+"path": "knowledge/resources/mini-taiwan-pulse.md",
+"sha": "eb91b1b66b16c92e07feea111f08310922ea6916",
+"size": 6588
+},
+{
+"path": "knowledge/resources/official-websites.md",
+"sha": "a38b3d89ceda57969e4666925c7c26d045bbcf52",
+"size": 15344
+}
+]
+}

@@ -100,10 +100,7 @@ def load_textbook_manifest(root: Path) -> TextbookSource | None:
 def _no_simplified(text: str) -> str:
     """把純簡體字換成正體（MIT 允許修改；使用者：不要有簡體中文）；群 等本身是正體的字不動。
     Replace Simplified-only characters (MIT allows changes; the user wants no Simplified text); 群 stays."""
-    conv = to_traditional(text)
-    if len(conv) != len(text):
-        return conv
-    return "".join(o if n == "羣" else n for o, n in zip(text, conv))
+    return to_traditional(text)
 
 
 def parse_textbook(text: str, level: str, subject: str) -> list[dict]:
