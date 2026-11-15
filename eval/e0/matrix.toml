@@ -1,0 +1,159 @@
+# E0 候選矩陣（add-e0-benchmark design D1；使用者 2026-11-15 同意）
+# E0 candidate matrix (add-e0-benchmark design D1; approved by the user on 2026-11-15)
+#
+# model       = models/manifest.toml 的名稱 / manifest name
+# group       = ternary | 1-bit | int8 | int4 | int2
+# base        = 基底模型（同基底對照表用）/ base model (for the same-base table)
+# quant       = 量化型別；TQ1_0 / TQ2_0 沒有 CUDA kernel / quant type; TQ1_0 / TQ2_0 have no CUDA kernels
+# placement   = 預設擺放 gpu | cpu；實際擺放在載入前依預算決定（design D2）/ default; decided against budgets at load
+# reference_run = 已有的執行，不重跑 / existing run, not rerun
+# placement_check = 擺放對照列，不畫進帕累托圖 / placement-comparison row, not plotted
+#
+# 列的順序就是執行順序：小模型先跑，萬一中途卡住也先有結果。
+# Row order is run order: small models first, so results exist even if a later row stalls.
+
+[[row]]
+name = "qwen3-0.6b-q8_0"
+model = "qwen3-0.6b-q8_0"
+group = "int8"
+base = "Qwen3-0.6B"
+quant = "Q8_0"
+placement = "cpu"
+reference_run = "20261115-r0-local-qwen3-0.6b-q8_0-cpu-nocache"
+
+[[row]]
+name = "qwen3.5-0.8b-q4_k_m"
+model = "qwen3.5-0.8b-q4_k_m"
+group = "int4"
+base = "Qwen3.5-0.8B"
+quant = "Q4_K_M"
+placement = "gpu"
+
+[[row]]
+name = "qwen3.5-0.8b-q8_0"
+model = "qwen3.5-0.8b-q8_0"
+group = "int8"
+base = "Qwen3.5-0.8B"
+quant = "Q8_0"
+placement = "gpu"
+
+[[row]]
+name = "tbonsai2-2b-q2_0"
+model = "tbonsai2-2b-q2_0"
+group = "ternary"
+base = "Qwen3.5-2B"
+quant = "Q2_0"
+placement = "gpu"
+
+[[row]]
+name = "qwen3.5-2b-q4_k_m"
+model = "qwen3.5-2b-q4_k_m"
+group = "int4"
+base = "Qwen3.5-2B"
+quant = "Q4_K_M"
+placement = "gpu"
+
+[[row]]
+name = "qwen3.5-2b-q4_k_m-cpu"
+model = "qwen3.5-2b-q4_k_m"
+group = "int4"
+base = "Qwen3.5-2B"
+quant = "Q4_K_M"
+placement = "cpu"
+placement_check = true
+
+[[row]]
+name = "qwen3.5-2b-q8_0"
+model = "qwen3.5-2b-q8_0"
+group = "int8"
+base = "Qwen3.5-2B"
+quant = "Q8_0"
+placement = "gpu"
+
+[[row]]
+name = "bitcpm-3b-tq2_0"
+model = "bitcpm-3b-tq2_0"
+group = "ternary"
+base = "MiniCPM4-3B"
+quant = "TQ2_0"
+placement = "cpu"
+
+[[row]]
+name = "tbonsai2-4b-q2_0"
+model = "tbonsai2-4b-q2_0"
+group = "ternary"
+base = "Qwen3.5-4B"
+quant = "Q2_0"
+placement = "gpu"
+
+[[row]]
+name = "qwen3.5-4b-iq2_m"
+model = "qwen3.5-4b-iq2_m"
+group = "int2"
+base = "Qwen3.5-4B"
+quant = "IQ2_M"
+placement = "gpu"
+
+[[row]]
+name = "qwen3.5-4b-q4_k_m"
+model = "qwen3.5-4b-q4_k_m"
+group = "int4"
+base = "Qwen3.5-4B"
+quant = "Q4_K_M"
+placement = "gpu"
+
+[[row]]
+name = "qwen3.5-4b-q8_0"
+model = "qwen3.5-4b-q8_0"
+group = "int8"
+base = "Qwen3.5-4B"
+quant = "Q8_0"
+placement = "cpu"
+
+[[row]]
+name = "bonsai-8b-q1_0"
+model = "bonsai-8b-q1_0"
+group = "1-bit"
+base = "Qwen3-8B"
+quant = "Q1_0"
+placement = "gpu"
+
+[[row]]
+name = "bitcpm-8b-tq2_0"
+model = "bitcpm-8b-tq2_0"
+group = "ternary"
+base = "MiniCPM4-8B"
+quant = "TQ2_0"
+placement = "cpu"
+
+[[row]]
+name = "tbonsai2-9b-q2_0"
+model = "tbonsai2-9b-q2_0"
+group = "ternary"
+base = "Qwen3.5-9B"
+quant = "Q2_0"
+placement = "gpu"
+
+[[row]]
+name = "qwen3.5-9b-iq2_m"
+model = "qwen3.5-9b-iq2_m"
+group = "int2"
+base = "Qwen3.5-9B"
+quant = "IQ2_M"
+placement = "cpu"
+
+[[row]]
+name = "qwen3.5-9b-q4_k_m"
+model = "qwen3.5-9b-q4_k_m"
+group = "int4"
+base = "Qwen3.5-9B"
+quant = "Q4_K_M"
+placement = "cpu"
+
+[[row]]
+name = "bonsai-27b-q1_0"
+model = "bonsai-27b-q1_0"
+group = "1-bit"
+base = "Qwen3.6-27B"
+quant = "Q1_0"
+placement = "cpu"

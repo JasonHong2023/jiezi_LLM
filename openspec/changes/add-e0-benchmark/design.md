@@ -92,12 +92,12 @@ Greedy, thinking off, context 4096, as in existing runs. BitNet 2B4T's trained c
 時間預估：依 0.6B 在 CPU 上的實測（39 t/s，29 分鐘）按 t/s 比例推算。小模型放 GPU 每個約 20～40 分鐘，CPU 上的 8B～27B 每個約 1.5～3 小時，貪婪解碼總計約 15～20 小時，也就是**約 3 個夜晚**（每晚 7 小時）。`e0 plan` 會依實際 t/s 更新預估。
 Estimate: scaled by t/s from the measured 0.6B CPU run (39 t/s, 29 minutes). Small models on GPU take about 20–40 minutes each, and 8B–27B on CPU about 1.5–3 hours each, so greedy totals about 15–20 hours, **about 3 nights** (7 hours each). `e0 plan` updates the estimate from measured t/s.
 
-N=8 取樣是貪婪解碼的 8 倍工作量，全部跑不完。所以只對貪婪解碼「推理 / 工具題分數」排名前 3 的模型，跑推理 / 工具 150 題，溫度 0.7。報表列出三個數字：
-N=8 sampling is 8× the greedy work and cannot cover everything, so it runs only for the top 3 models by greedy reasoning / tool score, on those 150 items at temperature 0.7. The report lists three numbers:
+N=8 取樣是貪婪解碼的 8 倍工作量，全部跑不完。所以只對貪婪解碼「推理 / 工具題分數」排名前 3 的模型，跑程式與工具 100 題，溫度 0.7。摘要不做取樣：摘要沒有多數決可用，評審呼叫也會變成 8 倍。報表列出三個數字：
+N=8 sampling is 8× the greedy work and cannot cover everything, so it runs only for the top 3 models by greedy reasoning / tool score, on the 100 code and tool items at temperature 0.7. Summaries are not sampled: they have no majority vote, and judging would cost 8×. The report lists three numbers:
 - **pass@1**：8 條的平均正確率。
   **pass@1**: mean correctness over the 8 samples.
-- **多數決**：工具題取最多樣本一致的呼叫，程式題取最多樣本一致的輸出。不需要標準答案，所以部署時也能用。
-  **Majority vote**: the most common call for tool items and the most common outputs for code items. It needs no ground truth, so it is usable at deployment.
+- **多數決**：工具題取解析後最多樣本一致的呼叫；程式題取正規化後（去掉註解與空白）最常出現的程式。不需要標準答案，所以部署時也能用；程式題以文字比對是較弱的近似，報表會註明。
+  **Majority vote**: the most common parsed call for tool items; for code, the most common program after normalization (comments and whitespace removed). It needs no ground truth, so it is usable at deployment; text matching for code is a weaker approximation, noted in the report.
 - **pass@8**：8 條中有任何一條正確。這需要標準答案，**只能當上限參考**，不能當成部署時的能力。
   **pass@8**: any of the 8 correct. This needs the ground truth, so it is **an upper bound only**, not a deployable capability.
 
@@ -122,7 +122,16 @@ LLM-judge scores (official SimpleQA grading, summary faithfulness) enter the cha
 - **單次量測**：每個模型只跑一次，題數 50 時 ±7 分左右的差距不具統計意義。→ 報表附上 95% 信賴區間，G1 判斷時一併考量。
   **Single measurement**: one run per model; with 50 items, gaps of about ±7 points are not significant. → The report shows 95% confidence intervals for G1.
 
-## Open Questions
+## Decisions on Open Questions（使用者 2026-11-15 / user, 2026-11-15）
+
+- OQ1：**排除 BitNet b1.58 2B4T**，不改動鎖定的引擎原始碼。候選剩 16 個檔案，約 33.3 GiB。
+  OQ1: **BitNet b1.58 2B4T is excluded**; the pinned engine source is not changed. 16 files remain, about 33.3 GiB.
+- OQ2：同意其餘全部候選，夜間下載。/ OQ2: all other candidates approved, downloaded at night.
+- OQ3：同意取樣設定只跑前 3 名。/ OQ3: sampled setting for the top 3 only, approved.
+- OQ4：評審用 `nvidia-nemotron-3-ultra`（被評的都是本機模型，不會自己評自己），約 1,600 次免費呼叫，夜間進行。
+  OQ4: the judge is `nvidia-nemotron-3-ultra` (all evaluated models are local, so no self-judging); about 1,600 free calls at night.
+
+## Open Questions（已決定，保留原文 / decided, kept for the record）
 
 - **OQ1 BitNet b1.58 2B4T**：
   - (a) 排除。
@@ -133,7 +142,7 @@ LLM-judge scores (official SimpleQA grading, summary faithfulness) enter the cha
     I recommend (a): as the only native-ternary 2B model it has reference value, but Ternary-Bonsai-2-2B already covers that size.
 - **OQ2 候選清單與下載量**：D1 的 17 個檔案、約 34.4 GiB，夜間下載。是否同意，或要增減？
   **Candidate list and download volume**: the 17 files in D1, about 34.4 GiB, downloaded at night. Approve, or add / remove?
-- **OQ3 取樣設定的範圍**：前 3 名、推理 / 工具 150 題、N=8，約 2～3 個夜晚。是否同意？
+- **OQ3 取樣設定的範圍**：前 3 名、推理 / 工具題、N=8，約 2～3 個夜晚。是否同意？（決定後實作時改為程式與工具 100 題，見 D6）
   **Scope of the sampled setting**: top 3, the 150 reasoning / tool items, N=8, about 2–3 nights. Approve?
 - **OQ4 LLM 評審的用量**：每個模型約 100 次評審呼叫（SimpleQA 50 + 摘要 50），16 個模型約 1,600 次，全部用免費模型，夜間進行。是否同意？評審模型用哪一個（deepseek 今天不回應；Nemotron 目前可用）？
   **LLM judge volume**: about 100 judge calls per model (50 SimpleQA + 50 summary), about 1,600 for 16 models, all on free models at night. Approve? Which judge model (deepseek was unresponsive today; Nemotron works now)?

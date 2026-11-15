@@ -18,3 +18,213 @@ training_use = true
 license_checked = "2026-11-14"  # 已讀官方 LICENSE 檔 / official LICENSE file read
 source = "Qwen 官方 Hugging Face repo / official Qwen Hugging Face repo (Qwen/Qwen3-0.6B-GGUF)"
 smoke_test = true
+
+# ── E0 候選（add-e0-benchmark design D1；使用者 2026-11-15 同意）/ E0 candidates (user-approved 2026-11-15) ──
+
+[[model]]
+name = "tbonsai2-2b-q2_0"
+file = "Ternary-Bonsai-2-2B-Q2_0.gguf"
+url = "https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf/resolve/a6032a5089ac27e96be3a80c7b42d1ad0bd89887/Ternary-Bonsai-2-2B-Q2_0.gguf"
+sha256 = "c2893fa6f951daee8b7263d5f49b455e57989ef56417a22125b03566dc560650"
+size = 546689504
+license = "Apache-2.0"
+license_url = "https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf/blob/a6032a5089ac27e96be3a80c7b42d1ad0bd89887/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "prism-ml 官方 repo / official PrismML repo (prism-ml/Ternary-Bonsai-2-2B-gguf)"
+
+[[model]]
+name = "tbonsai2-4b-q2_0"
+file = "Ternary-Bonsai-2-4B-Q2_0.gguf"
+url = "https://huggingface.co/prism-ml/Ternary-Bonsai-2-4B-gguf/resolve/50ebba61be85e5be07e8083db468ace0fc1bac43/Ternary-Bonsai-2-4B-Q2_0.gguf"
+sha256 = "64a5183b44921bdb5ac4a6f5f92007821d6ebe5c66997d3c147fd214ab9433d4"
+size = 1212103520
+license = "Apache-2.0"
+license_url = "https://huggingface.co/prism-ml/Ternary-Bonsai-2-4B-gguf/blob/50ebba61be85e5be07e8083db468ace0fc1bac43/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "prism-ml 官方 repo / official PrismML repo (prism-ml/Ternary-Bonsai-2-4B-gguf)"
+
+[[model]]
+name = "tbonsai2-9b-q2_0"
+file = "Ternary-Bonsai-2-9B-Q2_0.gguf"
+url = "https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf/resolve/82265ccc78ddaac4700286a35e9badcc32376dd9/Ternary-Bonsai-2-9B-Q2_0.gguf"
+sha256 = "1f884aa56aacd2bbbb2e4b7abaead2b1102b74a9c75a23fc33dab916813a384d"
+size = 2556640128
+license = "Apache-2.0"
+license_url = "https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf/blob/82265ccc78ddaac4700286a35e9badcc32376dd9/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "prism-ml 官方 repo / official PrismML repo (prism-ml/Ternary-Bonsai-2-9B-gguf)"
+
+[[model]]
+name = "bonsai-8b-q1_0"
+file = "Bonsai-8B-Q1_0.gguf"
+url = "https://huggingface.co/prism-ml/Bonsai-8B-gguf/resolve/48516770dd04643643e9f9019a2a349cf26c5dbd/Bonsai-8B-Q1_0.gguf"
+sha256 = "284a335aa3fb2ced3b1b01fcb40b08aa783e3b70832767f0dd2e3fdfa134bd54"
+size = 1158654496
+license = "Apache-2.0"
+license_url = "https://huggingface.co/prism-ml/Bonsai-8B-gguf/blob/48516770dd04643643e9f9019a2a349cf26c5dbd/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "prism-ml 官方 repo / official PrismML repo (prism-ml/Bonsai-8B-gguf)"
+
+[[model]]
+name = "bonsai-27b-q1_0"
+file = "Bonsai-27B-Q1_0.gguf"
+url = "https://huggingface.co/prism-ml/Bonsai-27B-gguf/resolve/f10afb355f104535e3e3e98cf7ab7795c72bd292/Bonsai-27B-Q1_0.gguf"
+sha256 = "17ef842e47450caeb8eaa3ebfbbab5d2f2278b62b79be107985fb69a2f819aa0"
+size = 3803452480
+license = "Apache-2.0"
+license_url = "https://huggingface.co/prism-ml/Bonsai-27B-gguf/blob/f10afb355f104535e3e3e98cf7ab7795c72bd292/LICENSE.txt"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "prism-ml 官方 repo / official PrismML repo (prism-ml/Bonsai-27B-gguf)"
+
+[[model]]
+name = "bitcpm-3b-tq2_0"
+file = "bitcpm4-3b-tq2_0.gguf"
+url = "https://huggingface.co/openbmb/BitCPM-CANN-3B-gguf/resolve/8f9b5931597ba92c083c93edb0416888534dec27/bitcpm4-3b-tq2_0.gguf"
+sha256 = "fd96dfe41d71eb5b507f7973ff037c529975a6f8d9ab31b687cabaed461b285b"
+size = 1095000800
+license = "Apache-2.0"
+license_url = "https://github.com/OpenBMB/MiniCPM/blob/f4293a1a7bde05d1acce99488235792615fc241b/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "OpenBMB 官方 repo；授權見 MiniCPM GitHub / official OpenBMB repo; license per MiniCPM GitHub (openbmb/BitCPM-CANN-3B-gguf)"
+
+[[model]]
+name = "bitcpm-8b-tq2_0"
+file = "bitcpm4-8b-tq2_0.gguf"
+url = "https://huggingface.co/openbmb/BitCPM-CANN-8B-gguf/resolve/4fd99d8ae0e3c059004dfcad75ae73108728c2f8/bitcpm4-8b-tq2_0.gguf"
+sha256 = "b72d23bf549e90bdfb161a4ed217ba26b9eb3efd19363716e9bfcd265370ac91"
+size = 2373839616
+license = "Apache-2.0"
+license_url = "https://github.com/OpenBMB/MiniCPM/blob/f4293a1a7bde05d1acce99488235792615fc241b/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "OpenBMB 官方 repo；授權見 MiniCPM GitHub / official OpenBMB repo; license per MiniCPM GitHub (openbmb/BitCPM-CANN-8B-gguf)"
+
+[[model]]
+name = "qwen3.5-0.8b-q8_0"
+file = "Qwen3.5-0.8B-Q8_0.gguf"
+url = "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/6ab461498e2023f6e3c1baea90a8f0fe38ab64d0/Qwen3.5-0.8B-Q8_0.gguf"
+sha256 = "0ad885ffd4bb022fc4f0d33a3308fa108ef8613159d3b3a67e23abca056b7a6c"
+size = 811843840
+license = "Apache-2.0"
+license_url = "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/2fc06364715b967f1860aea9cf38778875588b17/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 Qwen 官方基底 / unsloth conversion (no official GGUF at this size); license per the official Qwen base (unsloth/Qwen3.5-0.8B-GGUF)"
+
+[[model]]
+name = "qwen3.5-0.8b-q4_k_m"
+file = "Qwen3.5-0.8B-Q4_K_M.gguf"
+url = "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/6ab461498e2023f6e3c1baea90a8f0fe38ab64d0/Qwen3.5-0.8B-Q4_K_M.gguf"
+sha256 = "bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517"
+size = 532517120
+license = "Apache-2.0"
+license_url = "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/2fc06364715b967f1860aea9cf38778875588b17/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 Qwen 官方基底 / unsloth conversion (no official GGUF at this size); license per the official Qwen base (unsloth/Qwen3.5-0.8B-GGUF)"
+
+[[model]]
+name = "qwen3.5-2b-q8_0"
+file = "Qwen3.5-2B-Q8_0.gguf"
+url = "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/f6d5376be1edb4d416d56da11e5397a961aca8ae/Qwen3.5-2B-Q8_0.gguf"
+sha256 = "1b04acba824817554f4ce23639bc8495ff70453b8fcb047900c731521021f2c1"
+size = 2012012800
+license = "Apache-2.0"
+license_url = "https://huggingface.co/Qwen/Qwen3.5-2B/blob/15852e8c16360a2fea060d615a32b45270f8a8fc/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 Qwen 官方基底 / unsloth conversion (no official GGUF at this size); license per the official Qwen base (unsloth/Qwen3.5-2B-GGUF)"
+
+[[model]]
+name = "qwen3.5-2b-q4_k_m"
+file = "Qwen3.5-2B-Q4_K_M.gguf"
+url = "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/f6d5376be1edb4d416d56da11e5397a961aca8ae/Qwen3.5-2B-Q4_K_M.gguf"
+sha256 = "aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223"
+size = 1280835840
+license = "Apache-2.0"
+license_url = "https://huggingface.co/Qwen/Qwen3.5-2B/blob/15852e8c16360a2fea060d615a32b45270f8a8fc/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 Qwen 官方基底 / unsloth conversion (no official GGUF at this size); license per the official Qwen base (unsloth/Qwen3.5-2B-GGUF)"
+
+[[model]]
+name = "qwen3.5-4b-q8_0"
+file = "Qwen3.5-4B-Q8_0.gguf"
+url = "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/e87f176479d0855a907a41277aca2f8ee7a09523/Qwen3.5-4B-Q8_0.gguf"
+sha256 = "10cc391b403021dd11c614679d2fd92f611c3681d29e29651b717316965d61e1"
+size = 4482403488
+license = "Apache-2.0"
+license_url = "https://huggingface.co/Qwen/Qwen3.5-4B/blob/851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 Qwen 官方基底 / unsloth conversion (no official GGUF at this size); license per the official Qwen base (unsloth/Qwen3.5-4B-GGUF)"
+
+[[model]]
+name = "qwen3.5-4b-q4_k_m"
+file = "Qwen3.5-4B-Q4_K_M.gguf"
+url = "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/e87f176479d0855a907a41277aca2f8ee7a09523/Qwen3.5-4B-Q4_K_M.gguf"
+sha256 = "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4"
+size = 2740937888
+license = "Apache-2.0"
+license_url = "https://huggingface.co/Qwen/Qwen3.5-4B/blob/851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 Qwen 官方基底 / unsloth conversion (no official GGUF at this size); license per the official Qwen base (unsloth/Qwen3.5-4B-GGUF)"
+
+[[model]]
+name = "qwen3.5-4b-iq2_m"
+file = "Qwen3.5-4B-UD-IQ2_M.gguf"
+url = "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/e87f176479d0855a907a41277aca2f8ee7a09523/Qwen3.5-4B-UD-IQ2_M.gguf"
+sha256 = "cb4c45ca42c0d7777667e94e3963f8e59e939b3665098328ce601feb5be129c1"
+size = 1759997088
+license = "Apache-2.0"
+license_url = "https://huggingface.co/Qwen/Qwen3.5-4B/blob/851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 Qwen 官方基底 / unsloth conversion (no official GGUF at this size); license per the official Qwen base (unsloth/Qwen3.5-4B-GGUF)"
+
+[[model]]
+name = "qwen3.5-9b-q4_k_m"
+file = "Qwen3.5-9B-Q4_K_M.gguf"
+url = "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/3885219b6810b007914f3a7950a8d1b469d598a5/Qwen3.5-9B-Q4_K_M.gguf"
+sha256 = "03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8"
+size = 5680522464
+license = "Apache-2.0"
+license_url = "https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 Qwen 官方基底 / unsloth conversion (no official GGUF at this size); license per the official Qwen base (unsloth/Qwen3.5-9B-GGUF)"
+
+[[model]]
+name = "qwen3.5-9b-iq2_m"
+file = "Qwen3.5-9B-UD-IQ2_M.gguf"
+url = "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/3885219b6810b007914f3a7950a8d1b469d598a5/Qwen3.5-9B-UD-IQ2_M.gguf"
+sha256 = "a31b6b4c603ddd66b5496ee065c9dd13b2b6de77dce9e5d59609aef8d39868e7"
+size = 3649365216
+license = "Apache-2.0"
+license_url = "https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 / terms identical to canonical Apache-2.0
+source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 Qwen 官方基底 / unsloth conversion (no official GGUF at this size); license per the official Qwen base (unsloth/Qwen3.5-9B-GGUF)"

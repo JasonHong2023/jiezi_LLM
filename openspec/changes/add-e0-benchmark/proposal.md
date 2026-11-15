@@ -32,8 +32,8 @@ Re-checking on 2026-11-15 changed the candidate list from the plan (details in d
     `run`: calls the existing `scripts/eval run` and `verify` for each row; interruptible and resumable across several nights.
   - `report`：兩張帕累托圖（知識題分數對檔案大小、推理 / 工具題分數對檔案大小），加上 t/s、峰值 RAM / VRAM，以及同基底對照表。
     `report`: two Pareto charts (knowledge score vs file size, reasoning / tool score vs file size) with t/s and peak RAM / VRAM, plus a same-base comparison table.
-- 取樣設定（N=8）只對貪婪解碼排名前 3 的模型跑推理 / 工具題。報表分開列出 pass@1、多數決，以及需要標準答案的 pass@8（只當上限參考）。
-  The sampled setting (N=8) runs on the reasoning / tool items for the top 3 models under greedy decoding only; the report lists pass@1, majority vote, and pass@8 (needs the ground truth, so an upper bound only) separately.
+- 取樣設定（N=8）只對貪婪解碼排名前 3 的模型跑程式與工具題。報表分開列出 pass@1、多數決，以及需要標準答案的 pass@8（只當上限參考）。
+  The sampled setting (N=8) runs on the code and tool items for the top 3 models under greedy decoding only; the report lists pass@1, majority vote, and pass@8 (needs the ground truth, so an upper bound only) separately.
 
 ## Non-Goals
 

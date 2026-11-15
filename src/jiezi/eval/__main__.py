@@ -6,6 +6,7 @@
   report RUN_ID            產生報表 / produce the report
   verify RUN_ID            事後評分（程式、工具、摘要、評審）/ score a finished run after the fact
   xcheck-tool RUN_ID       在沙盒內執行 ACEBench 官方判定逐題對照移植版 / side-by-side with the official ACEBench checker
+  e0 plan|fetch|run|sample|report  E0 多模型對照（add-e0-benchmark）/ E0 multi-model comparison
   schedule [--list] -- …   排程到下一個夜間時段 / schedule into the next night window"""
 
 from __future__ import annotations
@@ -308,7 +309,123 @@ def cmd_xcheck_tool(args, root: Path) -> int:
     return 0 if bad == 0 else 4
 
 
-SCHEDULABLE = {"run", "bank", "report", "verify", "xcheck-tool"}
+def e0_smoke(root: Path, env: dict, row, path: Path, ngl: int, out_dir: Path) -> dict:
+    """E0 冒煙檢查：固定 5 題（add-e0-benchmark design D3）。 / E0 smoke check: 5 fixed items (design D3)."""
+    from . import e0
+    _, items = load_items(root, "r0")
+    picked = e0.smoke_items(items)
+    answers = []
+    try:
+        eng = LocalEngine(root, fresh_facts(root), path, port_base(env), ngl=ngl, ctx=e0.CTX)
+        with eng:
+            eng.start(out_dir / f"{row.name}.llama-server.log")
+            client = ChatClient(eng.base_url, path.name, timeout_s=600)
+            for it in picked:
+                messages, max_tokens = prompts.render(it)
+                rep = client.complete(messages, temperature=0.0, max_tokens=max_tokens,
+                                      extra={"chat_template_kwargs": {"enable_thinking": False}})
+                answers.append((it, rep.content if rep.status == "ok" else None))
+    except EvalError as exc:
+        return {"ok": False, "parsed": 0, "reasons": [f"engine: {exc}"]}
+    res = e0.judge_smoke(answers)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / f"{row.name}.json").write_text(json.dumps(
+        {**res, "at": runner.now(), "ngl": ngl,
+         "answers": [{"key": f"{i['source']}/{i['id']}", "content": c} for i, c in answers]},
+        indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"  smoke: {'ok' if res['ok'] else 'FAILED'} ({res['parsed']}/5 parse) {'; '.join(res['reasons'])}")
+    return res
+
+
+def cmd_e0(args, root: Path) -> int:
+    """E0 多模型對照（規格 e0-benchmark）。 / E0 multi-model comparison (spec e0-benchmark)."""
+    from types import SimpleNamespace
+
+    from . import e0
+    env = load_env(root)
+    window = night.parse_window(env.get("JIEZI_NIGHT_WINDOW"))
+    rows, mhash = e0.load_matrix(root)
+    state = e0.load_state(root, mhash)
+    save = lambda: e0.save_state(root, mhash, state)  # noqa: E731
+
+    if args.action == "plan":
+        facts = fresh_facts(root)
+        total = 0.0
+        print(f"matrix {mhash}: {len(rows)} rows; budgets RAM {facts['budgets']['ram']['usable_mib']} MiB, "
+              f"VRAM {facts['budgets']['vram']['usable_mib']} MiB")
+        for p in e0.plan(rows, state, facts.get("budgets") or {}):
+            total += p["est_minutes"] or 0
+            print(f"  {p['row']:<26} {p['group']:<8} {p['quant']:<7} {p['size_mib']:>6} MiB  {p['state']:<15} "
+                  f"{p['excluded'] or p['placement']:<15} ~{p['est_minutes'] or 0:>5} min  {p['reason'] or ''}")
+        print(f"estimated greedy time left: ~{total / 60:.1f} h (night window {env.get('JIEZI_NIGHT_WINDOW') or night.DEFAULT_WINDOW}) [est.]")
+        return 0
+    if args.action == "report":
+        rep = e0.write_report(root, rows, state)
+        status = "complete" if rep["complete"] else f"incomplete ({len(rep['missing'])} rows missing)"
+        print(f"e0 report: {(e0.state_dir(root, mhash) / 'report.md').relative_to(root)}; {status}")
+        return 0
+
+    if not args.now and not window.contains(datetime.now()):
+        raise EvalError(f"e0 {args.action} is a long job (R18.2a); use `scripts/eval schedule --job \"e0 {args.action}\"`")
+    in_window = lambda: args.now or window.contains(datetime.now())  # noqa: E731
+    mdir = Path(env["JIEZI_MODELS_DIR"]).expanduser() if env.get("JIEZI_MODELS_DIR") else root / "models"
+
+    if args.action == "fetch":
+        failed = 0
+        for r in rows:
+            if not in_window():
+                print("night window ended; stopping downloads")
+                return 3
+            try:
+                e0.ensure_model(r, mdir)
+                print(f"  {r.model}: ok")
+            except (EvalError, OSError) as exc:
+                failed += 1
+                print(f"  {r.model}: {exc}")
+        return 0 if not failed else 4
+
+    def run_hook(row, ngl, resume, samples, temperature, sources, run_id=None):
+        rid = run_id or row.run_id
+        resume = resume or (root / "var" / "eval" / "runs" / rid / "conditions.json").exists()
+        a = SimpleNamespace(bank="r0", backend="local", model=row.model, ngl=ngl, ctx=e0.CTX, thinking=False,
+                            reasoning_budget=None, baseline=False, samples=samples, temperature=temperature,
+                            timeout=None, source=sources, group=None, only_scorable=False, limit=None,
+                            run_id=None if resume else rid, resume=rid if resume else None, retry_errors=resume,
+                            now=args.now)
+        try:
+            return cmd_run(a, root)
+        except EvalError as exc:
+            print(f"  run failed: {exc}")
+            return 2
+
+    def verify_hook(run_id, only):
+        a = SimpleNamespace(run_id=run_id, only=only, now=args.now, timeout=None,
+                            reasoning_budget=DEFAULT_REASONING_BUDGET, judge_model=args.judge_model,
+                            judge_match=args.judge_match)
+        try:
+            return cmd_verify(a, root)
+        except EvalError as exc:
+            print(f"  verify failed: {exc}")
+            return 2
+
+    def smoke_hook(row, path, ngl):
+        return e0_smoke(root, env, row, path, ngl, e0.state_dir(root, mhash) / "smoke")
+
+    hooks = e0.Hooks(fresh_facts=lambda: fresh_facts(root), models_dir=mdir, in_window=in_window,
+                     run=run_hook, verify=verify_hook, smoke=smoke_hook)
+    if args.action == "run":
+        result = e0.run_rows(rows, state, hooks, save)
+    else:
+        _, items = load_items(root, "r0")
+        sources = sorted({i["source"] for i in items if i["task"] in e0.SAMPLE_TASKS})
+        result = e0.run_sampling(root, rows, state, hooks, sources, save)
+    save()
+    e0.write_report(root, rows, state)
+    print(f"e0 {args.action}: {result}")
+    return 0 if result == "complete" else 3
+
+
+SCHEDULABLE = {"run", "bank", "report", "verify", "xcheck-tool", "e0"}
 
 
 def parse_jobs(args) -> list[list[str]]:
@@ -401,6 +518,12 @@ def parser() -> argparse.ArgumentParser:
     x.add_argument("run_id")
     x.add_argument("--now", action="store_true", help="ignore the night window (only when the user asks)")
 
+    e = sub.add_parser("e0", help="E0 multi-model comparison (add-e0-benchmark)")
+    e.add_argument("action", choices=["plan", "fetch", "run", "sample", "report"])
+    e.add_argument("--judge-model", help="judge model for verification (e.g. nvidia-nemotron-3-ultra)")
+    e.add_argument("--judge-match", help="expected substring of the judge's reported model")
+    e.add_argument("--now", action="store_true", help="ignore the night window (only when the user asks)")
+
     s = sub.add_parser("schedule", help="schedule a run into the next night window")
     s.add_argument("--list", action="store_true")
     s.add_argument("--cancel", metavar="SCHEDULE_ID", help="cancel a schedule that has not started")
@@ -421,6 +544,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_verify(args, root)
         if args.cmd == "xcheck-tool":
             return cmd_xcheck_tool(args, root)
+        if args.cmd == "e0":
+            return cmd_e0(args, root)
         if args.cmd == "report":
             rep = report.write(root / "var" / "eval" / "runs" / args.run_id)
             print(f"completeness: {rep['completeness']}")

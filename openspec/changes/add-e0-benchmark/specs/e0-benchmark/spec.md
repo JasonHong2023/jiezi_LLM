@@ -62,8 +62,8 @@ Before a full run, each model SHALL pass a fixed 5-item smoke check: it loads, a
 
 ### Requirement: Sampled Setting
 
-取樣設定 SHALL 只對貪婪解碼推理 / 工具題分數排名前 3 的模型，以 N=8、溫度 0.7 跑推理 / 工具題。報表 SHALL 分開列出 pass@1、多數決與 pass@8，並 SHALL 標明 pass@8 需要標準答案，只能當上限參考。
-The sampled setting SHALL run only for the top 3 models by greedy reasoning / tool score, on the reasoning / tool items with N=8 at temperature 0.7. The report SHALL list pass@1, majority vote and pass@8 separately, and SHALL state that pass@8 needs the ground truth and is an upper bound only.
+取樣設定 SHALL 只對貪婪解碼推理 / 工具題分數排名前 3 的模型，以 N=8、溫度 0.7 跑程式與工具題（摘要不取樣）。報表 SHALL 分開列出 pass@1、多數決與 pass@8，並 SHALL 標明 pass@8 需要標準答案，只能當上限參考。
+The sampled setting SHALL run only for the top 3 models by greedy reasoning / tool score, on the code and tool items with N=8 at temperature 0.7 (summaries are not sampled). The report SHALL list pass@1, majority vote and pass@8 separately, and SHALL state that pass@8 needs the ground truth and is an upper bound only.
 
 #### Scenario: 多數決平手 / Majority tie
 
