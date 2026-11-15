@@ -33,6 +33,10 @@ MIT allows changes: Simplified-only characters become Traditional (群 is kept),
 rocknovels.com（© 故事革命）沒有開放授權，所以不收錄內文、不訓練。`scripts/jiezi writing-refs build` 只抓一次目錄頁，存 131 篇的分類、標題、網址到 `var/refs/`（不進版控）。寫作問題（寫作、小說、角色、靈感……）在回答後附最多 3 篇標題用字最接近的文章連結（模型看不到內文）；請教 Claude 時加一則提示，說明可上網閱讀這些文章、用自己的話說明。
 rocknovels.com is all rights reserved: no text is ingested or trained on. Only titles and URLs are indexed; writing answers get up to three links, and Claude consultations get a hint that it may read them online.
 
+### D7 — 請教提示表（使用者 2026-11-15，HackMD 化學）/ Consultation hints
+HackMD 以 robots.txt 禁止 AI 訓練爬蟲，筆記沒有統一開放授權，所以不抓取、不收錄。`src/jiezi/consult_hints.py` 依問題用語加上提示（化學：名詞或含數字的化學式），只在請教 Claude 時附上，告訴它需要時可上網閱讀並交叉查證。寫作的 rocknovels 提示也一起送出。
+HackMD forbids AI-training crawlers, so nothing is fetched; a hint table adds per-topic notes to Claude consultations only.
+
 ## Risks / Trade-offs
 - 微主題名稱很短（如「速度」）時可能誤觸發 → 需同時有課綱用語。/ Short names over-trigger → a curriculum cue is also required.
 - 課本資料只涵蓋部分科目與版本 → 查不到時不附資料，由模型照常回答。/ Partial coverage → no grounding when not found.

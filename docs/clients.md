@@ -102,6 +102,11 @@ scripts/jiezi writing-refs search 角色設計      # 找相關文章 / find rel
 問寫作問題時，回答後會附上最多 3 篇相關文章的連結；芥子請教 Claude 時也會提示它可以上網讀這些文章。內文不會被複製或拿去訓練（`JIEZI_WRITING_REFS=off` 可關閉）。
 Writing questions get up to three related article links after the answer, and Claude consultations are told it may read them online. Article text is never copied or trained on.
 
+### 請教 Claude 時的參考網站 / Reference sites for consultations
+
+化學問題（化學名詞或含數字的化學式，如 H2SO4）請教 Claude 時，會提示它可以上網搜尋閱讀 HackMD 化學主題的社群筆記，並交叉查證；芥子本身不抓取、不收錄這些筆記（`src/jiezi/consult_hints.py`）。
+Chemistry consultations tell Claude it may read HackMD chemistry notes online; jiezi never fetches or ingests them.
+
 ## 6. Hermes Agent 與 OpenCode / Hermes Agent and OpenCode
 
 ```bash

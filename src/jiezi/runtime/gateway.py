@@ -371,10 +371,12 @@ class Gateway:
 
     async def _consult_once(self, body: dict) -> tuple[dict, dict]:
         last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
-        hint = self.writing.consult_hint(last["content"]) \
-            if self.writing is not None and last and isinstance(last.get("content"), str) else None
-        if hint:  # 寫作問題：提示 Claude 可上網參考（使用者 2026-11-15）/ writing questions: Claude may read the site
-            body = {**body, "messages": [*body["messages"][:-1], {"role": "system", "content": hint},
+        text = last["content"] if last and isinstance(last.get("content"), str) else ""
+        from ..consult_hints import hints_for
+        hints = ([self.writing.consult_hint(text)] if self.writing is not None else []) + hints_for(text)
+        hints = [h for h in hints if h]
+        if hints:  # 提示 Claude 可上網參考的網站（使用者 2026-11-15）/ sites Claude may read online
+            body = {**body, "messages": [*body["messages"][:-1], {"role": "system", "content": "\n".join(hints)},
                                          body["messages"][-1]]}
         ans = await self.consultant.ask(body)
         if self.consult_cap:

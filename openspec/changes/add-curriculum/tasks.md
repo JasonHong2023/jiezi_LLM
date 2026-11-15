@@ -20,3 +20,4 @@
 - [x] 4.1 `src/jiezi/writing_refs.py`、`scripts/jiezi writing-refs build|search`、授權登記 `rocknovels-teachlist`（訓練：否）/ Index, commands, registry
 - [x] 4.2 gateway：寫作問題附延伸閱讀連結；請教 Claude 時加上網參考提示；`JIEZI_WRITING_REFS` / Links and consult hint
 - [x] 4.3 單元測試 / Unit tests
+- [x] 4.4 請教提示表 `consult_hints.py`（化學 → HackMD）、授權登記 `hackmd-chemistry`（訓練：否）（D7）/ Consultation hints
