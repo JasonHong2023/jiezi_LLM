@@ -5,6 +5,7 @@
   run                      執行評測（只在夜間時段內，除非 --now）/ run an evaluation (night window only unless --now)
   report RUN_ID            產生報表 / produce the report
   verify RUN_ID            事後評分（程式、工具、摘要、評審）/ score a finished run after the fact
+  xcheck-tool RUN_ID       在沙盒內執行 ACEBench 官方判定逐題對照移植版 / side-by-side with the official ACEBench checker
   schedule [--list] -- …   排程到下一個夜間時段 / schedule into the next night window"""
 
 from __future__ import annotations
@@ -266,7 +267,43 @@ def cmd_verify(args, root: Path) -> int:
     return 0 if summary["state"] == "complete" else 3
 
 
-SCHEDULABLE = {"run", "bank", "report", "verify"}
+def cmd_xcheck_tool(args, root: Path) -> int:
+    """ACEBench 官方判定（沙盒內）與移植版逐題對照（add-verifiers 3.2）；長時間工作，夜間時段。
+    Official ACEBench checker (in the sandbox) vs the port, case by case (add-verifiers 3.2); night-window job."""
+    from jiezi.verify import acebench_xcheck as xc
+    from jiezi.verify.sandbox import Sandbox
+    run_dir = root / "var" / "eval" / "runs" / args.run_id
+    if not (run_dir / "conditions.json").exists():
+        raise EvalError(f"{run_dir} has no conditions.json")
+    window = night.parse_window(load_env(root).get("JIEZI_NIGHT_WINDOW"))
+    if not args.now and not window.contains(datetime.now()):
+        raise EvalError("xcheck-tool runs upstream code in the sandbox, a long job (R18.2a); "
+                        f"use `scripts/eval schedule --job \"xcheck-tool {args.run_id}\"`")
+    ident = json.loads((run_dir / "conditions.json").read_text(encoding="utf-8"))["identity"]
+    lk, items = load_items(root, ident.get("bank", "r0"))
+    if lk["bank_hash"] != ident.get("bank_hash"):
+        raise EvalError("the run used a different bank version than the current lock")
+    sb = Sandbox(root, fresh_facts(root))
+    ok, reason = sb.available()
+    if not ok:
+        raise EvalError(f"sandbox unavailable ({reason}); upstream code is never run outside it")
+    upstream = xc.fetch_upstream(root / "var" / "verify" / "upstream")
+    rep = {"version": xc.VERSION, "commit": xc.COMMIT, "port": xc.tool_call.VERSION,
+           "sandbox": sb.describe()["version"], "started": runner.now()}
+    rep["parts"] = {"hand-written cases": xc.compare(sb, upstream, xc.HAND_CASES),
+                    f"run {args.run_id}": xc.compare(sb, upstream, xc.run_cases(run_dir, items,
+                                                                                runner.latest_results(run_dir)))}
+    rep["finished"] = runner.now()
+    (run_dir / "xcheck_tool.json").write_text(json.dumps(rep, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (run_dir / "xcheck_tool.md").write_text(xc.to_markdown(rep), encoding="utf-8")
+    bad = sum(p["counts"].get("disagree", 0) for p in rep["parts"].values())
+    for name, part in rep["parts"].items():
+        print(f"{name}: {part['counts']}")
+    print(f"xcheck-tool: {bad} disagreement(s); see {(run_dir / 'xcheck_tool.md').relative_to(root)}")
+    return 0 if bad == 0 else 4
+
+
+SCHEDULABLE = {"run", "bank", "report", "verify", "xcheck-tool"}
 
 
 def parse_jobs(args) -> list[list[str]]:
@@ -353,6 +390,10 @@ def parser() -> argparse.ArgumentParser:
     v.add_argument("--timeout", type=float, help="judge request timeout in seconds (default 120)")
     v.add_argument("--now", action="store_true", help="ignore the night window (only when the user asks)")
 
+    x = sub.add_parser("xcheck-tool", help="side-by-side with the official ACEBench checker (in the sandbox)")
+    x.add_argument("run_id")
+    x.add_argument("--now", action="store_true", help="ignore the night window (only when the user asks)")
+
     s = sub.add_parser("schedule", help="schedule a run into the next night window")
     s.add_argument("--list", action="store_true")
     s.add_argument("--cancel", metavar="SCHEDULE_ID", help="cancel a schedule that has not started")
@@ -371,6 +412,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_run(args, root)
         if args.cmd == "verify":
             return cmd_verify(args, root)
+        if args.cmd == "xcheck-tool":
+            return cmd_xcheck_tool(args, root)
         if args.cmd == "report":
             rep = report.write(root / "var" / "eval" / "runs" / args.run_id)
             print(f"completeness: {rep['completeness']}")

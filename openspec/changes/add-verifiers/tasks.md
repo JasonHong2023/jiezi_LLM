@@ -15,7 +15,7 @@
 ## 3. 驗證器 / Verifiers
 
 - [x] 3.1 `verify/code.py`：程式碼擷取、標準解答期望輸出（快取）、逐筆比對（`atol`）、`base_pass` / `plus_pass`；以官方範例對照測試 / evalplus-style code judging; cross-check with official samples（以標準解答當候選驗證全部通過；在本機執行上游程式做逐題對照被自動權限模式擋下 / canonical solutions pass as candidates; running upstream code locally for side-by-side checks was blocked by the auto-permission mode）
-- [x] 3.2 `verify/tool_call.py`：`ast` 解析（只接受字面值）、ACEBench normal 規則；以 ACEBench repo 的範例回答對照測試 / ACEBench normal rules; cross-check with repo samples（改以照官方邏輯手寫的 15 個案例；理由同上 / 15 hand-written cases following upstream logic instead, same reason）
+- [x] 3.2 `verify/tool_call.py`：`ast` 解析（只接受字面值）、ACEBench normal 規則；以 ACEBench repo 的範例回答對照測試 / ACEBench normal rules; cross-check with repo samples（手寫案例；另經使用者 2026-11-15 同意，`scripts/eval xcheck-tool` 在沙盒內執行官方判定程式（鎖定 commit 與 SHA-256），逐題對照 29 個手寫案例與本機執行的回答，結果待夜間 / hand-written cases; with user consent on 2026-11-15, `scripts/eval xcheck-tool` runs the official checker inside the sandbox (pinned commit and SHA-256) side by side on 29 hand-written cases and the run's responses, results pending tonight）
 - [x] 3.3 `verify/summary_rules.py`：字數與簡體字檢查；測試邊界值 / Length and simplified-character checks; test edges
 - [x] 3.4 `verify/judge.py`：SimpleQA 與摘要評審、JSON 解析與重試、模型核對、快取、D11 逾時與暫停；以本機假伺服器測試 / LLM judge with caching and D11 handling; test with a local fake server
 
@@ -28,4 +28,4 @@
 
 - [x] 5.1 單元測試全部通過（231 個）；`openspec validate add-verifiers --strict` / Unit tests and strict validation
 - [x] 5.2 立即執行（秒級）：對 2026-11-15 本機執行做工具呼叫與摘要規則評分 / Immediate (second-scale): tool-call and summary-rule scoring of the 2026-11-15 local run（工具 17/50；摘要字數合格 0/50、無簡體字 33/50 / tool 17/50; summary length 0/50, no simplified 33/50）
-- [ ] 5.3 排程到 00:00 之後：本機執行的程式題沙盒評分；經同意後的評審（本機執行 + 雲端基準的 SimpleQA）；人工複核 10 題評審結果 / After 00:00: sandboxed code scoring; judge runs with consent; hand-check 10 judged items
+- [ ] 5.3 排程到 00:00 之後：本機執行的程式題沙盒評分；ACEBench 官方對照（`disagree` 須為 0 或已修正）；經同意後的評審（本機執行 + 雲端基準的 SimpleQA）；人工複核 10 題評審結果 / After 00:00: sandboxed code scoring; judge runs with consent; hand-check 10 judged items
