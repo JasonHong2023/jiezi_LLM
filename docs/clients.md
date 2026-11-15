@@ -107,6 +107,15 @@ Writing questions get up to three related article links after the answer, and Cl
 化學問題（化學名詞或含數字的化學式，如 H2SO4）請教 Claude 時，會提示它可以上網搜尋閱讀 HackMD 化學主題的社群筆記，並交叉查證；芥子本身不抓取、不收錄這些筆記（`src/jiezi/consult_hints.py`）。
 Chemistry consultations tell Claude it may read HackMD chemistry notes online; jiezi never fetches or ingests them.
 
+### 缺口報告 / Gap report
+
+```bash
+scripts/jiezi gaps              # 最近 7 天；--days 30 看更久 / last 7 days
+```
+
+統計本機答不好的問題，分成：資料缺口（本機沒資料）、觸發缺口（有資料但沒查到）、有附資料仍答不好、問芥子自己、需要上網、系統錯誤；另列你直接指定請教 Claude 的問題。報告寫到 `var/reports/gaps-日期.md`（只在本機）。
+Lists questions the local model could not handle, grouped by gap type; written to `var/reports/`.
+
 ## 6. Hermes Agent 與 OpenCode / Hermes Agent and OpenCode
 
 ```bash

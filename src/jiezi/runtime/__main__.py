@@ -127,6 +127,8 @@ def main(argv: list[str] | None = None) -> int:
     cp.add_argument("--subject", help="plan：科目，如 數學 / subject")
     cp.add_argument("--grade", type=int, choices=range(1, 7), help="plan：年級 / grade")
     cp.add_argument("--stage", type=int, choices=(1, 2, 3), help="plan：學習階段 / learning stage")
+    gp = sub.add_parser("gaps", help="gap report: questions the local model could not handle")
+    gp.add_argument("--days", type=int, default=7, help="最近幾天 / how many recent days (default 7)")
     kp = sub.add_parser("knowledge", help="Taiwan knowledge base, taiwan-md (add-knowledge)")
     kp.add_argument("action", choices=["build", "search"])
     kp.add_argument("query", nargs="?")
@@ -170,6 +172,12 @@ def main(argv: list[str] | None = None) -> int:
                 print(dictionary.render(entry))
                 print(f"— {d.meta.get(src, {}).get('attribution', src)}\n")
             return 0 if hits else 1
+        if args.cmd == "gaps":
+            from . import gaps
+            out, summary = gaps.write(root, args.days)
+            print(f"本機需要幫忙 {summary['needed_help']} 筆 / needed help: {summary['by_kind']}；"
+                  f"直接請教 {summary['direct']} 筆；報告 / report: {out}")
+            return 0
         if args.cmd == "knowledge":
             from .. import knowledge as K
             if args.action == "build":
