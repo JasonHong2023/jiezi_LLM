@@ -12,7 +12,9 @@ from pathlib import Path
 
 from .common import StepError, git, project_root
 
-_ROW = re.compile(r"^\|[^|]*\|\s*llama\.cpp\b[^|]*\|[^|]*`([0-9a-f]{40})`[^|]*\|\s*`(https://[^`]+)`", re.M)
+def _row(name: str) -> re.Pattern:
+    return re.compile(r"^\|[^|]*\|\s*" + re.escape(name) + r"\b[^|]*\|[^|]*`([0-9a-f]{40})`[^|]*\|\s*`(https://[^`]+)`",
+                      re.M)
 
 
 @dataclass(frozen=True)
@@ -21,13 +23,13 @@ class Pin:
     url: str
 
 
-def read_pin(stack_md: Path | None = None) -> Pin:
-    """從 stack.md 的技術棧表格讀出 llama.cpp 的 commit 與來源網址。
-    Read llama.cpp's commit and source URL from the stack.md table."""
+def read_pin(stack_md: Path | None = None, name: str = "llama.cpp") -> Pin:
+    """從 stack.md 的技術棧表格讀出某個上游原始碼（預設 llama.cpp）的 commit 與來源網址。
+    Read an upstream source's (default llama.cpp) commit and source URL from the stack.md table."""
     path = stack_md or project_root() / "openspec" / "specs" / "stack.md"
-    m = _ROW.search(path.read_text(encoding="utf-8"))
+    m = _row(name).search(path.read_text(encoding="utf-8"))
     if not m:
-        raise StepError(f"{path}: no llama.cpp row with a 40-hex commit and a source URL")
+        raise StepError(f"{path}: no {name} row with a 40-hex commit and a source URL")
     return Pin(commit=m.group(1), url=m.group(2))
 
 

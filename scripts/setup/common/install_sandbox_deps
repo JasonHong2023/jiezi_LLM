@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# 安裝建置 bubblewrap 所需的系統套件（Ubuntu / WSL2；add-verifiers OQ1）。
+# Install system packages needed to build bubblewrap (Ubuntu / WSL2; add-verifiers OQ1).
+# libcap-dev：bwrap 連結 libcap / bwrap links libcap；pkgconf：meson 以 pkg-config 尋找 libcap / meson finds libcap via pkg-config.
+set -euo pipefail
+sudo apt-get update
+sudo apt-get install -y libcap-dev pkgconf
+dpkg-query -W -f='${Package} ${Version}\n' libcap-dev pkgconf

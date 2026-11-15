@@ -13,6 +13,7 @@ dependencies = []
 [dependency-groups]
 dev = [
     "cmake==4.4.4",
+    "meson==1.12.1",
     "ninja==1.13.2",
 ]
 

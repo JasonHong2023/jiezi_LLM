@@ -17,7 +17,7 @@
 | `mbppplus` | MBPP+ | https://github.com/evalplus/mbppplus_release （v0.2.0） | Apache-2.0（EvalPlus）；原始 MBPP 為 CC BY 4.0 ⚠️ | 是（需姓名標示）/ yes (attribution) | 是 / yes | 2026-11-14 | `evalplus/evalplus` 的 `LICENSE`；原始 MBPP 授權取自 HF 資料卡 `google-research-datasets/mbpp`（`cc-by-4.0`）⚠️，官方 README 未載明 |
 | `acebench` | ACEBench（`data_all/data_zh`） | https://github.com/chenchen0103/ACEBench | MIT ⚠️ | 是 / yes | 是 / yes | 2026-11-14 | repo 的 `LICENSE.md`（MIT）；⚠️ 該檔著作權行寫「Microsoft Corporation」，疑為範本未修改，授權類型仍為 MIT |
 | `zh-wikipedia` | 中文維基百科典範條目 / zh Wikipedia featured articles | https://zh.wikipedia.org/ | CC BY-SA 4.0 | 是（需姓名標示、相同方式分享）/ yes (BY, SA) | 是（SA 限制衍生物）/ yes (SA applies) | 2026-11-14 | Wikimedia 使用條款（2023 起文字內容採 CC BY-SA 4.0）；報表與快取保留條目名稱與 revision 連結 / Wikimedia Terms of Use; reports keep title and revision link |
-| `opencc-tscharacters` | OpenCC `TSCharacters.txt`（繁轉簡單字對照，供答案正規化）/ Traditional→Simplified character table for answer normalization | https://github.com/BYVoid/OpenCC （commit `fae2a0a911c30764e669a7d8b0591cd8e852934a`） | Apache-2.0 | 是 / yes | 不適用 / n/a | 2026-11-14 | 鎖定 commit 的 `LICENSE`；隨程式附上時保留授權聲明 / `LICENSE` at the pinned commit; license notice kept when bundled |
+| `opencc-tscharacters` | OpenCC `TSCharacters.txt`（繁轉簡單字對照，供答案正規化）、`STCharacters.txt`（簡轉繁單字對照，供摘要「含簡體字」檢查，2026-11-15 加入）/ T→S table for answer normalization; S→T table for the summary simplified-character check (added 2026-11-15) | https://github.com/BYVoid/OpenCC （commit `fae2a0a911c30764e669a7d8b0591cd8e852934a`） | Apache-2.0 | 是 / yes | 不適用 / n/a | 2026-11-14 | 鎖定 commit 的 `LICENSE`；隨程式附上時保留授權聲明 / `LICENSE` at the pinned commit; license notice kept when bundled |
 
 ## 已排除 / Excluded
 

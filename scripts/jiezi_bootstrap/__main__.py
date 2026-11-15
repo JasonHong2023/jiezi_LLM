@@ -2,7 +2,7 @@
 Bootstrap main: runs the steps in order, records state, and can resume (spec bootstrap; design D1).
 
 步驟 / Steps: prereqs → env → python → llama.cpp → hwprobe → cuda (可選 / optional)
-             → build → model → smoke
+             → build → sandbox (可選 / optional) → model → smoke
 
 每個步驟都會自行檢查「已完成且仍有效」並略過，所以重跑時會從失敗的步驟接續。
 Every step checks "done and still valid" itself and skips, so a re-run resumes at the failed step."""
@@ -18,7 +18,8 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import build, models, smoke, source, sudo_window
+from . import build, models, sandbox_tool, smoke, source, sudo_window
+from .build import budget_prefix
 from .common import StepError, load_env, project_root
 
 INSTALL_HINTS = {
@@ -150,6 +151,20 @@ def step_build(ctx: Ctx) -> str:
     return ", ".join(f"{s['backend']}={s['result']}" for s in summary)
 
 
+def step_sandbox(ctx: Ctx) -> str:
+    """選用：建置程式驗證用的 bubblewrap；缺系統前置時略過，只停用程式驗證。
+    Optional: build bubblewrap for code verification; skipped when system prerequisites are missing,
+    which only disables code verification."""
+    missing = sandbox_tool.has_build_deps()
+    if missing and not sandbox_tool.binary(ctx.root).exists():
+        ctx.notes.append(f"程式驗證沙盒未建置（缺 {missing}）；安裝：{sandbox_tool.DEPS_HINT} / "
+                         f"code sandbox not built (missing {missing}); install with {sandbox_tool.DEPS_HINT}")
+        return f"skipped: missing {missing}"
+    prefix, _, _ = budget_prefix(ctx.facts)
+    state, rec = sandbox_tool.build(ctx.root, prefix=prefix)
+    return f"bubblewrap {state}: {rec['version']} ({rec['commit'][:12]})"
+
+
 def step_model(ctx: Ctx) -> str:
     m = models.smoke_model(models.load_manifest(ctx.root / "models" / "manifest.toml"))
     ctx.model_path, state = models.ensure(m, models.models_dir(ctx.root))
@@ -166,7 +181,8 @@ def step_smoke(ctx: Ctx) -> str:
 
 STEPS = [
     ("prereqs", step_prereqs), ("env", step_env), ("python", step_python), ("llama.cpp", step_llama_cpp),
-    ("hwprobe", step_hwprobe), ("cuda", step_cuda), ("build", step_build), ("model", step_model),
+    ("hwprobe", step_hwprobe), ("cuda", step_cuda), ("build", step_build), ("sandbox", step_sandbox),
+    ("model", step_model),
     ("smoke", step_smoke),
 ]
 
