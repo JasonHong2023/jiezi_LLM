@@ -2,11 +2,10 @@
 `jiezi chat`: Textual full-screen chat (spec cli: Interactive Chat; design D4).
 
 按鍵 / Keys：Enter 送出 / send；Shift+Enter 或 Ctrl+J 換行 / newline；
-Ctrl+C 有選取文字時複製，否則中斷生成 / copy the selection, else stop generation；F3 複製最後一則回答 / copy the
-last answer；F2 切換策略 / switch policy；Ctrl+Q 離開 / quit。
-指令 / Commands：`/save 路徑`、`/copy`、`/clear`。
-選取 / Selecting：用滑鼠在對話區拖曳選取；多數終端機按住 Shift 拖曳可改用終端機自己的選取。
-Drag with the mouse in the conversation; in most terminals Shift+drag uses the terminal's own selection."""
+滑鼠拖曳選取，放開即自動複製（使用者 2026-11-15：跟 Claude Code 一樣）/ select by dragging, copied on release
+(user request: behave like Claude Code)；Ctrl+C 中斷生成 / stop generation；F3 複製最後一則回答 / copy the last
+answer；F2 切換策略 / switch policy；Ctrl+Q 離開 / quit。
+指令 / Commands：`/save 路徑`、`/copy`、`/clear`。"""
 
 from __future__ import annotations
 
@@ -51,6 +50,11 @@ class PromptArea(TextArea):
             return
         await super()._on_key(event)
 
+    async def _on_mouse_up(self, event: events.MouseUp) -> None:
+        await super()._on_mouse_up(event)
+        if self.selected_text:  # 輸入框裡的選取也是放開就複製 / the prompt's selection is copied on release too
+            self.app.copy_text(self.selected_text)
+
 
 class ChatApp(App):
     TITLE = "芥子 Jiezi"
@@ -63,7 +67,7 @@ class ChatApp(App):
     #bar { height: 1; color: $text-muted; padding: 0 1; }
     """
     BINDINGS = [
-        Binding("ctrl+c", "copy_or_stop", "複製/中斷 Copy/Stop", priority=True),
+        Binding("ctrl+c", "copy_or_stop", "中斷 Stop", priority=True),
         Binding("f3", "copy_last", "複製回答 Copy answer"),
         Binding("f2", "cycle_policy", "策略 Policy"),
         Binding("ctrl+q", "quit", "離開 Quit", priority=True),
@@ -81,8 +85,8 @@ class ChatApp(App):
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(Static("輸入問題後按 Enter / Type a question and press Enter. "
-                                    "拖曳選取後 Ctrl+C 複製，F3 複製最後一則回答 / drag to select, Ctrl+C copies, "
-                                    "F3 copies the last answer. F2 切換策略 / policy; Ctrl+Q 離開 / quit.",
+                                    "拖曳選取即複製，F3 複製最後一則回答 / drag to select and copy, "
+                                    "F3 copies the last answer. Ctrl+C 中斷 / stop; F2 策略 / policy; Ctrl+Q 離開 / quit.",
                                     classes="meta"), id="log")
         yield PromptArea(id="prompt", soft_wrap=True, show_line_numbers=False)
         yield Static(id="bar")
@@ -117,6 +121,12 @@ class ChatApp(App):
             focused = self.focused
             if isinstance(focused, TextArea) and focused.selected_text:
                 self.copy_text(focused.selected_text)
+
+    def on_text_selected(self, event: events.TextSelected) -> None:
+        """放開滑鼠、選取完成就自動複製。 / Copy automatically when a selection ends (mouse released)."""
+        text = self.screen.get_selected_text()
+        if text:
+            self.copy_text(text)
 
     def action_copy_last(self) -> None:
         last = next((m["content"] for m in reversed(self.history) if m["role"] == "assistant"), None)

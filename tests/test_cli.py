@@ -244,6 +244,22 @@ class TestChatCopy(TestChat):
         self.assertEqual(app.copied, "台北是首都")
         self.assertIn("clip.exe", r["bar"])
 
+    def test_selection_is_copied_on_release(self):
+        from textual import events as tev
+        copied = []
+
+        async def script(app, pilot):
+            await pilot.press(*"問")
+            await pilot.press("enter")
+            await app.workers.wait_for_complete()
+            with mock.patch.object(type(app.screen), "get_selected_text", lambda self: "台北"):
+                app.screen.post_message(tev.TextSelected())
+                await pilot.pause()
+        with mock.patch.object(chat, "system_copy", lambda text: copied.append(text) or "clip.exe"):
+            app, r, _ = self.run_app(script)
+        self.assertEqual(copied, ["台北"])
+        self.assertIn("已複製", r["bar"])
+
 
 if __name__ == "__main__":
     unittest.main()

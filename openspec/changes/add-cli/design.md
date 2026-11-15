@@ -73,6 +73,9 @@ Automated: Textual's `App.run_test()` for key and layout tests, checking at fixe
 - **複製（使用者 2026-11-15 回報「文字無法複製」）**：Textual 會攔下滑鼠，終端機原本的選取失效，而 Ctrl+C 又被設成中斷。改成：Ctrl+C 有選取文字就複製、否則中斷；F3 與 `/copy` 複製最後一則回答；同時寫入 OSC 52 與系統剪貼簿（偵測 `wl-copy` / `xclip` / `xsel` / `clip.exe` / `pbcopy`；`clip.exe` 用不含 BOM 的 UTF-16LE，實測中文正確且沒有隱形字元）。
   **Copying (user report on 2026-11-15)**: Textual captures the mouse, disabling terminal selection, and Ctrl+C was bound to stop. Now Ctrl+C copies a selection or else stops; F3 and `/copy` copy the last answer; both OSC 52 and the system clipboard are written (detecting `wl-copy` / `xclip` / `xsel` / `clip.exe` / `pbcopy`; `clip.exe` gets BOM-less UTF-16LE, verified to paste CJK correctly without a hidden character).
 
+- **選取即複製（使用者 2026-11-15：「拖曳選取就複製，不用再按 Ctrl+C，跟你的行為一樣」）**：收到 Textual 的 `TextSelected`（放開滑鼠時發出）就複製；輸入框在放開滑鼠時若有選取也複製。Ctrl+C 只用來中斷。
+  **Copy on selection (user request)**: copy on Textual's `TextSelected` (sent on mouse release); the prompt copies its selection on release too. Ctrl+C only stops.
+
 ## Risks / Trade-offs
 
 - **Kitty 鍵盤協定與 Shift+Enter**：部分終端機無法分辨 Shift+Enter。→ 同時提供 Ctrl+J 換行。
