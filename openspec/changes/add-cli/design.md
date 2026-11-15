@@ -76,6 +76,9 @@ Automated: Textual's `App.run_test()` for key and layout tests, checking at fixe
 - **選取即複製（使用者 2026-11-15：「拖曳選取就複製，不用再按 Ctrl+C，跟你的行為一樣」）**：收到 Textual 的 `TextSelected`（放開滑鼠時發出）就複製；輸入框在放開滑鼠時若有選取也複製。Ctrl+C 只用來中斷。
   **Copy on selection (user request)**: copy on Textual's `TextSelected` (sent on mouse release); the prompt copies its selection on release too. Ctrl+C only stops.
 
+- **背景常駐的 gateway（使用者 2026-11-15 回報：在 Herdr 開 `jiezi chat` 時 gateway 已經結束）**：前景的 `serve` 會隨終端機關閉而結束。新增 `scripts/jiezi start / stop / logs`：有使用者層 systemd 時以 `systemd-run --user` 執行（unit `jiezi-gateway`），否則以分離的行程執行並寫 `var/runtime/gateway.log`。`jiezi chat` / `jiezi ask` 發現本機（`127.0.0.1`）gateway 沒開時自動在背景啟動；聊天途中 gateway 消失時也會重新啟動並請使用者再送一次。
+  **Background gateway (user report on 2026-11-15: the gateway had ended when `jiezi chat` was opened in Herdr)**: a foreground `serve` ends with its terminal. `scripts/jiezi start / stop / logs` run it via `systemd-run --user` (unit `jiezi-gateway`) when available, else as a detached process logging to `var/runtime/gateway.log`. `jiezi chat` / `jiezi ask` start a local gateway in the background when it is not running, and chat restarts it mid-conversation and asks the user to resend.
+
 ## Risks / Trade-offs
 
 - **Kitty 鍵盤協定與 Shift+Enter**：部分終端機無法分辨 Shift+Enter。→ 同時提供 Ctrl+J 換行。

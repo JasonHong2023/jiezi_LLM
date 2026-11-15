@@ -119,3 +119,20 @@ def status_line(meta: dict | None) -> str:
     if meta.get("escalation") and meta.get("escalation") != "policy":
         parts.append(f"why {meta['escalation']}")
     return "[" + " | ".join(parts) + "]"
+
+
+def ensure_gateway(conn: Connection, log=lambda *_: None) -> str | None:
+    """本機 gateway 沒開時在背景啟動（使用者 2026-11-15）；只處理 127.0.0.1 的網址。
+    回傳啟動結果，或 None 表示不需要 / 不適用。
+    Start a local gateway in the background when it is not running (user request, 2026-11-15); only for
+    127.0.0.1 URLs. Return the start result, or None when not needed / not applicable."""
+    from urllib.parse import urlparse
+
+    from ..runtime import service
+    u = urlparse(conn.url)
+    if u.hostname != "127.0.0.1" or not u.port:
+        return None
+    if service.health(u.port):
+        return None
+    log("gateway 未啟動，正在背景啟動… / starting the gateway in the background…")
+    return service.start(project_root(), u.port)

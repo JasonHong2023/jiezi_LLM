@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import anyio
 from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -19,7 +20,7 @@ from textual.message import Message
 from textual.widgets import Footer, Markdown, Static, TextArea
 from textual.worker import Worker
 
-from .client import Connection, GatewayError, GatewayUnreachable, status_line, stream_chat
+from .client import Connection, GatewayError, GatewayUnreachable, ensure_gateway, status_line, stream_chat
 from .clipboard import system_copy
 from .herdr import HerdrReporter
 
@@ -182,8 +183,11 @@ class ChatApp(App):
             self.last_status = status_line(meta)
             meta_w.update(self.last_status)
             self.cost += ((meta or {}).get("cloud") or {}).get("cost") or 0.0
-        except GatewayUnreachable as exc:
-            meta_w.update(f"[gateway 未啟動 / not running: {exc}; scripts/jiezi serve]")
+        except GatewayUnreachable:
+            # 聊天途中 gateway 被關掉：在背景重新啟動，請使用者再送一次 / restart it and ask to resend
+            res = await anyio.to_thread.run_sync(ensure_gateway, self.conn)
+            meta_w.update(f"[gateway 剛才沒有在執行，已在背景重新啟動（{res}），請再送一次 / the gateway was not "
+                          f"running; restarted in the background ({res}), please send again]")
         except GatewayError as exc:
             meta_w.update(f"[錯誤 / error: {exc}]")
         except BaseException:
@@ -216,5 +220,9 @@ def main(policy: str = "jiezi") -> int:
     if not conn.key:
         sys.stderr.write("jiezi: JIEZI_GATEWAY_KEY is not set; run scripts/jiezi init-key\n")
         return 3
+    res = ensure_gateway(conn, log=lambda m: sys.stderr.write(m + "\n"))
+    if res == "failed":
+        sys.stderr.write("jiezi: gateway 啟動失敗，請看 scripts/jiezi logs / the gateway failed to start; "
+                         "see scripts/jiezi logs\n")
     ChatApp(conn, policy).run()
     return 0

@@ -11,7 +11,7 @@ from typing import TextIO
 
 import anyio
 
-from .client import Connection, GatewayError, GatewayUnreachable, complete, status_line, stream_chat
+from .client import Connection, GatewayError, GatewayUnreachable, complete, ensure_gateway, status_line, stream_chat
 
 DIM, RESET = "\033[2m", "\033[0m"
 
@@ -56,4 +56,5 @@ def main(question: str, policy: str = "jiezi", as_json: bool = False) -> int:
     if not conn.key:
         sys.stderr.write("jiezi: JIEZI_GATEWAY_KEY is not set; run scripts/jiezi init-key\n")
         return 3
+    ensure_gateway(conn, log=lambda m: sys.stderr.write(m + "\n"))
     return anyio.run(run_ask, question, policy, conn, as_json, sys.stdin, sys.stdout, sys.stderr)

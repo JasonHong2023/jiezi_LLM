@@ -54,6 +54,9 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="scripts/jiezi")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("serve", help="run the gateway in the foreground (Ctrl-C stops it and the engine)")
+    sub.add_parser("start", help="start the gateway in the background (survives closing the terminal)")
+    sub.add_parser("stop", help="stop the background gateway and its engine")
+    sub.add_parser("logs", help="show recent gateway logs")
     sub.add_parser("status", help="show gateway and engine state")
     sub.add_parser("init-key", help="generate JIEZI_GATEWAY_KEY in .env if missing")
     a = sub.add_parser("ask", help="one-shot question (pipe a file into stdin to attach it)")
@@ -72,6 +75,14 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_serve(root)
         if args.cmd == "status":
             return cmd_status(root)
+        if args.cmd in ("start", "stop", "logs"):
+            from . import service
+            port = port_base(load_env(root))
+            if args.cmd == "logs":
+                return service.logs(root)
+            res = service.start(root, port) if args.cmd == "start" else service.stop(root, port)
+            print(res)
+            return 1 if res == "failed" else 0
         if args.cmd == "ask":
             from ..cli import ask
             return ask.main(args.question, args.policy or "jiezi", args.json)

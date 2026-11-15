@@ -261,5 +261,29 @@ class TestChatCopy(TestChat):
         self.assertIn("已複製", r["bar"])
 
 
+class TestService(unittest.TestCase):
+    def test_already_running_and_remote_url_untouched(self):
+        from jiezi.cli.client import ensure_gateway
+        from jiezi.runtime import service
+        with mock.patch.object(service, "health", return_value={"status": "ok"}):
+            self.assertEqual(service.start(Path("/x"), 36100), "already_running")
+            self.assertIsNone(ensure_gateway(Connection("http://127.0.0.1:36100", "k")))
+        self.assertIsNone(ensure_gateway(Connection("http://example.invalid:36100", "k")))
+
+    def test_starts_detached_process_without_systemd(self):
+        from jiezi.runtime import service
+        calls = []
+        states = iter([None, None, {"status": "ok"}])
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(service, "health", side_effect=lambda *a, **k: next(states)), \
+                mock.patch.object(service, "_user_systemd", return_value=False), \
+                mock.patch.object(service.subprocess, "Popen", lambda cmd, **k: calls.append((cmd, k))), \
+                mock.patch.object(service.time, "sleep", lambda s: None):
+            res = service.start(Path(d), 36100)
+        self.assertEqual(res, "started_process")
+        self.assertEqual(calls[0][0][-1], "serve")
+        self.assertTrue(calls[0][1]["start_new_session"])  # 與終端機脫鉤 / detached from the terminal
+
+
 if __name__ == "__main__":
     unittest.main()
