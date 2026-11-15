@@ -68,6 +68,9 @@ def main(argv: list[str] | None = None) -> int:
     for flag, p in (("--local", "jiezi-local"), ("--cloud", "jiezi-cloud"), ("--claude", "jiezi-ask-claude")):
         c.add_argument(flag, dest="policy", action="store_const", const=p)
     sub.add_parser("check-clients", help="read-only check; prints suggested Hermes / OpenCode settings")
+    dp = sub.add_parser("dict", help="local dictionary (add-dictionary)")
+    dp.add_argument("action", choices=["build", "lookup"])
+    dp.add_argument("word", nargs="?")
     args = ap.parse_args(argv)
     root = project_root()
     try:
@@ -89,6 +92,22 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "chat":
             from ..cli import chat
             return chat.main(args.policy or "jiezi")
+        if args.cmd == "dict":
+            from .. import dictionary
+            if args.action == "build":
+                counts = dictionary.build(root)
+                print(f"built {dictionary.db_path(root)}: {counts}; restart the gateway (scripts/jiezi stop && "
+                      "scripts/jiezi start) to use it")
+                return 0
+            if not args.word:
+                print("usage: scripts/jiezi dict lookup <word>", file=sys.stderr)
+                return 2
+            d = dictionary.Dictionary(dictionary.db_path(root))
+            hits = d.lookup(args.word)
+            for src, entry in hits:
+                print(dictionary.render(entry))
+                print(f"— {d.meta.get(src, {}).get('attribution', src)}\n")
+            return 0 if hits else 1
         if args.cmd == "check-clients":
             from ..cli import check
             return check.main()

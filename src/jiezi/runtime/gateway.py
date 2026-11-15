@@ -28,6 +28,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
+from ..textconv import to_traditional
 from . import consult as consult_mod
 from . import escalation
 from .settings import POLICIES, Settings
@@ -65,6 +66,13 @@ class Gateway:
             self.consultant = consult_mod.ClaudeCliConsultant(settings.var / "runtime" / "consult-cwd",
                                                               settings.consult_timeout_s, settings.consult_model,
                                                               web=settings.consult_web)
+        self.dictionary, self.dictionary_note = None, None
+        if settings.dictionary:
+            from ..dictionary import Dictionary, db_path
+            try:
+                self.dictionary = Dictionary(db_path(settings.root))
+            except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
+                self.dictionary_note = str(exc)
         self.consult_cap = escalation.DailyCap(settings.var / "runtime" / "consult", settings.consult_daily_max) \
             if settings.consult_daily_max else None
         timeout = httpx.Timeout(settings.request_timeout_s, connect=10.0)
@@ -109,7 +117,11 @@ class Gateway:
     async def _local_once(self, base: str, body: dict, messages: list | None = None) -> dict:
         r = await self.local.post(f"{base}/v1/chat/completions", json=self._local_body(body, messages))
         r.raise_for_status()
-        return r.json()
+        data = r.json()
+        for ch in data.get("choices") or []:  # 本機輸出的純簡體字轉繁體 / Simplified-only chars → Traditional
+            msg = ch.get("message") or {}
+            msg["content"] = to_traditional(msg.get("content"))
+        return data
 
     async def _cloud_once(self, body: dict) -> tuple[dict, dict]:
         """依序嘗試轉交模型；回傳 (回應, 雲端資訊)。 / Try escalation models in order; return (response, info)."""
@@ -178,6 +190,26 @@ class Gateway:
             return self._deliver(fake, meta, rec, stream)
         return self._finish_error(rec, 502, message, why)
 
+    def _ground(self, body: dict, rec: dict) -> None:
+        """詞語問題先查本機辭典，把詞條原文附給模型（add-dictionary D2、D3）。
+        For word questions, attach verbatim dictionary entries (add-dictionary D2, D3)."""
+        if self.dictionary is None or body.get("tools"):
+            return
+        last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
+        if not last or not isinstance(last.get("content"), str):
+            return
+        from ..dictionary import grounding
+        g = grounding(self.dictionary, last["content"])
+        if not g:
+            return
+        content, sources, trainable, appendix = g
+        idx = body["messages"].index(last)
+        body["messages"].insert(idx, {"role": "system", "content": content})
+        rec["sources"] = sources
+        rec["dict_appendix"] = appendix
+        if not trainable:
+            rec["training_use"] = False  # 禁止改作的辭典 / no-derivatives dictionary
+
     # ── 端點 / Endpoints ──
     async def models(self, request: Request) -> Response:
         if not self._authorized(request):
@@ -188,6 +220,7 @@ class Gateway:
     async def health(self, request: Request) -> Response:
         return JSONResponse({"status": "ok", "engine": self.sup.describe(),
                              "consult": self.s.consult if self.consultant else "off",
+                             "dictionary": "on" if self.dictionary else (self.dictionary_note or "off"),
                              "cloud_escalation": self.s.cloud_ready, "cloud_used_today": self.cap.used(),
                              "cloud_daily_max": self.s.cloud_daily_max,
                              "trajectory": {"enabled": self.traj.enabled, "error": self.traj.last_error}})
@@ -218,7 +251,8 @@ class Gateway:
         # training_use：None 表示訓練前要依授權表確認；請教 Claude 的回答一律 False（design D9）
         # training_use: None means check the license registry before training; Claude consultations are always False
         rec = {"id": tid, "at": now_iso(), "policy": policy, "stream": stream, "request": body, "tiers": [],
-               "final_tier": None, "status": "ok", "training_use": None}
+               "final_tier": None, "status": "ok", "training_use": None, "sources": []}
+        self._ground(body, rec)
         t0 = time.monotonic()
 
         if policy == "jiezi-ask-claude":
@@ -342,9 +376,13 @@ class Gateway:
                 "verification_error": (ver or {}).get("error"), "escalation": escalation,
                 "latency_s": elapsed(t0), "tps": _tps(resp),
                 "cloud": {"tokens": usage.get("total_tokens"), "cost": (cloud or {}).get("cost")} if cloud else None,
-                "trajectory_id": rec["id"]}
+                "trajectory_id": rec["id"], "sources": rec.get("sources") or []}
 
     def _deliver(self, resp: dict, meta: dict, rec: dict, stream: bool) -> Response:
+        if rec.get("dict_appendix"):
+            for ch in resp.get("choices") or []:
+                msg = ch.get("message") or {}
+                msg["content"] = (msg.get("content") or "") + rec["dict_appendix"]
         rec.update(final_tier=meta["tier"], jiezi=meta)
         self.traj.write(rec)
         if not stream:
@@ -385,13 +423,19 @@ class Gateway:
                     payload = line[6:]
                     if payload.strip() == "[DONE]":
                         break
-                    with contextlib.suppress(json.JSONDecodeError):
+                    try:
                         chunk = json.loads(payload)
-                        last = chunk
-                        for ch in chunk.get("choices") or []:
-                            content.append((ch.get("delta") or {}).get("content") or "")
-                            finish = ch.get("finish_reason") or finish
-                    yield (line + "\n\n").encode("utf-8")
+                    except json.JSONDecodeError:
+                        yield (line + "\n\n").encode("utf-8")
+                        continue
+                    last = chunk
+                    for ch in chunk.get("choices") or []:
+                        delta = ch.get("delta") or {}
+                        if delta.get("content"):
+                            delta["content"] = to_traditional(delta["content"])
+                        content.append(delta.get("content") or "")
+                        finish = ch.get("finish_reason") or finish
+                    yield _sse(chunk)
             self.sup.release()
             released = True
             text = "".join(content)
@@ -399,6 +443,10 @@ class Gateway:
             help_reason = escalation.needs_help({"content": text}, finish)
             rec["tiers"].append({"tier": 0, "answer": {"role": "assistant", "content": text}, "verification": ver,
                                  "model": last.get("model"), "tps": _tps(last), "needs_help": help_reason})
+            if rec.get("dict_appendix"):
+                yield _sse({"id": last.get("id"), "object": "chat.completion.chunk", "created": int(time.time()),
+                            "model": last.get("model"),
+                            "choices": [{"index": 0, "delta": {"content": rec["dict_appendix"]}, "finish_reason": None}]})
             route = self._auto_route() if policy == "jiezi" and help_reason else None
             if route:
                 async for chunk in self._stream_escalation(body, rec, t0, last, help_reason, route):

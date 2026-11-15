@@ -58,6 +58,7 @@ class Settings:
     consult_model: str | None = None
     system_prompt: str | None = None   # 請求沒有 system 訊息時加上（design D10）/ added when a request has none
     consult_web: bool = True        # 請教時可讀網頁與搜尋（使用者 2026-11-15）/ web reading and search when consulting
+    dictionary: bool = True         # 詞語問題先查本機辭典（add-dictionary）/ consult the local dictionary for word questions
     consult_auto: bool = True       # 自動請教，不用逐次同意（使用者 2026-11-15）/ auto-consult without per-call approval
 
     @property
@@ -99,6 +100,7 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         consult_timeout_s=_int(env, "JIEZI_CONSULT_TIMEOUT_S", 300),
         consult_model=env.get("JIEZI_CONSULT_MODEL") or None,
         consult_auto=_onoff(env, "JIEZI_CONSULT_AUTO", True),
+        dictionary=_onoff(env, "JIEZI_DICTIONARY", True),
         consult_web=_onoff(env, "JIEZI_CONSULT_WEB", True),
         system_prompt=_system_prompt(root, env),
     )

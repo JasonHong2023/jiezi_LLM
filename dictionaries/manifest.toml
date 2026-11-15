@@ -1,0 +1,17 @@
+# 芥子本機辭典來源（add-dictionary）/ Jiezi local dictionary sources (add-dictionary)
+# 每一筆都要有授權欄位與 SHA-256；檔案下載到 var/dict/，不進版控（R6.4、R18.3）。
+# Every entry needs license fields and SHA-256; files go to var/dict/, never committed.
+
+[[source]]
+key = "moedict-revised"
+title = "重編國語辭典修訂本"
+publisher = "中華民國教育部（Ministry of Education, R.O.C.）"
+format = "moedict_json_xz"
+url = "https://raw.githubusercontent.com/g0v/moedict-data/a6dc997417507eb510fc29822bc514de2c92728c/dict-revised.json.xz"
+sha256 = "5cc4ec0efd7e549621edf9b46d261989230c1729d9dc2c8e2056f4b21c8a93da"
+size = 14739512
+license = "CC BY-ND 3.0 TW"
+license_url = "https://language.moe.gov.tw/001/Upload/Files/site_content/M0001/respub/reviseddict_10312.pdf"
+training_use = false  # 禁止改作；要訓練請改走 TAIC 的 AI 訓練授權 / ND; for training use the TAIC AI-training license
+attribution = "資料來源：教育部《重編國語辭典修訂本》（CC BY-ND 3.0 TW）"
+license_checked = "2026-11-15"
