@@ -16,11 +16,11 @@ import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+# 問芥子自己 → 改系統提示；要上網或即時 → 本機做不到（與記憶共用規則）
+# About jiezi → system prompt; web or live → not local (rules shared with memory)
+from ..memory import SELF, WEB
+
 HELP_TIERS = {3, "consult"}
-# 問芥子自己（名字、身分、作者）→ 改系統提示，不是補資料 / about jiezi itself → system prompt, not data
-SELF = re.compile(r"芥子|自我介紹|你是誰|你叫什麼|你的名字|你在哪|你會哪些|你會那些|你能做什麼|誰做的你|你的作者")
-# 要上網、即時或網頁內容 → 本機做不到，交給 Claude / needs the web or live data
-WEB = re.compile(r"https?://|網路上|上網|網頁|網站|新聞|今天|今日|現在幾點|最新|即時|天氣|股價|匯率")
 PROBE_HITS, PROBE_COVER = 3, 0.4
 DIRECT = {"jiezi-ask-claude", "jiezi-cloud"}
 MAX_LISTED = 40

@@ -115,6 +115,7 @@ def main(argv: list[str] | None = None) -> int:
     for flag, p in (("--local", "jiezi-local"), ("--cloud", "jiezi-cloud"), ("--claude", "jiezi-ask-claude")):
         a.add_argument(flag, dest="policy", action="store_const", const=p)
     c = sub.add_parser("chat", help="full-screen chat (Textual)")
+    c.add_argument("--new", action="store_true", help="開新對話，不接續上次 / start fresh instead of resuming")
     for flag, p in (("--local", "jiezi-local"), ("--cloud", "jiezi-cloud"), ("--claude", "jiezi-ask-claude")):
         c.add_argument(flag, dest="policy", action="store_const", const=p)
     sub.add_parser("check-clients", help="read-only check; prints suggested Hermes / OpenCode settings")
@@ -127,6 +128,9 @@ def main(argv: list[str] | None = None) -> int:
     cp.add_argument("--subject", help="plan：科目，如 數學 / subject")
     cp.add_argument("--grade", type=int, choices=range(1, 7), help="plan：年級 / grade")
     cp.add_argument("--stage", type=int, choices=(1, 2, 3), help="plan：學習階段 / learning stage")
+    mp = sub.add_parser("memory", help="memory wiki: consulted answers, notes, corrections (add-memory)")
+    mp.add_argument("action", choices=["list", "search", "forget", "path"])
+    mp.add_argument("query", nargs="?", help="search：問題；forget：主題名稱 / search: question; forget: topic title")
     gp = sub.add_parser("gaps", help="gap report: questions the local model could not handle")
     gp.add_argument("--days", type=int, default=7, help="最近幾天 / how many recent days (default 7)")
     kp = sub.add_parser("knowledge", help="Taiwan knowledge base, taiwan-md (add-knowledge)")
@@ -155,7 +159,7 @@ def main(argv: list[str] | None = None) -> int:
             return ask.main(args.question, args.policy or "jiezi", args.json)
         if args.cmd == "chat":
             from ..cli import chat
-            return chat.main(args.policy or "jiezi")
+            return chat.main(args.policy or "jiezi", new=args.new)
         if args.cmd == "dict":
             from .. import dictionary
             if args.action == "build":
@@ -172,6 +176,41 @@ def main(argv: list[str] | None = None) -> int:
                 print(dictionary.render(entry))
                 print(f"— {d.meta.get(src, {}).get('attribution', src)}\n")
             return 0 if hits else 1
+        if args.cmd == "memory":
+            from .. import memory as M
+            m = M.Memory(M.wiki_path(root))
+            if args.action == "path":
+                print(m.wiki)
+                return 0
+            if args.action == "list":
+                topics = m.topics()
+                counts = {}
+                for e in m.entries:
+                    counts.setdefault(e.title, [0, 0])[0 if e.kind == "qa" else 1] += e.kind != "note"
+                print(f"記憶 wiki / memory wiki: {m.wiki}")
+                print(f"主題 {len(topics)} 個 / topics:")
+                for t in sorted(topics):
+                    qa, corr = counts.get(t, [0, 0])
+                    print(f"  - {t}（問答 {qa}、更正 {corr}）")
+                notes = m.notes()
+                print(f"要記住的事 {len(notes)} 條 / notes:")
+                for n in notes:
+                    print(f"  - {n.at}：{n.text}")
+                return 0
+            if not args.query:
+                print(f"usage: scripts/jiezi memory {args.action} <...>", file=sys.stderr)
+                return 2
+            if args.action == "forget":
+                ok = m.forget(args.query)
+                print("已刪除 / deleted" if ok else "找不到這個主題 / no such topic（scripts/jiezi memory list）")
+                return 0 if ok else 1
+            found = m.find_answer(args.query)
+            for c in m.corrections_for(args.query):
+                print(f"[更正 correction] {c.title}｜{c.question}\n{c.text}\n")
+            if found:
+                e, sim = found
+                print(f"[答案 answer {sim:.2f}] {e.title}｜{e.question}（{e.at[:10]}，{e.provider}）\n{e.text}")
+            return 0 if found else 1
         if args.cmd == "gaps":
             from . import gaps
             out, summary = gaps.write(root, args.days)

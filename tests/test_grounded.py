@@ -106,6 +106,14 @@ class TestGrounded(unittest.TestCase):
             t.tearDown()
 
 
+class TestNeedsHelp(unittest.TestCase):
+    def test_trailing_unsure_is_not_a_failure(self):
+        self.assertEqual(E.needs_help({"content": "我不確定。"}, "stop"), "self_reported_unsure")
+        self.assertEqual(E.needs_help({"content": "大概是這樣，我不確定"}, "stop"), "self_reported_unsure")
+        listing = "國一上數學翰林版包括：1. 正數與負數 2. 正負數的加減 3. 正負數的乘除 4. 指數記法與科學記號\n\n我不確定"
+        self.assertIsNone(E.needs_help({"content": listing}, "stop"))
+
+
 class TestTaiwanPhrasing(unittest.TestCase):
     def test_phrases(self):
         self.assertEqual(to_taiwan("这个视频的默认设置在软件里"), "這個影片的預設設置在軟體里")

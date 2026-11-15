@@ -193,6 +193,9 @@ _UNSURE = re.compile(r"我不確定|我不知道|无法回答|無法回答|无�
                      r"I don't know|I do not know|I'm not sure|I am not sure|I cannot answer|I can't answer", re.I)
 
 
+UNSURE_MIN_CONTENT = 40
+
+
 def needs_help(message: dict, finish_reason: str | None) -> str | None:
     """本機答案是否明顯需要求助（不需要標準答案）。回傳原因或 None。
     Whether the local answer obviously needs help (no ground truth needed). Return a reason or None."""
@@ -201,8 +204,13 @@ def needs_help(message: dict, finish_reason: str | None) -> str | None:
     text = (message.get("content") or "").strip()
     if not text:
         return "truncated" if finish_reason == "length" else "empty_answer"
-    if _UNSURE.search(text[:200]):
-        return "self_reported_unsure"
+    m = _UNSURE.search(text[:200])
+    if m:
+        # 前面已經答了一段內容、最後才補一句「我不確定」（0.6B 常這樣）就不算答不出來（2026-11-15 實測）
+        # Substantial content before a trailing "not sure" (a 0.6B habit) does not count as unable to answer
+        before = re.sub(r"\s+", "", text[:m.start()])
+        if len(before) < UNSURE_MIN_CONTENT:
+            return "self_reported_unsure"
     return None
 
 

@@ -58,7 +58,7 @@ scripts/jiezi chat            # 或 / or: scripts/jiezi chat --claude
 | F2 | 切換策略 / switch policy |
 | Ctrl+Q | 離開 / quit |
 | `/save 檔案.md` | 存成 Markdown / save as Markdown |
-| `/clear` | 清除對話 / clear the conversation |
+| `/clear` | 清除對話與保存的歷史 / clear the conversation and saved history |
 
 複製會同時寫入終端機剪貼簿（OSC 52）與系統剪貼簿（WSL 用 Windows 的 `clip.exe`，Linux 桌面用 `wl-copy` / `xclip`），所以在 Herdr 內也能貼到 Windows。
 Copying writes both the terminal clipboard (OSC 52) and the system clipboard (`clip.exe` on WSL, `wl-copy` / `xclip` on Linux desktops), so it pastes into Windows even inside Herdr.
@@ -106,6 +106,23 @@ Writing questions get up to three related article links after the answer, and Cl
 
 化學問題（化學名詞或含數字的化學式，如 H2SO4）請教 Claude 時，會提示它可以上網搜尋閱讀 HackMD 化學主題的社群筆記，並交叉查證；芥子本身不抓取、不收錄這些筆記（`src/jiezi/consult_hints.py`）。
 Chemistry consultations tell Claude it may read HackMD chemistry notes online; jiezi never fetches or ingests them.
+
+### 記憶 / Memory
+
+芥子會記住（Markdown wiki，Hermes llm-wiki 格式，在 `var/memory/wiki/`，可用 Obsidian 開）：
+- 請教 Claude／雲端得到的答案：之後問到幾乎一樣的問題直接用記憶回答（註明日期與頁面），類似的問題會參考。上網／即時類、問芥子自己的問題不存。
+- 「記住：我住新竹」：之後每次對話都會參考。
+- 「不對，是 508 公尺」：連同前一題存成更正，之後最優先。
+
+```bash
+scripts/jiezi memory list            # 列出主題與要記住的事
+scripts/jiezi memory search LoRA     # 查記憶
+scripts/jiezi memory forget LoRA     # 刪掉一個主題（也可以直接刪 wiki 裡的檔案）
+scripts/jiezi chat --new             # 開新對話（預設接續上次）
+```
+
+Claude 的答案在記憶裡只用來查，不用於訓練。`JIEZI_MEMORY=off` 可關閉。
+Consulted answers, notes and corrections are kept in a Markdown wiki; Claude's answers are lookup-only.
 
 ### 缺口報告 / Gap report
 

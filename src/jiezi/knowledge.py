@@ -29,6 +29,10 @@ REQUIRED = ("key", "title", "repo", "commit", "license", "license_url", "trainin
 TRANSLATIONS = {"de", "hi", "pt", "en", "id", "ko", "es", "vi", "fr", "ja", "ar", "ru"}
 MAX_SECTION_CHARS, MAX_SECTIONS, SCAN_CHARS = 1200, 2, 500
 MIN_HITS, MIN_COVER = 3, 0.3
+# 提問用語：檢索前先去掉，避免「是知」「麼是」這類跨詞雙字造成誤配（2026-11-15：「知識蒸餾」配到教育文章）
+# Question wording, dropped before retrieval so cross-word bigrams do not cause false matches
+ASKING = re.compile(r"請問|請|幫我|告訴我|用[一二兩三四五]句話|一句話|簡單|簡短|說明|解釋|介紹|一下|什麼是|甚麼是|是什麼|是甚麼|"
+                    r"什麼叫|何謂|怎麼|如何|為什麼|為何|嗎|呢|[？?。！!，,：:、「」『』]")
 SKIP_HEADINGS = re.compile(r"延伸閱讀|參考資料|參考文獻|資料來源|相關連結|外部連結|註釋|附註")  # 全文檢索的門檻 / thresholds for full-text matches
 # 提問常用、不帶主題的雙字 / bigrams common in questions that say nothing about the topic
 STOP = {"什麼", "甚麼", "怎麼", "如何", "為什", "麼是", "是什", "請問", "可以", "一下", "告訴", "介紹", "有沒", "沒有",
@@ -217,7 +221,7 @@ class Knowledge:
 
     def search(self, text: str, article: int | None = None, limit: int = MAX_SECTIONS) -> list[tuple[int, int]]:
         """回傳 [(section_id, 命中雙字數)]。 / Return [(section id, matched bigram count)]."""
-        q = [g for g in dict.fromkeys(bigrams(text[:SCAN_CHARS])) if g not in STOP]
+        q = [g for g in dict.fromkeys(bigrams(ASKING.sub(" ", text[:SCAN_CHARS]))) if g not in STOP]
         if not q:
             return []
         expr = " OR ".join('"' + g.replace('"', "") + '"' for g in q)

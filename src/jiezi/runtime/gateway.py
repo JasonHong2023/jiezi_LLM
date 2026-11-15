@@ -32,6 +32,8 @@ from ..textconv import TaiwanStream, to_taiwan, to_traditional
 from . import consult as consult_mod
 from . import escalation
 from .settings import POLICIES, Settings
+
+CORRECTION_DIRECT = 0.5  # 問題和更正過的問題相似到這個程度，就直接照更正回答 / serve a correction at this similarity
 from .supervisor import EngineUnavailable, Supervisor
 from .trajectory import TrajectoryWriter, elapsed, new_id, now_iso
 
@@ -80,6 +82,13 @@ class Gateway:
                 self.curriculum = Graph.load(settings.root)
             except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
                 self.curriculum_note = str(exc)
+        self.memory, self.memory_note = None, None
+        if settings.memory:
+            from ..memory import Memory, wiki_path
+            try:
+                self.memory = Memory(wiki_path(settings.root))
+            except Exception as exc:  # noqa: BLE001 - 記憶壞了不影響回答 / a broken memory never blocks answers
+                self.memory_note = str(exc)
         self.knowledge, self.knowledge_note = None, None
         if settings.knowledge:
             from ..knowledge import Knowledge, db_path as knowledge_db
@@ -214,13 +223,16 @@ class Gateway:
     def _ground(self, body: dict, rec: dict) -> None:
         """詞語問題查本機辭典、課綱問題查知識圖譜，把原文附給模型（add-dictionary D2、D3；add-curriculum D2、D3）。
         Attach verbatim dictionary entries for word questions and curriculum-graph data for curriculum questions."""
-        if body.get("tools") or all(x is None for x in (self.dictionary, self.curriculum, self.knowledge,
-                                                         self.writing)):
+        if body.get("tools") or all(x is None for x in (self.memory, self.dictionary, self.curriculum,
+                                                         self.knowledge, self.writing)):
             return
         last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
         if not last or not isinstance(last.get("content"), str):
             return
         found = []
+        if self.memory is not None:  # 記憶最優先（使用者的更正）/ memory first (the user's corrections)
+            from ..memory import recall_block
+            found.append(recall_block(last["content"], self.memory))
         if self.dictionary is not None:
             from ..dictionary import grounding
             found.append(grounding(self.dictionary, last["content"]))
@@ -248,6 +260,90 @@ class Gateway:
                 rec["sources"] = (rec.get("sources") or []) + w[1]
                 rec["dict_appendix"] = (rec.get("dict_appendix") or "") + w[0]
 
+    # ── 記憶 / Memory（add-memory）──
+    def _remember(self, body: dict, rec: dict, msg: dict, provider: str, model: str | None) -> None:
+        """把請教／雲端的答案存進記憶 wiki；存不了不影響回答。 / Save to the memory wiki; failures never block."""
+        if self.memory is None or body.get("tools"):
+            return
+        from ..memory import storable
+        users = [m["content"] for m in body["messages"] if m.get("role") == "user" and isinstance(m.get("content"), str)]
+        if not users:
+            return
+        why = storable(users[-1], len(users) - 1)
+        if why:
+            rec["memory"] = {"saved": False, "why": why}
+            return
+        try:
+            rec["memory"] = {"saved": True, "page": self.memory.save_answer(users[-1], msg.get("content") or "",
+                                                                             provider, model)}
+        except Exception as exc:  # noqa: BLE001
+            rec["memory"] = {"saved": False, "why": f"error: {exc}"}
+            self.log(f"memory: could not save: {exc}")
+
+    def _memory_reply(self, rec: dict, t0: float, stream: bool, text: str, training: bool | None = None) -> Response:
+        resp = {"id": f"chatcmpl-memory-{int(time.time() * 1000)}", "object": "chat.completion",
+                "created": int(time.time()), "model": "jiezi-memory",
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": "stop"}]}
+        rec["tiers"].append({"tier": "memory", "answer": resp["choices"][0]["message"]})
+        if training is False:
+            rec["training_use"] = False
+        meta = self._meta(rec, "memory", resp, None, t0)
+        meta["provider"] = "memory"
+        return self._deliver(resp, meta, rec, stream)
+
+    def _memory_early(self, body: dict, rec: dict, t0: float, stream: bool, policy: str) -> Response | None:
+        """「記住：…」「不對，…」直接處理；幾乎相同的問題直接用記憶回答；其餘附上「要記住的事」。
+        Handle remember/correction messages, serve near-identical questions from memory, else attach notes."""
+        from ..memory import CORRECTION, EXACT, REMEMBER, notes_prompt, similarity, storable
+        msgs = body["messages"]
+        users = [m for m in msgs if m.get("role") == "user" and isinstance(m.get("content"), str)]
+        if not users:
+            return None
+        q = users[-1]["content"]
+        try:
+            m = REMEMBER.match(q)
+            if m:
+                self.memory.save_note(m.group(1))
+                rec["sources"] = [{"source": "memory", "page": "使用者要我記住的事", "kind": "note"}]
+                rec.pop("dict_appendix", None)
+                return self._memory_reply(rec, t0, stream, f"好，我記住了：{m.group(1).strip()}\n"
+                                          "（存在記憶 wiki 的〈使用者要我記住的事〉，可以用 Obsidian 修改或刪除）")
+            m = CORRECTION.match(q)
+            answered = any(x.get("role") == "assistant" for x in msgs)
+            if m and len(users) >= 2 and answered:
+                prev = users[-2]["content"]
+                page = self.memory.save_correction(prev, m.group(1))
+                rec["sources"] = [{"source": "memory", "page": page, "kind": "correction"}]
+                rec.pop("dict_appendix", None)
+                return self._memory_reply(rec, t0, stream, f"好，已記下更正。之後問到「{prev.strip()[:60]}」會照這個說法回答："
+                                          f"\n{m.group(1).strip()}")
+            corrections = self.memory.corrections_for(q)
+            best = max(corrections, key=lambda c: similarity(q, c.question), default=None)
+            if policy in ("jiezi", "jiezi-local") and best and similarity(q, best.question) >= CORRECTION_DIRECT \
+                    and len(users) == 1:
+                # 使用者自己更正過的答案：直接照更正回答，不讓小模型再說錯 / answer with the user's own correction
+                rec["sources"] = [{"source": "memory", "page": best.title, "kind": "correction"}]
+                rec.pop("dict_appendix", None)
+                return self._memory_reply(rec, t0, stream, f"根據你 {best.at[:10]} 的更正：{best.text}\n\n---\n"
+                                          f"【記憶】[[{best.title}]]（問題：{best.question}）")
+            if policy in ("jiezi", "jiezi-local") and storable(q, len(users) - 1) is None and not corrections:
+                found = self.memory.find_answer(q)
+                if found and found[1] >= EXACT:
+                    e = found[0]
+                    rec["sources"] = [{"source": "memory", "page": e.title, "kind": "answer", "similarity": 1.0}]
+                    rec.pop("dict_appendix", None)
+                    return self._memory_reply(
+                        rec, t0, stream, e.text + f"\n\n---\n【記憶】{e.at[:10]} 請教{e.provider}的答案（[[{e.title}]]）；"
+                        "要重新請教，請用 --claude 或在聊天中按 F2 切到 jiezi-ask-claude。", training=False)
+            notes = notes_prompt(self.memory)
+        except Exception as exc:  # noqa: BLE001 - 記憶壞了照常回答 / answer normally if memory fails
+            self.log(f"memory: {exc}")
+            return None
+        if notes:
+            lead = next((i for i, x in enumerate(msgs) if x.get("role") != "system"), len(msgs))
+            msgs.insert(lead, {"role": "system", "content": notes})
+        return None
+
     @staticmethod
     def _grounding(body: dict, rec: dict) -> str | None:
         """查核用的依據：附上的資料加上使用者說過的話；沒有附資料就不查。
@@ -272,6 +368,7 @@ class Gateway:
                              "curriculum": "on" if self.curriculum else (self.curriculum_note or "off"),
                              "writing_refs": "on" if self.writing else (self.writing_note or "off"),
                              "knowledge": "on" if self.knowledge else (self.knowledge_note or "off"),
+                             "memory": "on" if self.memory else (self.memory_note or "off"),
                              "cloud_escalation": self.s.cloud_ready, "cloud_used_today": self.cap.used(),
                              "cloud_daily_max": self.s.cloud_daily_max,
                              "trajectory": {"enabled": self.traj.enabled, "error": self.traj.last_error}})
@@ -305,6 +402,10 @@ class Gateway:
                "final_tier": None, "status": "ok", "training_use": None, "sources": []}
         self._ground(body, rec)
         t0 = time.monotonic()
+        if self.memory is not None and not body.get("tools"):
+            early = self._memory_early(body, rec, t0, stream, policy)
+            if early is not None:
+                return early
 
         if policy == "jiezi-ask-claude":
             return await self._respond_consult(body, rec, t0, stream)
@@ -377,6 +478,7 @@ class Gateway:
             return self._fallback_local(rec, t0, stream, "cloud_failed", f"cloud escalation failed: {exc}")
         rec["tiers"].append({"tier": 3, "provider": "cloud", "answer": _message(resp), "model": info["model"],
                              "reason": reason, "usage": info["usage"], "cost": info["cost"]})
+        self._remember(body, rec, _message(resp), "cloud", info["model"])
         meta = self._meta(rec, 3, resp, None, t0, escalation=reason, cloud=info)
         return self._deliver(resp, meta, rec, stream)
 
@@ -403,6 +505,7 @@ class Gateway:
         """Claude 的回答一律標記為不可用於訓練（design D9）。 / Claude's answers are never usable for training."""
         rec["training_use"] = consult_mod.TRAINING_USE
         msg = _message(resp)
+        self._remember(body, rec, msg, "claude", ans["model"])
         ver = escalation.verify(body, msg) if body.get("tools") else None
         rec["tiers"].append({"tier": tier, "provider": "claude", "answer": msg, "model": ans["model"],
                              "reason": reason, "usage": ans["usage"], "cost_equivalent_usd": ans.get("cost_equivalent_usd"),
@@ -563,6 +666,7 @@ class Gateway:
                 resp, ans = await self._consult_once(body)
                 rec["training_use"] = consult_mod.TRAINING_USE
                 msg = _message(resp)
+                self._remember(body, rec, msg, "claude", ans["model"])
                 rec["tiers"].append({"tier": 3, "provider": "claude", "answer": msg, "model": ans["model"],
                                      "reason": reason, "usage": ans["usage"],
                                      "cost_equivalent_usd": ans.get("cost_equivalent_usd"),
@@ -575,6 +679,7 @@ class Gateway:
                 self.cap.take()
                 resp, info = await self._cloud_once(body)
                 msg = _message(resp)
+                self._remember(body, rec, msg, "cloud", info["model"])
                 rec["tiers"].append({"tier": 3, "provider": "cloud", "answer": msg, "model": info["model"],
                                      "reason": reason, "usage": info["usage"], "cost": info["cost"]})
                 meta = self._meta(rec, 3, resp, None, t0, escalation=reason, cloud=info)

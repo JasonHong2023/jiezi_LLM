@@ -9,6 +9,7 @@ answer；F2 切換策略 / switch policy；Ctrl+Q 離開 / quit。
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import anyio
@@ -25,6 +26,8 @@ from .clipboard import system_copy
 from .herdr import HerdrReporter
 
 POLICIES = ("jiezi", "jiezi-local", "jiezi-ask-claude", "jiezi-cloud")
+# 聊天歷史（使用者 2026-11-15：重開時接續上次的對話）/ chat history, resumed on restart
+MAX_SAVED, MAX_SHOWN, MAX_CONTEXT = 200, 20, 12  # 引擎上下文 4096，只送最近 12 則 / engine ctx is 4096
 
 
 class PromptArea(TextArea):
@@ -74,11 +77,13 @@ class ChatApp(App):
         Binding("ctrl+q", "quit", "離開 Quit", priority=True),
     ]
 
-    def __init__(self, conn: Connection, policy: str = "jiezi", reporter: HerdrReporter | None = None):
+    def __init__(self, conn: Connection, policy: str = "jiezi", reporter: HerdrReporter | None = None,
+                 history_path: Path | None = None):
         super().__init__()
         self.conn, self.policy = conn, policy
         self.reporter = reporter or HerdrReporter()
-        self.history: list[dict] = []
+        self.history_path = history_path
+        self.history: list[dict] = self._load_history()
         self.cost = 0.0
         self.worker: Worker | None = None
         self.last_status = ""
@@ -93,7 +98,42 @@ class ChatApp(App):
         yield Static(id="bar")
         yield Footer()
 
-    def on_mount(self) -> None:
+    def _load_history(self) -> list[dict]:
+        if not self.history_path or not self.history_path.exists():
+            return []
+        try:
+            data = json.loads(self.history_path.read_text(encoding="utf-8"))
+            return [m for m in data if m.get("role") in ("user", "assistant") and isinstance(m.get("content"), str)]
+        except (OSError, ValueError, AttributeError):
+            return []
+
+    def _save_history(self) -> None:
+        if not self.history_path:
+            return
+        try:
+            self.history_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self.history_path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(self.history[-MAX_SAVED:], ensure_ascii=False, indent=1), encoding="utf-8")
+            tmp.replace(self.history_path)
+        except OSError:
+            pass
+
+    async def _show_history(self) -> None:
+        if not self.history:
+            return
+        log = self.query_one("#log", VerticalScroll)
+        shown = self.history[-MAX_SHOWN:]
+        await log.mount(Static(f"—— 接續上次的對話（共 {len(self.history)} 則，顯示最近 {len(shown)} 則；/clear 清除，"
+                               f"或用 --new 開新對話）/ resumed ——", classes="meta", markup=False))
+        for m in shown:
+            if m["role"] == "user":
+                await log.mount(Static(f"> {m['content']}", classes="user", markup=False))
+            else:
+                await log.mount(Markdown(m["content"], classes="answer"))
+        log.scroll_end(animate=False)
+
+    async def on_mount(self) -> None:
+        await self._show_history()
         self.query_one("#prompt", PromptArea).focus()
         self._update_bar()
         self.reporter.report("idle")
@@ -153,6 +193,8 @@ class ChatApp(App):
             return
         if text == "/clear":
             self.history.clear()
+            if self.history_path:
+                self.history_path.unlink(missing_ok=True)
             await self.query_one("#log", VerticalScroll).remove_children()
             return
         if self.worker and self.worker.is_running:
@@ -173,7 +215,7 @@ class ChatApp(App):
         meta = None
         stream = Markdown.get_stream(answer)
         try:
-            async for kind, value in stream_chat(self.conn, list(self.history), self.policy):
+            async for kind, value in stream_chat(self.conn, self.history[-MAX_CONTEXT:], self.policy):
                 if kind == "delta":
                     parts.append(value)
                     await stream.write(value)
@@ -199,6 +241,7 @@ class ChatApp(App):
                 self.history.append({"role": "assistant", "content": "".join(parts)})
             elif self.history and self.history[-1]["role"] == "user":
                 self.history.pop()  # 沒有答案就不留問題，避免下一題連續兩個 user / no answer: drop the question
+            self._save_history()
             self._update_bar()
             self.reporter.report("idle")
 
@@ -214,8 +257,10 @@ class ChatApp(App):
         self._update_bar(f"已儲存 saved: {p}")
 
 
-def main(policy: str = "jiezi") -> int:
+def main(policy: str = "jiezi", new: bool = False) -> int:
     import sys
+
+    from ..config import project_root
     conn = Connection.from_env()
     if not conn.key:
         sys.stderr.write("jiezi: JIEZI_GATEWAY_KEY is not set; run scripts/jiezi init-key\n")
@@ -224,5 +269,8 @@ def main(policy: str = "jiezi") -> int:
     if res == "failed":
         sys.stderr.write("jiezi: gateway 啟動失敗，請看 scripts/jiezi logs / the gateway failed to start; "
                          "see scripts/jiezi logs\n")
-    ChatApp(conn, policy).run()
+    path = project_root() / "var" / "chat" / "history.json"
+    if new:
+        path.unlink(missing_ok=True)
+    ChatApp(conn, policy, history_path=path).run()
     return 0

@@ -105,7 +105,8 @@ def status_line(meta: dict | None) -> str:
     if not meta:
         return ""
     tier = meta.get("tier")
-    who = {"consult": "Claude", 3: "Claude" if meta.get("provider") == "claude" else "cloud"}.get(tier, "local")
+    who = {"consult": "Claude", 3: "Claude" if meta.get("provider") == "claude" else "cloud",
+           "memory": "記憶 memory"}.get(tier, "local")
     parts = [f"tier {tier} ({who})", str(meta.get("model") or "?")]
     if meta.get("tps"):
         parts.append(f"{meta['tps']} t/s")
