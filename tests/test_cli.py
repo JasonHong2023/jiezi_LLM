@@ -61,7 +61,7 @@ class TestAsk(unittest.TestCase):
         rc, out, err, seen = self.run_ask(stdin="報告內容", stdin_tty=False)
         self.assertEqual((rc, out), (0, "你好\n"))
         msg = seen[0]["messages"][0]["content"]
-        self.assertTrue(msg.startswith("報告內容") and msg.endswith("摘要"))
+        self.assertTrue(msg.startswith("【文件：管線輸入】\n報告內容") and msg.endswith("摘要"))  # 文件標記 / document markers
         self.assertNotIn("\033", out)
 
     def test_terminal_adds_status_line(self):

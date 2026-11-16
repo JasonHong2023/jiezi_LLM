@@ -188,6 +188,8 @@ def main(argv: list[str] | None = None) -> int:
     a = sub.add_parser("ask", help="one-shot question (pipe a file into stdin to attach it)")
     a.add_argument("question")
     a.add_argument("--json", action="store_true", help="print the full response, including the jiezi field")
+    a.add_argument("--file", "-f", action="append", default=[], metavar="PATH",
+                   help="attach a document (PDF, .docx, .html, text); repeatable")
     for flag, p in (("--local", "jiezi-local"), ("--cloud", "jiezi-cloud"), ("--claude", "jiezi-ask-claude")):
         a.add_argument(flag, dest="policy", action="store_const", const=p)
     c = sub.add_parser("chat", help="full-screen chat (Textual)")
@@ -268,7 +270,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1 if res == "failed" else 0
         if args.cmd == "ask":
             from ..cli import ask
-            return ask.main(args.question, args.policy or "jiezi", args.json)
+            return ask.main(args.question, args.policy or "jiezi", args.json, args.file)
         if args.cmd == "chat":
             from ..cli import chat
             return chat.main(args.policy or "jiezi", new=args.new)

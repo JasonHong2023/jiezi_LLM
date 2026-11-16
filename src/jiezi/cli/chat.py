@@ -106,6 +106,7 @@ class ChatApp(App):
         self.last_status = ""
         self.copied: str | None = None
         self.pending_image: tuple[str, str] | None = None  # (檔名, data URL) / (name, data URL)
+        self.pending_docs: list[dict] = []                 # /file 讀好的文件 / documents read by /file
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(Static("輸入問題後按 Enter / Type a question and press Enter. "
@@ -213,6 +214,9 @@ class ChatApp(App):
         if text.startswith("/image"):
             self._attach_image(text[6:].strip())
             return
+        if text.startswith("/file"):
+            await self._attach_file(text[5:].strip())
+            return
         if text == "/clear":
             self.history.clear()
             if self.history_path:
@@ -224,9 +228,15 @@ class ChatApp(App):
             return
         log = self.query_one("#log", VerticalScroll)
         content = text
+        if self.pending_docs:  # 這一題附文件（add-long-documents）/ this question carries documents
+            from ..documents import attach
+            for d in reversed(self.pending_docs):
+                content = attach(d, content)
+            text = f"{text}  [文件 documents: {'、'.join(d['name'] for d in self.pending_docs)}]"
+            self.pending_docs = []
         if self.pending_image:  # 這一題附圖 / this question carries the image
             name, url = self.pending_image
-            content = [{"type": "text", "text": text}, {"type": "image_url", "image_url": {"url": url}}]
+            content = [{"type": "text", "text": content}, {"type": "image_url", "image_url": {"url": url}}]
             text = f"{text}  [圖片 image: {name}]"
             self.pending_image = None
         await log.mount(Static(f"> {text}", classes="user", markup=False))
@@ -266,12 +276,49 @@ class ChatApp(App):
         finally:
             await stream.stop()
             if parts:
+                self._shrink_documents()
                 self.history.append({"role": "assistant", "content": "".join(parts)})
             elif self.history and self.history[-1]["role"] == "user":
                 self.history.pop()  # 沒有答案就不留問題，避免下一題連續兩個 user / no answer: drop the question
             self._save_history()
             self._update_bar()
             self.reporter.report("idle")
+
+    async def _attach_file(self, path: str) -> None:
+        """`/file 路徑`：下一個問題附上這份文件（PDF、.docx、.html、純文字）。 / Attach a document to the next question."""
+        from ..documents import DocumentError, read
+        if not path:
+            self._update_bar("用法 usage: /file 文件路徑（PDF、.docx、.html、.txt、.md）")
+            return
+        self._update_bar(f"讀取中 reading: {Path(path).name}……")
+        try:
+            d = await anyio.to_thread.run_sync(read, path)
+        except DocumentError as exc:
+            self._update_bar(f"無法讀取 cannot read: {exc}")
+            return
+        if not d["text"].strip():
+            self._update_bar("讀不到文字（可能是掃描檔且 OCR 失敗）/ no text found")
+            return
+        self.pending_docs.append(d)
+        extra = f"，OCR {len(d['ocr_pages'])} 頁" if d.get("ocr_pages") else ""
+        self._update_bar(f"已附文件 attached: {d['name']}（{d['chars']} 字{extra}）；輸入問題後按 Enter / type your question")
+
+    def _shrink_documents(self) -> None:
+        """回答完後，歷史裡的文件全文換成一行說明，避免之後每題都重送整份文件。
+        After the answer, replace document text in history with a one-line note so it is not resent every turn."""
+        from ..documents import DOC_RE
+        if not self.history or self.history[-1].get("role") != "user":
+            return
+        m = self.history[-1]
+
+        def short(s: str) -> str:
+            return DOC_RE.sub(lambda x: f"【已附文件：{x['name']}（{len(x['text'])} 字；要再問內容請重新 /file）】", s)
+        if isinstance(m.get("content"), str):
+            m["content"] = short(m["content"])
+        elif isinstance(m.get("content"), list):
+            for p in m["content"]:
+                if isinstance(p, dict) and p.get("type") == "text":
+                    p["text"] = short(p.get("text", ""))
 
     def _attach_image(self, path: str) -> None:
         """`/image 路徑`：下一個問題附上這張圖（add-vision）。 / Attach an image to the next question."""

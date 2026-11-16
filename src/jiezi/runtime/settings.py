@@ -59,6 +59,7 @@ class Settings:
     system_prompt: str | None = None   # 請求沒有 system 訊息時加上（design D10）/ added when a request has none
     consult_web: bool = True        # 請教時可讀網頁與搜尋（使用者 2026-11-15）/ web reading and search when consulting
     dictionary: bool = True         # 詞語問題先查本機辭典（add-dictionary）/ consult the local dictionary for word questions
+    longdoc: bool = True            # 長文件先分段濃縮（add-long-documents）/ condense long documents first
     skills: bool = True             # 工具呼叫附上過去成功的範例（技能庫 v0）/ verified tool-call examples
     laws: bool = True               # 法律問題先查全國法規資料庫（add-laws）/ law questions use the MOJ database
     rag: bool = True                # 知識庫用向量重排（有建向量時）/ vector reranking when vectors exist (add-rag)
@@ -123,6 +124,7 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         rag=_onoff(env, "JIEZI_RAG", True),
         laws=_onoff(env, "JIEZI_LAWS", True),
         skills=_onoff(env, "JIEZI_SKILLS", True),
+        longdoc=_onoff(env, "JIEZI_LONGDOC", True),
         rag_min=float(env.get("JIEZI_RAG_MIN") or 0.5),
         consult_web=_onoff(env, "JIEZI_CONSULT_WEB", True),
         system_prompt=_system_prompt(root, env),

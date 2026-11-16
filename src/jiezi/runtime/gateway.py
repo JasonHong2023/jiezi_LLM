@@ -301,6 +301,13 @@ class Gateway:
             last = {"role": "user", "content": text, "_target": last}
         elif not isinstance(last.get("content"), str):
             return
+        else:
+            from ..longdoc import needed, split_message
+            if needed(last["content"]):  # 長文件：只用問題查資料 / long documents: look up with the question only
+                _, q = split_message(last["content"])
+                if not q:
+                    return
+                last = {"role": "user", "content": q, "_target": last}
         found = []
         if self.memory is not None:  # 記憶最優先（使用者的更正）/ memory first (the user's corrections)
             from ..memory import recall_block
@@ -593,6 +600,13 @@ class Gateway:
                 return await self._escalate(body, rec, t0, stream, reason="engine_unavailable")
             return self._finish_error(rec, 503, f"local engine unavailable: {exc}", "engine_unavailable")
 
+        if self.s.longdoc and not body.get("tools"):
+            try:
+                await self._condense(base, body, rec)
+            except Exception as exc:  # noqa: BLE001 - 濃縮失敗就照原樣（由上下文把關截短）/ fall back to trimming
+                self.log(f"longdoc: condensing failed, sending as is: {type(exc).__name__}: {exc}")
+                rec["longdoc"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+
         if stream and not body.get("tools") and not self._sample_kind(body):
             return StreamingResponse(self._relay_stream(base, body, rec, t0, policy), media_type="text/event-stream")
         try:
@@ -601,6 +615,27 @@ class Gateway:
             self.sup.release()
 
     # ── 分層 / Tiers ──
+    # ── 長文件（add-long-documents）/ Long documents ──
+    async def _condense(self, base: str, body: dict, rec: dict) -> None:
+        """最後一個問題放不進本機上下文時，先用本機模型分段濃縮。 / Condense with the local model when it does not fit."""
+        from ..longdoc import condense, needed
+        idx = next((i for i in range(len(body["messages"]) - 1, -1, -1)
+                    if body["messages"][i].get("role") == "user"), None)
+        if idx is None or not needed(body["messages"][idx].get("content")):
+            return
+
+        async def complete(msgs: list[dict], max_tokens: int) -> str:
+            r = await self._local_once(base, {"messages": msgs, "max_tokens": max_tokens, "temperature": 0.3}, msgs)
+            return ((r.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+
+        t = time.monotonic()
+        new, info = await condense(body["messages"][idx]["content"], complete)
+        body["messages"][idx] = {**body["messages"][idx], "content": new}
+        info["seconds"] = round(time.monotonic() - t, 1)
+        rec["longdoc"] = info
+        rec["sources"] = (rec.get("sources") or []) + [{"source": "document", "name": n} for n in info["documents"]]
+        self.log(f"longdoc: {info['mode']}, {info['chars']} chars → {info['after_tokens']} tokens in {info['seconds']} s")
+
     # ── 技能庫 v0（開發計畫 5.2）/ Skill library v0 ──
     def _attach_skills(self, body: dict, rec: dict) -> None:
         """工具呼叫請求：附上最相似的成功範例。 / Tool-call requests get the most similar verified examples."""

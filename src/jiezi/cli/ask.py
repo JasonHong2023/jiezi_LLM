@@ -1,7 +1,8 @@
 """`jiezi ask "問題"`：單次問答，可接管線（規格 cli：One-Shot Ask；add-cli design D3）。
 `jiezi ask "question"`: one-shot, pipeable (spec cli: One-Shot Ask; design D3).
 
-結束碼 / Exit codes：0 成功 / success、2 gateway 無法連線 / unreachable、3 gateway 錯誤 / gateway error。"""
+結束碼 / Exit codes：0 成功 / success、2 gateway 無法連線 / unreachable、3 gateway 錯誤 / gateway error、
+4 文件讀取失敗 / a document could not be read。"""
 
 from __future__ import annotations
 
@@ -18,10 +19,17 @@ from .client import Connection, GatewayError, GatewayUnreachable, complete, ensu
 DIM, RESET = "\033[2m", "\033[0m"
 
 
-def build_messages(question: str, attachment: str | None) -> list[dict]:
+def build_messages(question: str, attachment: str | None, docs: list[dict] | None = None) -> list[dict]:
+    """管線輸入與 --file 文件都用文件標記包起來，gateway 才能在太長時分段處理（add-long-documents）。
+    Piped input and --file documents are wrapped in document markers so the gateway can condense them."""
+    from ..documents import attach
+    docs = list(docs or [])
     if attachment:
-        return [{"role": "user", "content": f"{attachment.rstrip()}\n\n---\n\n{question}"}]
-    return [{"role": "user", "content": question}]
+        docs.insert(0, {"name": "管線輸入", "text": attachment.rstrip()})
+    content = question
+    for d in reversed(docs):
+        content = attach(d, content)
+    return [{"role": "user", "content": content}]
 
 
 def _piped(stdin: TextIO) -> bool:
@@ -37,9 +45,23 @@ def _piped(stdin: TextIO) -> bool:
 
 
 async def run_ask(question: str, policy: str, conn: Connection, as_json: bool, stdin: TextIO, stdout: TextIO,
-                  stderr: TextIO, client=None) -> int:
+                  stderr: TextIO, client=None, files: list[str] | None = None) -> int:
+    from ..documents import DocumentError, read
     attachment = stdin.read() if _piped(stdin) else None
-    messages = build_messages(question, attachment)
+    docs = []
+    for f in files or []:
+        try:
+            d = await anyio.to_thread.run_sync(read, f)
+        except DocumentError as exc:
+            stderr.write(f"jiezi: {f}: {exc}\n")
+            return 4
+        for w in d.get("warnings") or []:
+            stderr.write(f"jiezi: {f}: {w}\n")
+        if not d["text"].strip():
+            stderr.write(f"jiezi: {f}: 讀不到文字（可能是掃描檔且 OCR 失敗）/ no text found\n")
+            return 4
+        docs.append(d)
+    messages = build_messages(question, attachment, docs)
     tty = stdout.isatty()
     try:
         if as_json:
@@ -65,10 +87,11 @@ async def run_ask(question: str, policy: str, conn: Connection, as_json: bool, s
         return 3
 
 
-def main(question: str, policy: str = "jiezi", as_json: bool = False) -> int:
+def main(question: str, policy: str = "jiezi", as_json: bool = False, files: list[str] | None = None) -> int:
     conn = Connection.from_env()
     if not conn.key:
         sys.stderr.write("jiezi: JIEZI_GATEWAY_KEY is not set; run scripts/jiezi init-key\n")
         return 3
     ensure_gateway(conn, log=lambda m: sys.stderr.write(m + "\n"))
-    return anyio.run(run_ask, question, policy, conn, as_json, sys.stdin, sys.stdout, sys.stderr)
+    return anyio.run(lambda: run_ask(question, policy, conn, as_json, sys.stdin, sys.stdout, sys.stderr,
+                                     files=files))
