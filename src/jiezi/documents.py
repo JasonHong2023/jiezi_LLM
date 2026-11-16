@@ -204,7 +204,10 @@ DOC_RE = re.compile(r"【文件：(?P<name>[^】\n]{1,200})】\n(?P<text>.*?)\n�
 
 def attach(doc: dict, question: str) -> str:
     """把文件包進問題，gateway 會辨認標記並在太長時分段處理。 / Wrap the document so the gateway can find it."""
-    return f"{DOC_OPEN.format(name=doc['name'])}\n{doc['text']}\n{DOC_CLOSE}\n\n{question.strip()}"
+    from .injection import clean
+    text, _ = clean(doc["text"])                  # 中和偽造的結束標記，文件才不會提早「結束」/ forged markers
+    name = re.sub(r"[】\n]", "", str(doc["name"]))[:200] or "文件"
+    return f"{DOC_OPEN.format(name=name)}\n{text}\n{DOC_CLOSE}\n\n{question.strip()}"
 
 
 def main() -> int:  # pragma: no cover - 子行程入口 / child entry point
