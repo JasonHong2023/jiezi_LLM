@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import re
 import secrets
 import time
 from datetime import datetime
@@ -34,6 +35,10 @@ from . import consult as consult_mod
 from . import escalation
 from .settings import POLICIES, Settings
 
+# 一定要上網或即時資料的問題（比記憶的 WEB 嚴格：「我今天心情不好」不算）
+# Questions that truly need the web or live data (stricter than memory's WEB)
+LIVE = re.compile(r"https?://|網址|網頁|網站|新聞|天氣|氣溫|下雨|颱風動態|股價|匯率|油價|最新消息|即時|"
+                  r"現在幾點|上網查|網路上(找|查|搜)|搜尋一下")
 CORRECTION_DIRECT = 0.5  # 問題和更正過的問題相似到這個程度，就直接照更正回答 / serve a correction at this similarity
 from .supervisor import EngineUnavailable, Supervisor
 from .trajectory import TrajectoryWriter, elapsed, new_id, now_iso
@@ -435,6 +440,12 @@ class Gateway:
                 return self._finish_error(rec, 503, f"cloud is not available ({reason})", reason)
             return await self._respond_cloud(body, rec, t0, stream, reason="policy")
 
+        route = self._pre_route(body, rec) if policy == "jiezi" else None
+        if route:
+            # 路由器 v0（規則）：本機一定答不了的問題直接轉交，不先浪費一次本機生成
+            # Router v0 (rules): questions the local model cannot answer go straight to escalation
+            return await self._escalate(body, rec, t0, stream, reason=route)
+
         try:
             base = await self.sup.acquire()
         except EngineUnavailable as exc:
@@ -451,6 +462,20 @@ class Gateway:
             self.sup.release()
 
     # ── 分層 / Tiers ──
+    # ── 路由器 v0（add-router；開發計畫 4.5 的規則版）/ Router v0 ──
+    def _pre_route(self, body: dict, rec: dict) -> str | None:
+        """需要上網或即時資料、且沒有程式算好的答案時，直接轉交。 / Web/live questions without computed facts."""
+        if body.get("tools") or not self._auto_route():
+            return None
+        last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
+        if not last or not isinstance(last.get("content"), str):
+            return None
+        if not LIVE.search(last["content"]):
+            return None
+        if any(s.get("source") in ("tools", "memory") for s in rec.get("sources") or []):
+            return None  # 「今天星期幾」程式已算好；記憶裡有答案 / computed or remembered
+        return "needs_web"
+
     # ── 平行取樣（add-sampling；開發計畫 4.1）/ Parallel sampling ──
     def _sample_kind(self, body: dict) -> str | None:
         """可驗證、值得取樣的問題種類。 / The kind of verifiable question worth sampling."""

@@ -308,6 +308,27 @@ class TestGateway(unittest.TestCase):
         self.assertEqual(len(self.local_seen), 5)                                   # 程式題取 4 個 / code sampled
         self.assertIsNotNone(r["jiezi"]["confidence"])
 
+    def test_router_v0_sends_web_questions_straight_to_claude(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            sup, _, patch = make_supervisor(tmp, consult="claude-cli", samples=1)
+            lh, seen = local_handler([{"role": "assistant", "content": "本機回答"}])
+            gw = Gateway(sup.s, sup, TrajectoryWriter(tmp / "traj", log=lambda *_: None),
+                         local_http=httpx.AsyncClient(transport=httpx.MockTransport(lh)),
+                         consultant=TestConsult("test_safe_flags_and_prompt").consultant(tmp, TestConsult.OK),
+                         log=lambda *_: None)
+            with patch, TestClient(create_app(gw)) as c:
+                h = {"Authorization": f"Bearer {KEY}"}
+                r = c.post("/v1/chat/completions", headers=h,
+                           json={"messages": [{"role": "user", "content": "今天台北天氣如何？"}]}).json()
+                self.assertEqual((r["jiezi"]["escalation"], len(seen)), ("needs_web", 0))  # 沒先問本機 / no local try
+                r = c.post("/v1/chat/completions", headers=h,
+                           json={"messages": [{"role": "user", "content": "今天星期幾？"}]}).json()
+                self.assertEqual((r["jiezi"]["tier"], len(seen)), (0, 1))                 # 程式算得出 / computed
+                r = c.post("/v1/chat/completions", headers=h,
+                           json={"messages": [{"role": "user", "content": "我今天心情不好"}]}).json()
+                self.assertEqual((r["jiezi"]["tier"], len(seen)), (0, 2))                 # 閒聊照常 / chat stays local
+
     def test_tier1_fixes_tool_call(self):
         bad = {"role": "assistant", "content": "[get_weather()]"}
         good = {"role": "assistant", "content": "[get_weather(city='台北')]"}
