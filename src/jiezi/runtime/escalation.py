@@ -171,6 +171,25 @@ def verify_grounded(message: dict, grounding: str | None) -> dict:
                      f" / not found in the provided data: {shown}"}
 
 
+# 要求寫程式的問題（平行取樣的對象）/ requests for code (sampled)
+CODE_REQUEST = re.compile(r"寫(一個|一段|個)?.{0,12}(程式|函式|函數|腳本|script|function|code|class|類別)|"
+                          r"(python|javascript|js|c\+\+|java|sql|bash)\s*(程式|函式|寫|code)|```", re.I)
+
+
+def answer_key(message: dict, kind: str) -> str:
+    """把答案正規化成比對用的鍵：工具呼叫比對函式與參數，程式比對去空白的程式碼。
+    Normalize an answer for agreement: tool calls by name and arguments, code by whitespace-free code."""
+    if kind == "tools":
+        try:
+            calls = _calls_from_message(message) or []
+        except ValueError:
+            return "invalid"
+        return json.dumps(sorted(json.dumps([n, a], ensure_ascii=False, sort_keys=True, default=str) for n, a in calls),
+                          ensure_ascii=False)
+    blocks = _CODE.findall(message.get("content") or "")
+    return re.sub(r"\s+", "", "\n".join(blocks)) or re.sub(r"\s+", "", message.get("content") or "")
+
+
 def verify(request: dict, message: dict, grounding: str | None = None) -> dict:
     """合併各項檢查：有任何失敗就是 fail；都不適用就是 not_applicable。
     Combine checks: any failure is fail; none applicable is not_applicable."""

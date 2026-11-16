@@ -14,6 +14,7 @@ format; without `tools`, the local stream is relayed directly and verification i
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import json
 import secrets
@@ -428,7 +429,7 @@ class Gateway:
                 return await self._escalate(body, rec, t0, stream, reason="engine_unavailable")
             return self._finish_error(rec, 503, f"local engine unavailable: {exc}", "engine_unavailable")
 
-        if stream and not body.get("tools"):
+        if stream and not body.get("tools") and not self._sample_kind(body):
             return StreamingResponse(self._relay_stream(base, body, rec, t0, policy), media_type="text/event-stream")
         try:
             return await self._tiered(base, body, rec, t0, policy, stream)
@@ -436,14 +437,58 @@ class Gateway:
             self.sup.release()
 
     # ── 分層 / Tiers ──
+    # ── 平行取樣（add-sampling；開發計畫 4.1）/ Parallel sampling ──
+    def _sample_kind(self, body: dict) -> str | None:
+        """可驗證、值得取樣的問題種類。 / The kind of verifiable question worth sampling."""
+        if self.s.samples <= 1:
+            return None
+        if body.get("tools"):
+            return "tools"
+        last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
+        if last and isinstance(last.get("content"), str) and escalation.CODE_REQUEST.search(last["content"]):
+            return "code"
+        return None
+
+    async def _sampled(self, base: str, body: dict, rec: dict, kind: str) -> tuple[dict, dict]:
+        """同時取 N 個答案；挑通過驗證、最多數一致的那組。 / N concurrent samples; the verified majority wins."""
+        n = self.s.samples
+        sb = {**body, "temperature": self.s.sample_temperature}
+
+        async def one(i: int) -> dict:
+            return await self._local_once(base, {**sb, "seed": 1000 + i})
+        results = await asyncio.gather(*(one(i) for i in range(n)), return_exceptions=True)
+        ok = [r for r in results if isinstance(r, dict)]
+        if not ok:
+            raise next(r for r in results if isinstance(r, BaseException))
+        grounding = self._grounding(body, rec)
+        scored = [(r, escalation.verify(body, _message(r), grounding)) for r in ok]
+        passing = [(r, v) for r, v in scored if v["status"] != "fail"]
+        groups: dict[str, list] = {}
+        for r, v in passing:
+            groups.setdefault(escalation.answer_key(_message(r), kind), []).append((r, v))
+        best = max(groups.values(), key=len) if groups else [scored[0]]
+        resp, ver = best[0]
+        confidence = round(len(best) / n, 2) if groups else 0.0
+        rec["tiers"].append({"tier": 0, "answer": _message(resp), "verification": ver, "model": resp.get("model"),
+                             "tps": _tps(resp), "usage": resp.get("usage"), "confidence": confidence,
+                             "samples": [{"verification": v["status"], "key": escalation.answer_key(_message(r), kind)[:120]}
+                                         for r, v in scored], "sample_errors": n - len(ok)})
+        rec["confidence"] = confidence
+        return resp, ver
+
     async def _tiered(self, base: str, body: dict, rec: dict, t0: float, policy: str, stream: bool) -> Response:
+        kind = self._sample_kind(body)
         try:
-            resp = await self._local_once(base, body)
+            if kind:
+                resp, ver = await self._sampled(base, body, rec, kind)
+            else:
+                resp = await self._local_once(base, body)
         except httpx.HTTPError as exc:
             return self._finish_error(rec, 502, f"local engine error: {exc}", "engine_error")
-        ver = escalation.verify(body, _message(resp), self._grounding(body, rec))
-        rec["tiers"].append({"tier": 0, "answer": _message(resp), "verification": ver, "model": resp.get("model"),
-                             "tps": _tps(resp), "usage": resp.get("usage")})
+        if not kind:
+            ver = escalation.verify(body, _message(resp), self._grounding(body, rec))
+            rec["tiers"].append({"tier": 0, "answer": _message(resp), "verification": ver, "model": resp.get("model"),
+                                 "tps": _tps(resp), "usage": resp.get("usage")})
         final, tier, escalate_reason = resp, 0, None
         help_reason = escalation.needs_help(_message(resp), (resp.get("choices") or [{}])[0].get("finish_reason"))
         if help_reason and ver["status"] != "fail":
@@ -542,7 +587,8 @@ class Gateway:
                 "verification_error": (ver or {}).get("error"), "escalation": escalation,
                 "latency_s": elapsed(t0), "tps": _tps(resp),
                 "cloud": {"tokens": usage.get("total_tokens"), "cost": (cloud or {}).get("cost")} if cloud else None,
-                "trajectory_id": rec["id"], "sources": rec.get("sources") or []}
+                "trajectory_id": rec["id"], "sources": rec.get("sources") or [],
+                "confidence": rec.get("confidence")}
 
     def _deliver(self, resp: dict, meta: dict, rec: dict, stream: bool) -> Response:
         if rec.get("dict_appendix"):

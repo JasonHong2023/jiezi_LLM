@@ -115,6 +115,8 @@ def status_line(meta: dict | None) -> str:
     cloud = meta.get("cloud") or {}
     if cloud.get("cost") is not None:
         parts.append(f"~US${cloud['cost']:.4f}")
+    if meta.get("confidence") is not None:
+        parts.append(f"信心 conf {meta['confidence']:.2f}")
     if meta.get("verification") not in (None, "not_applicable"):
         parts.append(f"verify {meta['verification']}")
     if meta.get("escalation") and meta.get("escalation") != "policy":

@@ -242,10 +242,10 @@ class TestGateway(unittest.TestCase):
     def tearDown(self):
         self._t.cleanup()
 
-    def client(self, answers, cloud_on=False, cloud_fail=False, cap=200, engine_ok=True):
+    def client(self, answers, cloud_on=False, cloud_fail=False, cap=200, engine_ok=True, samples=1):
         sup, engines, patch = make_supervisor(
             self.tmp, cloud_escalation=cloud_on, cloud_base="http://cloud" if cloud_on else None,
-            escalation_models=["nemotron"] if cloud_on else [], cloud_daily_max=cap)
+            escalation_models=["nemotron"] if cloud_on else [], cloud_daily_max=cap, samples=samples)
         self.patch = patch
         patch.start()
         self.addCleanup(patch.stop)
@@ -285,6 +285,28 @@ class TestGateway(unittest.TestCase):
         self.assertEqual(self.local_seen[0]["model"], "core")
         t = self.traj()[0]
         self.assertEqual((t["final_tier"], t["policy"], t["id"]), (0, "jiezi", r["jiezi"]["trajectory_id"]))
+
+    def test_parallel_sampling_picks_verified_majority(self):
+        bad = {"role": "assistant", "content": "[get_weather()]"}
+        good = {"role": "assistant", "content": "[get_weather(city='台北')]"}
+        other = {"role": "assistant", "content": "[get_weather(city='高雄')]"}
+        with self.client([bad, good, other, good], samples=4) as c:
+            r = self.post(c, {"messages": [{"role": "user", "content": "台北天氣"}], "tools": TOOLS}).json()
+        self.assertEqual(r["choices"][0]["message"]["content"], good["content"])  # 通過驗證的多數 / verified majority
+        self.assertEqual((r["jiezi"]["tier"], r["jiezi"]["confidence"]), (0, 0.5))
+        self.assertEqual(len(self.local_seen), 4)
+        self.assertEqual({b["seed"] for b in self.local_seen}, {1000, 1001, 1002, 1003})
+        self.assertTrue(all(b["temperature"] == 0.7 for b in self.local_seen))
+        t = self.traj()[0]["tiers"][0]
+        self.assertEqual([x["verification"] for x in t["samples"]], ["fail", "pass", "pass", "pass"])
+
+    def test_sampling_skips_plain_chat_and_streams_code(self):
+        with self.client([{"role": "assistant", "content": "你好"}], samples=4) as c:
+            self.post(c, {"messages": [{"role": "user", "content": "hi"}]})
+            self.assertEqual(len(self.local_seen), 1)                              # 閒聊不取樣 / chat not sampled
+            r = self.post(c, {"messages": [{"role": "user", "content": "寫一個 Python 函式算平方"}]}).json()
+        self.assertEqual(len(self.local_seen), 5)                                   # 程式題取 4 個 / code sampled
+        self.assertIsNotNone(r["jiezi"]["confidence"])
 
     def test_tier1_fixes_tool_call(self):
         bad = {"role": "assistant", "content": "[get_weather()]"}

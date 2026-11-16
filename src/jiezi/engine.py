@@ -85,6 +85,7 @@ class LocalEngine:
     with LocalEngine(...) as eng: eng.base_url — always stopped when leaving the block (exceptions and Ctrl-C included)."""
 
     def __init__(self, root: Path, facts: dict, model: Path, port_base: int, ngl: int = 0, ctx: int = 4096,
+                 parallel: int = 1,
                  health_timeout_s: float = 300, popen=subprocess.Popen, is_free=None, vram=read_vram_mib,
                  port: int | None = None, alias: str | None = None):
         build = "build-cuda" if ngl > 0 else "build-cpu"
@@ -105,8 +106,11 @@ class LocalEngine:
         prefix, self.threads, self.notes = budget_prefix(facts)
         self.affinity = ((facts.get("budgets") or {}).get("cpu") or {}).get("affinity_hint")
         self.cmd = [*prefix, str(self.binary), "-m", str(model), "--host", HOST, "--port", str(self.port),
-                    "-t", str(self.threads), "-ngl", str(ngl), "-c", str(ctx), "-np", "1",
+                    "-t", str(self.threads), "-ngl", str(ngl), "-c", str(ctx), "-np", str(parallel),
                     "--cache-ram", str(CACHE_RAM_MIB)]
+        if parallel > 1:  # 平行取樣：各槽位共用一塊 KV 快取（add-sampling）/ parallel sampling shares one KV pool
+            self.cmd.append("-kvu")
+        self.parallel = parallel
         if alias:  # 回應中的模型名稱用別名，不洩漏本機路徑 / report an alias, not the local file path
             self.cmd += ["--alias", alias]
         self.base_url = f"http://{HOST}:{self.port}"
@@ -178,7 +182,7 @@ class LocalEngine:
     def describe(self) -> dict:
         return {"binary": str(self.binary.relative_to(self.binary.parents[2])), "host": HOST, "port": self.port,
                 "threads": self.threads, "affinity_hint": self.affinity, "ngl": self.ngl, "ctx": self.ctx,
-                "parallel_slots": 1, "cache_ram_mib": CACHE_RAM_MIB, "notes": self.notes}
+                "parallel_slots": self.parallel, "cache_ram_mib": CACHE_RAM_MIB, "notes": self.notes}
 
     def __enter__(self):
         return self

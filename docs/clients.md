@@ -107,6 +107,11 @@ Writing questions get up to three related article links after the answer, and Cl
 化學問題（化學名詞或含數字的化學式，如 H2SO4）請教 Claude 時，會提示它可以上網搜尋閱讀 HackMD 化學主題的社群筆記，並交叉查證；芥子本身不抓取、不收錄這些筆記（`src/jiezi/consult_hints.py`）。
 Chemistry consultations tell Claude it may read HackMD chemistry notes online; jiezi never fetches or ingests them.
 
+### 平行取樣 / Parallel sampling
+
+工具呼叫與寫程式的問題，芥子會同時想 4 個答案（`JIEZI_SAMPLES`），只留通過檢查、最多數一致的那個，狀態行顯示信心度。這類問題在聊天中會等整段答完才顯示。`JIEZI_SAMPLES=1` 可關閉。
+Tool-call and code questions take several samples and keep the verified majority; confidence is shown.
+
 ### 計算、單位、日期 / Computed facts
 
 算式（`1+3=2 多少?`、`3 乘以 7 加 2`、`根號2`）、單位換算（公里↔英里、台斤↔公斤、坪↔平方公尺、攝氏↔華氏）、日期（今天星期幾、民國↔西元、某天星期幾、相差幾天、100 天後）由程式算好再交給模型，回答後附【計算】。`JIEZI_TOOLS=off` 可關閉。
