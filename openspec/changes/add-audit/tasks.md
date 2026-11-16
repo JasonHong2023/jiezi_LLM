@@ -1,0 +1,3 @@
+- [x] 1.1 `src/jiezi/audit.py`、`scripts/jiezi audit`、`security/accepted.toml` / Module, command, accepted list
+- [x] 1.2 單元測試；`openspec validate add-audit --strict`
+- [x] 1.3 實際稽核：發現 bubblewrap 3 則公告並評估（皆不受影響），補記 stack.md

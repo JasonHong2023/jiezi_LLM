@@ -1,0 +1,68 @@
+# 已評估的漏洞（規則 R23）：每一則都要寫理由；清單以外的漏洞讓 `scripts/jiezi audit` 失敗。
+# Assessed vulnerabilities (rule R23): each needs a reason; anything not listed fails `scripts/jiezi audit`.
+# 依據 / Basis：openspec/specs/stack.md 的資安表（鎖定 llama.cpp commit 93cf736a，2026-11-12，b11556 之後 767 個 commit）。
+
+[[accepted]]
+id = "GHSA-j8rj-fmpv-wcxw"
+reason = "llama.cpp RPC 後端 RCE（Critical，未列修正版）。緩解：GGML_RPC=OFF、不建置不執行 rpc-server、所有服務只綁 127.0.0.1（stack.md §3）/ mitigated: RPC disabled"
+
+[[accepted]]
+id = "GHSA-3p4r-fq3f-q74v"
+reason = "<= b8145，已於 b8146 修正，早於鎖定 commit / fixed before the pin"
+
+[[accepted]]
+id = "GHSA-96jg-mvhq-q7q7"
+reason = "< b7437，b7824 修正，早於鎖定 commit / fixed before the pin"
+
+[[accepted]]
+id = "GHSA-8947-pfff-2f3c"
+reason = "<= 55d4206c8，c78fb90 修正，早於鎖定 commit / fixed before the pin"
+
+[[accepted]]
+id = "GHSA-vgg9-87g3-85w8"
+reason = "< 26a48ad（2025-07），早於鎖定 commit / fixed before the pin"
+
+[[accepted]]
+id = "GHSA-7rxv-5jhh-j6xx"
+reason = "< b5721，早於鎖定 commit / fixed before the pin"
+
+[[accepted]]
+id = "GHSA-g4cc-763q-h9h6"
+reason = "c33fe8b8 修正（2025-06），早於鎖定 commit / fixed before the pin"
+
+[[accepted]]
+id = "GHSA-8wwf-w4qm-gpqr"
+reason = ">= b5662 修正，早於鎖定 commit / fixed before the pin"
+
+[[accepted]]
+id = "GHSA-wcr5-566p-9cwj"
+reason = "< b3561，早於鎖定 commit；且 RPC 停用 / fixed before the pin; RPC disabled"
+
+[[accepted]]
+id = "GHSA-5vm9-p64x-gqw9"
+reason = "< b3561，早於鎖定 commit；且 RPC 停用 / fixed before the pin; RPC disabled"
+
+[[accepted]]
+id = "GHSA-mqp6-7pv6-fqjf"
+reason = "< b3561，早於鎖定 commit / fixed before the pin"
+
+[[accepted]]
+id = "GHSA-49q7-2jmh-92fp"
+reason = "<= b3426，早於鎖定 commit / fixed before the pin"
+
+[[accepted]]
+id = "GHSA-p5mv-gjc5-mwqv"
+reason = "b2715–b2740，早於鎖定 commit / fixed before the pin"
+
+# bubblewrap（鎖定 v0.13.1 commit 362936ae，非 setuid，建置到 var/tools/）
+[[accepted]]
+id = "GHSA-pxhw-h44j-8pfx"
+reason = "CVE-2026-87766，< 0.12.0，0.12.0 修正；鎖定 0.13.1 / fixed before the pinned 0.13.1"
+
+[[accepted]]
+id = "GHSA-xq78-7hw4-5jvp"
+reason = "CVE-2026-41163，只影響 setuid 模式的 0.11.0（0.11.2 修正）；鎖定 0.13.1 且非 setuid / fixed; not setuid"
+
+[[accepted]]
+id = "GHSA-j2qp-rvxj-43vj"
+reason = "CVE-2020-5291，只影響 setuid 模式的 0.4.0（0.4.1 修正）；鎖定 0.13.1 且非 setuid / fixed; not setuid"

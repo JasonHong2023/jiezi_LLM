@@ -182,6 +182,7 @@ def main(argv: list[str] | None = None) -> int:
     mp = sub.add_parser("memory", help="memory wiki: consulted answers, notes, corrections (add-memory)")
     mp.add_argument("action", choices=["list", "search", "forget", "path"])
     mp.add_argument("query", nargs="?", help="search：問題；forget：主題名稱 / search: question; forget: topic title")
+    sub.add_parser("audit", help="dependency security audit against OSV (R23); queries only")
     dap = sub.add_parser("data", help="build every local data set (dictionaries, curriculum, knowledge, laws, links)")
     dap.add_argument("action", choices=["build"])
     dsp = sub.add_parser("dataset", help="export SFT training data (R20.3 verified only; no evaluation overlap)")
@@ -299,6 +300,12 @@ def main(argv: list[str] | None = None) -> int:
                 e, sim = found
                 print(f"[答案 answer {sim:.2f}] {e.title}｜{e.question}（{e.at[:10]}，{e.provider}）\n{e.text}")
             return 0 if found else 1
+        if args.cmd == "audit":
+            from .. import audit
+            out, r = audit.run(root)
+            print(f"checked {r['checked']}; with vulnerabilities {r['with_vulns']}; unaccepted {r['unaccepted']}; "
+                  f"report: {out}")
+            return 1 if r["unaccepted"] else 0
         if args.cmd == "data":
             return cmd_data_build(root)
         if args.cmd == "dataset":
