@@ -1,4 +1,4 @@
-> **狀態 / Status**：提案，**尚未實作**；等使用者審閱並回覆「可以實作」（R4）。LibreOffice 的安裝已由使用者於 2026-11-17 同意。
+> **狀態 / Status**：使用者 2026-11-17 審閱並同意。LibreOffice 的安裝已由使用者於 2026-11-17 同意。
 > Proposal only, **not implemented**; awaiting the user's go-ahead. Installing LibreOffice was approved on 2026-11-17.
 
 ## Why
@@ -39,7 +39,7 @@ Legacy binary Office formats cannot be parsed with the standard library; today t
 - **R23 查證 [OSV，2026-11-17]**：該版本有 8 則未修補公告，嚴重度皆為 medium、沒有 High／Critical：Calc 外部資料連結 4 則、連結影音檔交給 GStreamer 1 則、URL 展開環境變數 1 則、dBASE 驅動 1 則、1 則已被撤回。這些都要靠「文件去連外部資源或讀本機其他檔案」才成立——沙盒沒有網路、看不到家目錄與 `.env`，所以攻擊面被擋掉 **[推論：依公告描述判斷，未逐一重現]**。登記到 `stack.md` 與 `security/accepted.toml`。
 - 耗時 **[估]**：LibreOffice 冷啟動約 2–5 秒，加上轉檔；每份文件多數秒到十幾秒。
 
-## Open Questions（需要使用者決定 / for the user）
+## 已決事項（原 Open Questions）/ Resolved
 
-- **OQ1 順帶支援的格式**：LibreOffice 也能轉 `.rtf` 與 OpenDocument（`.odt`、`.odp`、`.ods`）。要一起支援嗎？（建議：要，程式幾乎不用多寫。）
-- **OQ2 含巨集的檔案**：(a) 照樣轉檔取文字並加一行提醒（建議；轉檔不會執行巨集）；(b) 一律拒絕。
+- **OQ1**：要，一併支援 `.rtf` 與 OpenDocument（`.odt`、`.odp`、`.ods`）（使用者 2026-11-17：「要」）。/ Yes, also `.rtf` and OpenDocument.
+- **OQ2**：使用者沒有另外指定；採建議的 (a)——照樣轉檔取文字並加一行提醒（轉檔不執行巨集）。**這一項是我依建議採用的，使用者可更正。** / Not answered separately; the recommended option (convert and warn) is used and can be changed.

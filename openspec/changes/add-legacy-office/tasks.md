@@ -1,5 +1,3 @@
-> 尚未開始；等使用者回覆 Open Questions 並同意實作（R4）。/ Not started.
-
 - [ ] 1.1 `documents.py`：沙盒內的 LibreOffice 轉檔（私有設定檔目錄、單一輸入檔、時間／記憶體／輸出上限）、轉檔後交給既有讀取程式 / sandboxed conversion feeding the existing readers
 - [ ] 1.2 缺 LibreOffice 或沙盒時的訊息；`doctor` 檢查；bootstrap 選用步驟 `office` / missing-tool messages, doctor check, optional bootstrap step
 - [ ] 1.3 單元測試（假的轉檔程式；有 LibreOffice 時另跑真實的 .doc／.xls／.ppt 樣本）；`stack.md`、`security/accepted.toml`、`docs/licenses.md`、`docs/clients.md`；`openspec validate add-legacy-office --strict` / tests and docs

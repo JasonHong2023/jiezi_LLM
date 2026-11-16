@@ -1,5 +1,3 @@
-> 尚未開始；等使用者同意，且排在 G1 之後。/ Not started; after G1 and the user's go-ahead.
-
 - [ ] 1.1 模型登記（授權讀官方檔、SHA-256、鎖定 commit）；`engine-rerank`（埠 36106、延遲啟動、預算擺放）；R11 表與 R12 流程圖 / model registry, engine, port table and flow chart
 - [ ] 1.2 檢索流程接入（前 N → 重排序 → 前 k、失敗退回）、`JIEZI_RERANK`、啟動自我檢查、`doctor` / retrieval wiring, switch, self-check
 - [ ] 1.3 單元測試（假引擎）；文件；`openspec validate add-reranker --strict` / tests and docs

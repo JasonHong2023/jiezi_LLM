@@ -1,4 +1,4 @@
-> **狀態 / Status**：提案，**尚未實作**；等使用者審閱並回覆「可以實作」（R4）。實作排在 G1 選定核心之後（要先知道顯示記憶體剩多少）。
+> **狀態 / Status**：使用者 2026-11-17 審閱並同意。實作排在 G1 選定核心之後（要先知道顯示記憶體剩多少）。
 > Proposal only, **not implemented**; implementation follows G1, once the VRAM left beside the core is known.
 
 ## Why
@@ -40,7 +40,7 @@ Whether it pays off must be measured: on CPU it may take tens of seconds for 20 
 - ⚠️ 已知風險（`docs/analysis/related-resources.md` §6，二手資料）：部分 Qwen3-Reranker 的 GGUF 轉檔在 `/v1/rerank` 回傳接近 0 的分數；要用新版 llama.cpp 並實測。所以才有上面的自我檢查。
 - 下載與量測屬長時間工作，排在 00:00 後。
 
-## Open Questions（需要使用者決定 / for the user）
+## 已決事項（原 Open Questions）/ Resolved
 
-- **OQ1 啟用門檻**：我建議「檢索題命中率@3 提升 ≥ 5 個百分點，且每題多花的時間 ≤ 3 秒」才把預設改成 on；否則保留程式但預設關閉。同意這組門檻嗎？
-- **OQ2 擺放**：顯示記憶體放得下時放 GPU（快，但佔核心模型的空間），還是一律放 CPU（慢）？（建議：依量測；放不下就 CPU。）
+- **OQ1**：門檻為命中率@3 提升 ≥ 5 個百分點且每題多花 ≤ 3 秒（使用者 2026-11-17 同意）。/ Threshold approved.
+- **OQ2**：依量測決定擺放；放不下就 CPU（同意建議）。/ Placement by measurement.
