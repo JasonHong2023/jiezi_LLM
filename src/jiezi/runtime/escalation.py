@@ -207,6 +207,13 @@ def verify(request: dict, message: dict, grounding: str | None = None) -> dict:
             sp = None
         if sp:
             checks.append(jsonout.check(sp, message))
+    tr = request.get("jiezi_translate")
+    if isinstance(tr, dict) and tr.get("short") and not message.get("tool_calls"):  # add-translation：短文字的譯文檢查
+        from .. import translate
+        users = [m for m in request.get("messages") or [] if m.get("role") == "user" and isinstance(m.get("content"), str)]
+        errors = translate.check(users[-1]["content"] if users else "", message.get("content") or "", tr.get("to"),
+                                 translate.parse_glossary(tr.get("glossary")), ratio=False)
+        checks.append({"check": "translation", "status": "fail" if errors else "pass", "error": "；".join(errors) or None})
     checks.append(verify_code(message.get("content") or ""))
     checks.append(verify_grounded(message, grounding))
     applicable = [c for c in checks if c["status"] != "not_applicable"]

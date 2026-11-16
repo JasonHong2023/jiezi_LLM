@@ -165,6 +165,7 @@ class Gateway:
             except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
                 self.writing_note = str(exc)
         from ..longdoc import NotesCache
+        self.last_tps: float | None = None
         self._doc_limit = anyio.Semaphore(1)  # 一次只讀一份上傳的文件 / one uploaded document at a time
         self.doc_notes = NotesCache()  # 長文件各段重點（只在記憶體）/ per-chunk notes of long documents, memory only
         self.consult_cap = escalation.DailyCap(settings.var / "runtime" / "consult", settings.consult_daily_max) \
@@ -201,7 +202,7 @@ class Gateway:
         return data
 
     def _local_body(self, body: dict, messages: list | None = None, stream: bool = False) -> dict:
-        out = {k: v for k, v in body.items() if k not in ("model", "stream", "stream_options")}
+        out = {k: v for k, v in body.items() if k not in ("model", "stream", "stream_options", "jiezi_translate")}
         out["model"] = self.sup.core["name"] if self.sup.core else self.s.core_model
         msgs = messages if messages is not None else body["messages"]
         # 每個槽位 4096 token：超出就裁（最舊對話 → 最長資料 → 問題）/ fit the 4096-token slot
@@ -217,6 +218,7 @@ class Gateway:
         r = await self.local.post(f"{base}/v1/chat/completions", json=self._local_body(body, messages))
         r.raise_for_status()
         data = r.json()
+        self.last_tps = _tps(data) or self.last_tps  # 給翻譯預估時間用 / for translation estimates
         conv = to_taiwan if self.s.tw_phrases else to_traditional
         for ch in data.get("choices") or []:  # 本機輸出的純簡體字轉繁體 / Simplified-only chars → Traditional
             msg = ch.get("message") or {}
@@ -230,7 +232,8 @@ class Gateway:
     async def _cloud_once(self, body: dict) -> tuple[dict, dict]:
         """依序嘗試轉交模型；回傳 (回應, 雲端資訊)。 / Try escalation models in order; return (response, info)."""
         headers = {"Authorization": f"Bearer {self.s.cloud_key}"} if self.s.cloud_key else {}
-        payload = {k: v for k, v in body.items() if k not in ("model", "stream", "stream_options", "chat_template_kwargs")}
+        payload = {k: v for k, v in body.items()
+                   if k not in ("model", "stream", "stream_options", "chat_template_kwargs", "jiezi_translate")}
         last = None
         for model in self.s.escalation_models:
             try:
@@ -657,7 +660,19 @@ class Gateway:
         if self.s.injection_guard:
             self._guard(body, rec, data)
         t0 = time.monotonic()
-        if self.memory is not None and not body.get("tools") and not json_mode:  # 記憶的回答是文字，不是 JSON
+        try:
+            plan = self._translate_plan(body, policy, json_mode)  # add-translation
+        except Exception as exc:  # noqa: BLE001 - TranslateError 等：寫錯的翻譯選項 / malformed translation options
+            from ..translate import TranslateError
+            if isinstance(exc, TranslateError):
+                return _err(400, str(exc), "invalid_translation")
+            self.log(f"translate: plan failed, answering normally: {type(exc).__name__}: {exc}")
+            plan = None
+        if plan is not None:
+            done = await self._translate(body, rec, t0, stream, policy, plan)
+            if done is not None:
+                return done
+        if self.memory is not None and not body.get("tools") and not json_mode and not body.get("jiezi_translate"):
             early = self._memory_early(body, rec, t0, stream, policy)
             if early is not None:
                 return early
@@ -703,12 +718,118 @@ class Gateway:
                 self.log(f"longdoc: condensing failed, sending as is: {type(exc).__name__}: {exc}")
                 rec["longdoc"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 
-        if stream and not body.get("tools") and not json_mode and not self._sample_kind(body):
+        if stream and not body.get("tools") and not json_mode and not body.get("jiezi_translate") \
+                and not self._sample_kind(body):
             return StreamingResponse(self._relay_stream(base, body, rec, t0, policy), media_type="text/event-stream")
         try:
             return await self._tiered(base, body, rec, t0, policy, stream)
         finally:
             self.sup.release()
+
+    # ── 翻譯（add-translation）/ Translation ──
+    def _translate_plan(self, body: dict, policy: str, json_mode: bool) -> dict | None:
+        """這個請求要不要由翻譯流程接手。回傳 None（照一般流程；短文字會在 body 留下檢查用的設定）或計畫。
+        Whether the translation path takes this request: None (normal path; short texts leave check settings in the
+        body) or a plan."""
+        from .. import translate as T
+        from ..longdoc import split_message
+        opts = body.pop("jiezi_translate", None)
+        if not self.s.translate or body.get("tools") or json_mode:
+            return None
+        if opts is not None and not isinstance(opts, dict):
+            raise T.TranslateError("jiezi_translate must be an object")
+        last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
+        if not last or not isinstance(last.get("content"), str):
+            return None
+        has_docs = "【文件：" in last["content"]
+        docs, q = split_message(last["content"]) if has_docs else ([], last["content"])
+        it = T.intent(q)
+        if opts is None and it is None:
+            return None
+        to = (opts or {}).get("to") or (it or {}).get("to")
+        glossary = T.parse_glossary((opts or {}).get("glossary"))
+        if not docs:  # 短文字：照一般流程回答，只加譯文檢查 / short text: normal path plus the checks
+            if it is not None and not it["convert"]:
+                body["jiezi_translate"] = {"short": True, "to": T.resolve_target(to, T.detect(q)),
+                                           "glossary": [list(g) for g in glossary]}
+            return None
+        source = T.detect("\n".join(t for _, t in docs)[:20000])
+        target = T.resolve_target(to, source)
+        if source == "zh-Hans" and target == "zh-TW":
+            return {"mode": "conversion", "docs": docs, "to": target, "source": source}
+        if (it or {}).get("convert") or (source == "zh-Hant" and target == "zh-TW") or source == target:
+            return None  # 已經是目標語言 / already in the target language
+        if policy not in ("jiezi", "jiezi-local"):
+            return None  # 指定雲端或 Claude：照原本的文件流程 / explicit cloud or Claude keeps the normal document path
+        return {"mode": "chunked", "docs": docs, "to": target, "source": source, "glossary": glossary,
+                "bilingual": (opts or {}).get("bilingual", True) is not False,
+                "confirmed": bool((opts or {}).get("confirmed"))}
+
+    def _translated(self, rec: dict, t0: float, stream: bool, text: str, tier, model: str, info: dict,
+                    ver: dict | None = None) -> Response:
+        resp = {"id": f"chatcmpl-translate-{int(time.time() * 1000)}", "object": "chat.completion",
+                "created": int(time.time()), "model": model,
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": "stop"}]}
+        rec["tiers"].append({"tier": tier, "answer": resp["choices"][0]["message"], "verification": ver, "model": model})
+        rec["translation"] = info
+        rec["training_use"] = False   # 譯文對不對無法由程式證明；原文多為私人文件 / unverifiable, usually private
+        rec.pop("dict_appendix", None)
+        meta = self._meta(rec, tier, resp, ver, t0)
+        meta["translation"] = info
+        return self._deliver(resp, meta, rec, stream)
+
+    async def _translate(self, body: dict, rec: dict, t0: float, stream: bool, policy: str, plan: dict) -> Response | None:
+        """整份文件的翻譯或簡轉繁；回傳 None 表示交回一般流程（例如本機引擎不可用而要轉交）。
+        Whole-document translation or script conversion; None hands the request back to the normal path."""
+        from .. import translate as T
+        docs, many = plan["docs"], len(plan["docs"]) > 1
+        base_info = {"mode": plan["mode"], "to": plan["to"], "source": plan["source"]}
+        if plan["mode"] == "conversion":
+            out = await anyio.to_thread.run_sync(
+                lambda: "\n\n".join((f"# {n}\n\n" if many else "") + T.convert(t) for n, t in docs))
+            note = "\n\n---\n【字詞轉換】簡體 → 繁體（台灣用語），依 OpenCC 對照表轉換，未經模型；專有名詞與用語請自行確認。"
+            return self._translated(rec, t0, stream, out + note, "convert", "jiezi-convert",
+                                    {**base_info, "documents": [n for n, _ in docs], "chars": sum(len(t) for _, t in docs)})
+        est = T.estimate_seconds([t for _, t in docs], self.last_tps)
+        if est > T.ASK_ABOVE_S and not plan["confirmed"]:
+            text = (f"這份文件要逐段翻譯，預估需要約 {max(1, round(est / 60))} 分鐘（估算，實際依模型速度而定）。"
+                    f"超過 {T.ASK_ABOVE_S // 60} 分鐘的翻譯要先經你確認，請改用指令（會顯示預估、可中斷後續跑）：\n"
+                    f"scripts/jiezi translate 檔案路徑 --to {plan['to']}\n"
+                    "This translation needs confirmation first; run the command above.")
+            return self._translated(rec, t0, stream, text, "translate-estimate", "jiezi-translate",
+                                    {**base_info, "needs_confirmation": True, "estimate_s": est})
+        try:
+            base = await self.sup.acquire()
+        except EngineUnavailable as exc:
+            if policy == "jiezi" and self._auto_route():
+                return None  # 照既有的文件流程轉交 / escalate through the normal document path
+            return self._finish_error(rec, 503, f"local engine unavailable: {exc}", "engine_unavailable")
+
+        async def complete(msgs: list[dict], max_tokens: int) -> str:
+            r = await self._local_once(base, {"messages": msgs, "max_tokens": max_tokens, "temperature": 0.2}, msgs)
+            return ((r.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+
+        t, blocks, infos = time.monotonic(), [], []
+        try:
+            for name, text in docs:
+                pairs, info = await T.translate_text(name, text, plan["to"], complete, plan["glossary"],
+                                                     self.s.var / "translate")
+                blocks.append(T.render(name, pairs, plan["bilingual"], many))
+                infos.append(info)
+        except httpx.HTTPError as exc:
+            return self._finish_error(rec, 502, f"local engine error: {exc}", "engine_error")
+        finally:
+            self.sup.release()
+        failed = sum(len(i["failed"]) for i in infos)
+        total = sum(i["chunks"] for i in infos)
+        info = {**base_info, "bilingual": plan["bilingual"], "documents": infos, "chunks": total, "failed": failed,
+                "estimate_s": est, "seconds": round(time.monotonic() - t, 1)}
+        ver = {"status": "fail" if failed else "pass", "checks": [{"check": "translation", "status": "fail" if failed else "pass"}],
+               "error": f"{failed} of {total} chunks could not be translated" if failed else None}
+        self.log(f"translate: {total} chunks, {failed} failed, {info['seconds']} s (estimate {est} s)")
+        rec["sources"] = (rec.get("sources") or []) + [{"source": "document", "name": n} for n, _ in docs]
+        return self._translated(rec, t0, stream, "\n\n".join(blocks), 0, self.sup.core["name"] if self.sup.core else
+                                self.s.core_model, info, ver)
 
     # ── 分層 / Tiers ──
     # ── 長文件（add-long-documents）/ Long documents ──
