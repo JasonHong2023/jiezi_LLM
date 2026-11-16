@@ -10,6 +10,7 @@ readme = "openspec/project.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "httpx==0.28.1",
+    "lunar-python==1.4.9",
     "pillow==13.0.0",
     "pypdf==7.1.0",
     "starlette==1.10.0",

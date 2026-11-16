@@ -147,6 +147,17 @@ class TestLunar(unittest.TestCase):
 
     def test_missing_library_is_explained(self):
         from unittest import mock
+        if T._lunar() is not None:  # 真套件（已安裝時）：2026-11-16 實測抓到的三個錯 / the real library, when installed
+            r = lambda q: T.lunar_facts(q, NOW)  # noqa: E731
+            self.assertEqual(r("2026年春節是哪一天"), ["2026 年春節（農曆 1 月 1 日）是國曆 2026-02-17"])
+            self.assertEqual(r("農曆2026年1月1日是國曆哪一天"), ["農曆 2026 年1 月 1 日是國曆 2026-02-17"])
+            self.assertEqual(r("2026年冬至是哪一天"), ["2026 年冬至是國曆 2026-12-22"])       # 拼音鍵 / pinyin key
+            self.assertIn("2026-02-16", r("2026年除夕是哪一天")[0])
+            self.assertIn("2027-02-05", r("2026年除夕是哪一天")[0])
+            for y in (2025, 2026, 2027):
+                for name in T.JIEQI:
+                    self.assertTrue(r(f"{y}年{name}是哪天"), (y, name))
+            self.assertEqual(r("今天下大雪了嗎"), [])
         with mock.patch.object(T, "_lunar", return_value=None):
             self.assertIn("lunar-python", T.lunar_facts("中秋節是哪天", NOW)[0])
 
