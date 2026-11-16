@@ -85,7 +85,7 @@ class LocalEngine:
     with LocalEngine(...) as eng: eng.base_url — always stopped when leaving the block (exceptions and Ctrl-C included)."""
 
     def __init__(self, root: Path, facts: dict, model: Path, port_base: int, ngl: int = 0, ctx: int = 4096,
-                 parallel: int = 1,
+                 parallel: int = 1, extra: tuple = (),
                  health_timeout_s: float = 300, popen=subprocess.Popen, is_free=None, vram=read_vram_mib,
                  port: int | None = None, alias: str | None = None):
         build = "build-cuda" if ngl > 0 else "build-cpu"
@@ -110,6 +110,7 @@ class LocalEngine:
                     "--cache-ram", str(CACHE_RAM_MIB)]
         if parallel > 1:  # 平行取樣：各槽位共用一塊 KV 快取（add-sampling）/ parallel sampling shares one KV pool
             self.cmd.append("-kvu")
+        self.cmd += list(extra)  # 例如 embedding 模式 / e.g. embedding mode (add-rag)
         self.parallel = parallel
         if alias:  # 回應中的模型名稱用別名，不洩漏本機路徑 / report an alias, not the local file path
             self.cmd += ["--alias", alias]

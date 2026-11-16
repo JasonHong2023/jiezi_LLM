@@ -31,7 +31,8 @@ def cmd_serve(root) -> int:
         root, facts, path, port_base(env), ngl=ngl, ctx=4096 * (2 if slots > 1 else 1), parallel=slots, port=port,
         alias=alias)
     sup = Supervisor(s, lambda: fresh_facts(root), factory)
-    gw = Gateway(s, sup, TrajectoryWriter(s.var / "trajectories", s.trajectory, s.retention_days))
+    gw = Gateway(s, sup, TrajectoryWriter(s.var / "trajectories", s.trajectory, s.retention_days),
+                 embedder=_embedder(root, s, env))
     print(f"jiezi gateway on http://{s.host}:{s.gateway_port}/v1  (core {s.core_model}, lazy load; "
           f"cloud escalation {'on' if s.cloud_ready else 'off'}; trajectories {'on' if s.trajectory else 'off'})")
     print("Ctrl-C 關閉 gateway 與引擎 / Ctrl-C stops the gateway and the engine")
@@ -89,6 +90,21 @@ def cmd_curriculum(root, args) -> int:
     return 0 if keys or ids else 1
 
 
+def _embedder(root, s, env, ngl: int = 0):
+    """embedding 引擎（R11 的 engine-embed 埠；預設 CPU，不和對話模型搶 GPU）。沒有模型檔就回傳 None。
+    The embedding engine on the R11 engine-embed port (CPU by default). None when the model file is absent."""
+    from ..engine import LocalEngine
+    from ..facts import fresh_facts
+    from ..rag import EMBED_MODEL, Embedder
+    path = s.models_dir / "Qwen3-Embedding-0.6B-Q8_0.gguf"
+    if not s.rag or not path.exists():
+        return None
+    return Embedder(lambda: LocalEngine(root, fresh_facts(root), path, port_base(env), ngl=ngl, ctx=8192,
+                                        port=port_base(env) + 2, alias=EMBED_MODEL,
+                                        extra=("--embedding", "--pooling", "last", "-ub", "8192")),
+                    log_path=s.var / "runtime" / "engine-embed.log", idle_s=s.idle_unload_s)
+
+
 def cmd_status(root) -> int:
     env = load_env(root)
     url = f"http://127.0.0.1:{port_base(env)}/health"
@@ -141,7 +157,8 @@ def main(argv: list[str] | None = None) -> int:
     gp = sub.add_parser("gaps", help="gap report: questions the local model could not handle")
     gp.add_argument("--days", type=int, default=7, help="最近幾天 / how many recent days (default 7)")
     kp = sub.add_parser("knowledge", help="Taiwan knowledge base, taiwan-md (add-knowledge)")
-    kp.add_argument("action", choices=["build", "search"])
+    kp.add_argument("action", choices=["build", "search", "embed"])
+    kp.add_argument("--gpu", action="store_true", help="embed: 用 GPU 建向量（E0 等評測沒在跑時）/ use the GPU")
     kp.add_argument("query", nargs="?")
     wp = sub.add_parser("writing-refs", help="writing-lesson link index, titles and URLs only (add-curriculum D6)")
     wp.add_argument("action", choices=["build", "search"])
@@ -246,6 +263,21 @@ def main(argv: list[str] | None = None) -> int:
             if args.action == "build":
                 counts = K.build(root)
                 print(f"built {K.db_path(root)}: {counts}; restart the gateway to use it")
+                return 0
+            if args.action == "embed":
+                from .. import rag
+                from .settings import load_settings
+                s = load_settings(root)
+                emb = _embedder(root, s, load_env(root), ngl=99 if args.gpu else 0)
+                if emb is None:
+                    print("embedding model not found or JIEZI_RAG=off", file=sys.stderr)
+                    return 1
+                try:
+                    res = rag.build(K.Knowledge(K.db_path(root)),
+                                    rag.VectorStore(rag.vectors_path(root), model_sha="06507c7b4268", create=True), emb)
+                finally:
+                    emb.stop()
+                print(f"vectors: {res}; restart the gateway to use them")
                 return 0
             g = K.grounding(K.Knowledge(K.db_path(root)), args.query or "")
             print(g[0].split("\n\n", 1)[1] + g[3] if g else "（沒有相關段落 / nothing relevant）")

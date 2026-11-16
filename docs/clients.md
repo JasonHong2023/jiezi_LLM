@@ -87,6 +87,7 @@ In chats, curriculum, primary-learning and textbook questions are grounded autom
 ```bash
 scripts/jiezi knowledge build                 # 下載 Taiwan.md 1163 篇並建索引（約 22 MB，逐檔核對）/ download and index
 scripts/jiezi knowledge search 刈包是什麼        # 看會查到哪些段落 / see what would be retrieved
+scripts/jiezi knowledge embed --gpu             # 建語意向量（沒點名文章的問題也查得到）/ semantic vectors
 ```
 
 問到台灣相關主題時，gateway 取最相關的 1–2 段給模型當依據，回答後附上文章標題、連結與 CC BY-SA 出處；未經人工審核的文章會註明（`JIEZI_KNOWLEDGE=off` 可關閉）。

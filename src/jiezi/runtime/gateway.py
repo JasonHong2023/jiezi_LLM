@@ -62,7 +62,7 @@ def _tps(resp: dict) -> float | None:
 class Gateway:
     def __init__(self, settings: Settings, supervisor: Supervisor, trajectories: TrajectoryWriter,
                  local_http: httpx.AsyncClient | None = None, cloud_http: httpx.AsyncClient | None = None,
-                 cap: escalation.DailyCap | None = None, consultant=None, log=print):
+                 cap: escalation.DailyCap | None = None, consultant=None, log=print, embedder=None):
         self.s, self.sup, self.traj, self.log = settings, supervisor, trajectories, log
         self.consultant = consultant
         if consultant is None and settings.consult == "claude-cli":
@@ -97,6 +97,18 @@ class Gateway:
                 self.knowledge = Knowledge(knowledge_db(settings.root))
             except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
                 self.knowledge_note = str(exc)
+        self.embedder, self.hybrid, self.rag_note = embedder, None, "off"
+        if settings.rag and self.knowledge is not None and embedder is not None:
+            from ..rag import HybridRetriever, VectorStore, vectors_path
+            try:
+                store = VectorStore(vectors_path(settings.root))
+                if store.count():
+                    self.hybrid = HybridRetriever(self.knowledge, store, embedder, settings.rag_min)
+                    self.rag_note = f"on ({store.count()} vectors)"
+                else:
+                    self.rag_note = "no vectors; run scripts/jiezi knowledge embed"
+            except Exception as exc:  # noqa: BLE001 - 沒有向量就用全文 / full text without vectors
+                self.rag_note = str(exc)
         self.writing, self.writing_note = None, None
         if settings.writing_refs:
             from ..writing_refs import WritingRefs, index_path
@@ -245,7 +257,7 @@ class Gateway:
             found.append(curriculum_grounding(self.curriculum, last["content"]))
         if self.knowledge is not None:
             from ..knowledge import grounding as knowledge_grounding
-            found.append(knowledge_grounding(self.knowledge, last["content"]))
+            found.append(knowledge_grounding(self.knowledge, last["content"], self.hybrid))
         idx = body["messages"].index(last)
         for g in found:
             if not g:
@@ -372,6 +384,7 @@ class Gateway:
                              "curriculum": "on" if self.curriculum else (self.curriculum_note or "off"),
                              "writing_refs": "on" if self.writing else (self.writing_note or "off"),
                              "knowledge": "on" if self.knowledge else (self.knowledge_note or "off"),
+                             "rag": self.rag_note,
                              "memory": "on" if self.memory else (self.memory_note or "off"),
                              "tools": "on" if self.s.tools else "off",
                              "cloud_escalation": self.s.cloud_ready, "cloud_used_today": self.cap.used(),
@@ -405,7 +418,8 @@ class Gateway:
         # training_use: None means check the license registry before training; Claude consultations are always False
         rec = {"id": tid, "at": now_iso(), "policy": policy, "stream": stream, "request": body, "tiers": [],
                "final_tier": None, "status": "ok", "training_use": None, "sources": []}
-        self._ground(body, rec)
+        # 查資料可能要啟動 embedding 引擎，放到執行緒以免卡住其他請求 / may start the embedder; off the event loop
+        await anyio.to_thread.run_sync(self._ground, body, rec)
         t0 = time.monotonic()
         if self.memory is not None and not body.get("tools"):
             early = self._memory_early(body, rec, t0, stream, policy)
@@ -761,6 +775,8 @@ class Gateway:
             await anyio.sleep(TICK_S)
             try:
                 await self.sup.tick()
+                if self.embedder is not None:
+                    await anyio.to_thread.run_sync(self.embedder.tick)
             except Exception as exc:  # noqa: BLE001 - 背景工作不可中斷 gateway / never kill the gateway
                 self.log(f"warning: supervisor tick: {exc}")
 
@@ -780,6 +796,8 @@ def create_app(gw: Gateway) -> Starlette:
             finally:
                 tg.cancel_scope.cancel()
                 gw.sup.shutdown()
+                if gw.embedder is not None:
+                    gw.embedder.stop()
                 await gw.aclose()
 
     return Starlette(routes=[

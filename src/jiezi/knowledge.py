@@ -250,7 +250,18 @@ class Knowledge:
                                "JOIN articles a ON a.id = s.article WHERE s.id = ?", (sid,)).fetchone()
         return dict(zip(("heading", "text", "title", "name", "url", "reviewed", "article"), row))
 
-    def retrieve(self, text: str) -> list[dict]:
+    def candidates(self, text: str, limit: int = 200) -> list[int]:
+        """向量重排用的寬鬆候選（不設門檻）。 / Loose candidates for vector reranking (no thresholds)."""
+        q = [g for g in dict.fromkeys(bigrams(ASKING.sub(" ", text[:SCAN_CHARS]))) if g not in STOP]
+        if not q:
+            return []
+        expr = " OR ".join('"' + g.replace('"', "") + '"' for g in q)
+        return [r[0] for r in self.con.execute(
+            "SELECT rowid FROM grams WHERE grams MATCH ? ORDER BY bm25(grams) LIMIT ?", (expr, limit))]
+
+    def retrieve(self, text: str, hybrid=None) -> list[dict]:
+        """hybrid：向量重排檢索器（add-rag）；失敗或沒有時用全文門檻。
+        hybrid: a vector reranker (add-rag); falls back to full-text thresholds when absent or failing."""
         sids = []
         named = self.articles_named(text)
         for aid in named:
@@ -262,15 +273,21 @@ class Knowledge:
             rest = set(bigrams(text[:SCAN_CHARS])) - set(bigrams(name)) - STOP
             if rest and len(named) == 1:
                 sids += [s for s, n in self.search(text, article=aid, limit=2) if n and s not in sids][:1]
+        if not sids and hybrid is not None:
+            try:
+                # 向量判定沒有相關段落時回傳空的，不改用寬鬆的全文結果 / no relevant vectors means no grounding
+                return [self.section(s) for s, _ in hybrid(text, MAX_SECTIONS)]
+            except Exception as exc:  # noqa: BLE001 - 向量檢索出錯才退回全文 / fall back to full text on errors
+                self.last_error = str(exc)
         if not sids:
             sids = [s for s, _ in self.search(text)]
         return [self.section(s) for s in dict.fromkeys(sids)][:MAX_SECTIONS]
 
 
-def grounding(k: Knowledge, text: str) -> tuple[str, list[dict], bool, str] | None:
+def grounding(k: Knowledge, text: str, hybrid=None) -> tuple[str, list[dict], bool, str] | None:
     """回傳 (給模型的 system 訊息, 來源清單, 是否可訓練, 附在回答後的出處)；查不到回傳 None。
     Return (system message, sources, trainable, attribution appendix), or None."""
-    hits = k.retrieve(text)
+    hits = k.retrieve(text, hybrid)
     if not hits:
         return None
     blocks, refs, sources = [], [], []
