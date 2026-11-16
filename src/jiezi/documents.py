@@ -24,7 +24,7 @@ OCR_THREADS = "2"                         # 不佔滿 CPU（資源預算）/ nev
 MIN_PAGE_CHARS = 20                   # 少於這個字數的 PDF 頁視為掃描頁 / fewer chars → scanned page
 TEXT_SUFFIXES = {".txt", ".md", ".markdown", ".csv", ".tsv", ".json", ".log", ".rst", ".py", ".js", ".toml", ".yaml",
                  ".yml"}
-SUPPORTED = TEXT_SUFFIXES | {".pdf", ".docx", ".html", ".htm"}
+SUPPORTED = TEXT_SUFFIXES | {".pdf", ".docx", ".pptx", ".xlsx", ".html", ".htm"}
 
 
 class DocumentError(Exception):
@@ -117,6 +117,184 @@ def read_docx(data: bytes) -> dict:
     return {"text": text, "pages": None, "ocr_pages": [], "warnings": []}
 
 
+# ── PowerPoint、Excel（add-office-documents；只用標準函式庫）/ PowerPoint and Excel, stdlib only ──
+_A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
+_S = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+_R = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+_PR = "{http://schemas.openxmlformats.org/package/2006/relationships}"
+MAX_SLIDES, MAX_SHEETS, MAX_CELLS, MAX_COLS = 500, 50, 200_000, 60
+_DATE_FMT_IDS = set(range(14, 23)) | set(range(27, 37)) | {45, 46, 47} | set(range(50, 59))
+
+
+def _open_zip(data: bytes, kind: str) -> zipfile.ZipFile:
+    try:
+        return zipfile.ZipFile(io.BytesIO(data))
+    except zipfile.BadZipFile as exc:
+        raise DocumentError(f"不是有效的 {kind}（舊格式請先另存成新格式）/ not a valid {kind}") from exc
+
+
+def _zip_xml(z: zipfile.ZipFile, name: str, budget: list[int]):
+    """讀出並解析壓縮檔裡的一個 XML；累計大小有上限（防壓縮炸彈），含 DTD 就拒絕。
+    Parse one XML member; the running total is capped (zip bombs) and DTDs are refused."""
+    from xml.etree import ElementTree as ET
+    info = z.getinfo(name)
+    budget[0] -= info.file_size
+    if budget[0] < 0:
+        raise DocumentError("文件內容過大 / document too large")
+    xml = z.read(info)
+    if b"<!DOCTYPE" in xml[:4096] or b"<!ENTITY" in xml:
+        raise DocumentError("文件含 DTD，拒絕解析 / document contains a DTD")
+    return ET.fromstring(xml)
+
+
+def _numbered(names: list[str], prefix: str) -> list[str]:
+    rx = re.compile(re.escape(prefix) + r"(\d+)\.xml$")
+    hits = [(rx.match(n), n) for n in names]
+    return [n for _, n in sorted((int(m.group(1)), n) for m, n in hits if m)]
+
+
+def read_pptx(data: bytes) -> dict:
+    z = _open_zip(data, ".pptx")
+    slides = _numbered(z.namelist(), "ppt/slides/slide")
+    if not slides:
+        raise DocumentError("不是有效的 .pptx（舊的 .ppt 請先另存成 .pptx）/ not a valid .pptx")
+    budget, warnings, out = [MAX_DOCX_XML_BYTES], [], []
+    if len(slides) > MAX_SLIDES:
+        warnings.append(f"投影片超過 {MAX_SLIDES} 張，只讀前面的 / only the first {MAX_SLIDES} slides were read")
+
+    def paras(root) -> list[str]:
+        lines = []
+        for p in root.iter(_A + "p"):
+            t = "".join((el.text or "") if el.tag == _A + "t" else "\n" if el.tag == _A + "br" else ""
+                        for el in p.iter()).strip()
+            if t:
+                lines.append(t)
+        return lines
+
+    names = set(z.namelist())
+    for i, name in enumerate(slides[:MAX_SLIDES], 1):
+        lines = paras(_zip_xml(z, name, budget))
+        note = f"ppt/notesSlides/notesSlide{name[len('ppt/slides/slide'):-4]}.xml"
+        notes = [t for t in paras(_zip_xml(z, note, budget)) if not t.isdigit()] if note in names else []
+        block = f"〔第 {i} 張投影片〕\n" + "\n".join(lines)
+        if notes:
+            block += "\n（備忘稿）" + "\n".join(notes)
+        out.append(block.strip())
+    text = "\n\n".join(out)
+    body = sum(len(b.split("\n", 1)[1]) if "\n" in b else 0 for b in out)
+    if body < MIN_PAGE_CHARS * len(out):  # 實測：整張是圖片的簡報幾乎沒有文字 / image-only decks carry almost no text
+        warnings.append("投影片幾乎沒有文字（可能整張是圖片）；可先匯出成 PDF 再附上，會自動 OCR / "
+                        "slides contain almost no text (probably images); export to PDF to get OCR")
+    return {"text": text, "pages": len(slides), "ocr_pages": [], "warnings": warnings}
+
+
+def _is_date_format(code: str) -> bool:
+    code = re.sub(r'"[^"]*"|\[[^\]]*\]|\\.', "", code or "")
+    return bool(re.search(r"[ymdhs]", code, re.I)) and "General" not in code
+
+
+def _serial_date(v: float, date1904: bool) -> str:
+    from datetime import datetime, timedelta
+    base = datetime(1904, 1, 1) if date1904 else datetime(1899, 12, 30)
+    d = base + timedelta(days=v)
+    if v < 1:
+        return d.strftime("%H:%M:%S")
+    return d.strftime("%Y-%m-%d") if abs(v - round(v)) < 1e-9 else d.strftime("%Y-%m-%d %H:%M")
+
+
+def _col(ref: str) -> int:
+    n = 0
+    for ch in ref:
+        if not ch.isalpha():
+            break
+        n = n * 26 + (ord(ch.upper()) - 64)
+    return n - 1
+
+
+def read_xlsx(data: bytes) -> dict:
+    z = _open_zip(data, ".xlsx")
+    names = set(z.namelist())
+    if "xl/workbook.xml" not in names:
+        raise DocumentError("不是有效的 .xlsx（舊的 .xls 請先另存成 .xlsx）/ not a valid .xlsx")
+    budget, warnings = [MAX_DOCX_XML_BYTES], []
+    wb = _zip_xml(z, "xl/workbook.xml", budget)
+    pr = wb.find(_S + "workbookPr")
+    date1904 = pr is not None and pr.get("date1904") in ("1", "true")
+    rels = {}
+    if "xl/_rels/workbook.xml.rels" in names:
+        for r in _zip_xml(z, "xl/_rels/workbook.xml.rels", budget).iter(_PR + "Relationship"):
+            target = r.get("Target") or ""
+            rels[r.get("Id")] = target.lstrip("/") if target.startswith("/") else "xl/" + target
+    shared = []
+    if "xl/sharedStrings.xml" in names:
+        for si in _zip_xml(z, "xl/sharedStrings.xml", budget).iter(_S + "si"):
+            # 注音／拼音標註（rPh）不算內容 / phonetic runs are not content
+            shared.append("".join(t.text or "" for r in si if r.tag != _S + "rPh" for t in
+                                  ([r] if r.tag == _S + "t" else r.iter(_S + "t"))))
+    date_styles = set()
+    if "xl/styles.xml" in names:
+        st = _zip_xml(z, "xl/styles.xml", budget)
+        custom = {int(n.get("numFmtId")): n.get("formatCode") or "" for n in st.iter(_S + "numFmt")
+                  if (n.get("numFmtId") or "").isdigit()}
+        xfs = st.find(_S + "cellXfs")
+        for i, xf in enumerate(xfs if xfs is not None else []):
+            fid = int(xf.get("numFmtId") or 0)
+            if fid in _DATE_FMT_IDS or _is_date_format(custom.get(fid, "")):
+                date_styles.add(i)
+
+    def value(c) -> str:
+        t, v = c.get("t"), c.find(_S + "v")
+        if t == "inlineStr":
+            return "".join(x.text or "" for x in c.iter(_S + "t"))
+        if v is None or v.text is None:
+            return ""
+        if t == "s":
+            return shared[int(v.text)] if v.text.isdigit() and int(v.text) < len(shared) else ""
+        if t == "b":
+            return "TRUE" if v.text == "1" else "FALSE"
+        if t in (None, "n") and (c.get("s") or "").isdigit() and int(c.get("s")) in date_styles:
+            try:
+                return _serial_date(float(v.text), date1904)
+            except (ValueError, OverflowError):
+                return v.text
+        if t in (None, "n"):
+            try:
+                f = float(v.text)
+                return str(int(f)) if f.is_integer() and abs(f) < 1e15 else repr(round(f, 10))
+            except ValueError:
+                return v.text
+        return v.text  # str（公式的文字結果）、e（錯誤值）/ formula strings, error values
+
+    sheets = [(s.get("name") or "?", rels.get(s.get(_R + "id"))) for s in wb.iter(_S + "sheet")]
+    if len(sheets) > MAX_SHEETS:
+        warnings.append(f"工作表超過 {MAX_SHEETS} 張，只讀前面的 / only the first {MAX_SHEETS} sheets were read")
+    out, cells, truncated = [], 0, False
+    for name, target in sheets[:MAX_SHEETS]:
+        if not target or target not in names:
+            continue
+        rows = []
+        for row in _zip_xml(z, target, budget).iter(_S + "row"):
+            vals: dict[int, str] = {}
+            for k, c in enumerate(row.iter(_S + "c")):
+                col = _col(c.get("r") or "") if c.get("r") else k
+                text = value(c).replace("\n", " ").strip()
+                if text and 0 <= col < MAX_COLS:
+                    vals[col] = text
+            if vals:
+                cells += len(vals)
+                rows.append(" | ".join(vals.get(i, "") for i in range(max(vals) + 1)))
+            if cells > MAX_CELLS:
+                truncated = True
+                break
+        if rows:
+            out.append(f"〔工作表：{name}〕\n" + "\n".join(rows))
+        if truncated:
+            break
+    if truncated:
+        warnings.append(f"儲存格超過 {MAX_CELLS} 個，只讀前面的 / only the first {MAX_CELLS} cells were read")
+    return {"text": "\n\n".join(out), "pages": len(sheets), "ocr_pages": [], "warnings": warnings}
+
+
 class _Html(HTMLParser):
     SKIP = {"script", "style", "noscript", "template", "svg", "head"}
     BLOCK = {"p", "div", "br", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "section", "article", "table", "pre"}
@@ -154,7 +332,7 @@ def extract(path: Path) -> dict:
     """在目前行程解析（由子行程呼叫）。 / Parse in this process (called inside the child)."""
     suf = path.suffix.lower()
     if suf not in SUPPORTED:
-        raise DocumentError(f"不支援的格式 {suf or '（無副檔名）'}；支援 PDF、.docx、.html、純文字 / unsupported format")
+        raise DocumentError(f"不支援的格式 {suf or '（無副檔名）'}；支援 PDF、.docx、.pptx、.xlsx、.html、純文字 / unsupported format")
     if path.stat().st_size > MAX_FILE_BYTES:
         raise DocumentError(f"檔案超過 {MAX_FILE_BYTES // 2**20} MB / file too large")
     data = path.read_bytes()
@@ -162,6 +340,10 @@ def extract(path: Path) -> dict:
         r = read_pdf(data)
     elif suf == ".docx":
         r = read_docx(data)
+    elif suf == ".pptx":
+        r = read_pptx(data)
+    elif suf == ".xlsx":
+        r = read_xlsx(data)
     elif suf in (".html", ".htm"):
         r = read_html(data)
     else:
@@ -180,7 +362,7 @@ def read(path: str | Path, timeout: float = TIMEOUT_S) -> dict:
     if not path.is_file():
         raise DocumentError(f"找不到檔案 / no such file: {path}")
     if path.suffix.lower() not in SUPPORTED:
-        raise DocumentError(f"不支援的格式 {path.suffix or '（無副檔名）'}；支援 PDF、.docx、.html、純文字 / unsupported format")
+        raise DocumentError(f"不支援的格式 {path.suffix or '（無副檔名）'}；支援 PDF、.docx、.pptx、.xlsx、.html、純文字 / unsupported format")
     src = str(Path(__file__).resolve().parent.parent)
     env = {**os.environ, "PYTHONPATH": src}
     try:

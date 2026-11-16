@@ -316,7 +316,7 @@ class ChatApp(App):
             self._update_bar(f"已取消 {n} 份文件 / detached {n} document(s)")
             return
         if not path:
-            self._update_bar("用法 usage: /file 文件路徑（PDF、.docx、.html、.txt、.md）；/file clear 取消附加的文件")
+            self._update_bar("用法 usage: /file 文件路徑（PDF、.docx、.pptx、.xlsx、.html、.txt、.md）；/file clear 取消附加的文件")
             return
         self._update_bar(f"讀取中 reading: {Path(path).name}……")
         try:

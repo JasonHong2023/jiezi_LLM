@@ -53,6 +53,99 @@ def make_docx(paras: list[str], table: list[list[str]] | None = None, doctype: b
     return buf.getvalue()
 
 
+def make_pptx(slides: list[list[str]], notes: dict[int, str] | None = None, doctype: bool = False) -> bytes:
+    a = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
+    p = 'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"'
+
+    def xml(lines):
+        body = "".join(f"<p:sp><p:txBody><a:p><a:r><a:t>{t}</a:t></a:r></a:p></p:txBody></p:sp>" for t in lines)
+        return (('<!DOCTYPE x [<!ENTITY a "b">]>' if doctype else "") +
+                f'<?xml version="1.0"?><p:sld {a} {p}><p:cSld><p:spTree>{body}</p:spTree></p:cSld></p:sld>')
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        for i in sorted(range(1, len(slides) + 1), key=str):          # 故意照字串排序寫入 / written in string order
+            z.writestr(f"ppt/slides/slide{i}.xml", xml(slides[i - 1]))
+        for i, t in (notes or {}).items():
+            z.writestr(f"ppt/notesSlides/notesSlide{i}.xml", xml([t, str(i)]))
+    return buf.getvalue()
+
+
+def make_xlsx() -> bytes:
+    s = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+    r = 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'
+    files = {
+        "xl/workbook.xml": f'<workbook {s} {r}><sheets><sheet name="營收" sheetId="1" r:id="rId1"/>'
+                           f'<sheet name="空白" sheetId="2" r:id="rId2"/></sheets></workbook>',
+        "xl/_rels/workbook.xml.rels": '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                                      '<Relationship Id="rId1" Target="worksheets/sheet1.xml"/>'
+                                      '<Relationship Id="rId2" Target="worksheets/sheet2.xml"/></Relationships>',
+        "xl/sharedStrings.xml": f'<sst {s}><si><t>季度</t></si><si><t>營收（億）</t></si>'
+                                f'<si><r><t>第</t></r><r><t>三季</t></r><rPh><t>ㄉㄧˋ</t></rPh></si><si><t>日期</t></si></sst>',
+        "xl/styles.xml": f'<styleSheet {s}><numFmts><numFmt numFmtId="164" formatCode="yyyy/mm/dd"/>'
+                         f'<numFmt numFmtId="165" formatCode="0.00&quot;d&quot;"/></numFmts>'
+                         f'<cellXfs><xf numFmtId="0"/><xf numFmtId="14"/><xf numFmtId="164"/><xf numFmtId="165"/></cellXfs>'
+                         f'</styleSheet>',
+        "xl/worksheets/sheet1.xml": f'<worksheet {s}><sheetData>'
+                                    '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="D1" t="s"><v>3</v></c></row>'
+                                    '<row r="2"><c r="A2" t="s"><v>2</v></c><c r="B2"><v>12.5</v></c><c r="D2" s="1"><v>46342</v></c></row>'
+                                    '<row r="3"><c r="A3" t="inlineStr"><is><t>合計</t></is></c><c r="B3"><f>SUM(B2)</f><v>12.5</v></c>'
+                                    '<c r="C3" t="b"><v>1</v></c><c r="D3" s="2"><v>46342.5</v></c><c r="E3" s="3"><v>3</v></c></row>'
+                                    '<row r="4"></row></sheetData></worksheet>',
+        "xl/worksheets/sheet2.xml": f'<worksheet {s}><sheetData/></worksheet>',
+    }
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        for n, x in files.items():
+            z.writestr(n, x)
+    return buf.getvalue()
+
+
+class TestOffice(unittest.TestCase):
+    """PowerPoint、Excel（add-office-documents）。"""
+
+    def test_pptx_slides_in_order_with_notes(self):
+        slides = [[f"第{i}頁標題", f"內容{i}"] for i in range(1, 12)]
+        r = D.read_pptx(make_pptx(slides, notes={2: "記得提預算"}))
+        self.assertEqual(r["pages"], 11)
+        blocks = r["text"].split("\n\n")
+        self.assertEqual(blocks[1], "〔第 2 張投影片〕\n第2頁標題\n內容2\n（備忘稿）記得提預算")   # 頁碼不算備忘稿 / no page number
+        self.assertTrue(blocks[9].startswith("〔第 10 張投影片〕\n第10頁標題"))          # 10 排在 9 後面 / numeric order
+        self.assertEqual(r["warnings"], [])
+        self.assertIn("OCR", D.read_pptx(make_pptx([["1"], [], []]))["warnings"][0])   # 圖片簡報的提醒 / image-only decks
+        with self.assertRaisesRegex(D.DocumentError, "DTD"):
+            D.read_pptx(make_pptx([["x"]], doctype=True))
+        with self.assertRaisesRegex(D.DocumentError, "pptx"):
+            D.read_pptx(make_docx(["x"]))
+        with self.assertRaises(D.DocumentError):
+            D.read_pptx(b"not a zip")
+
+    def test_xlsx_cells_dates_and_gaps(self):
+        r = D.read_xlsx(make_xlsx())
+        self.assertEqual(r["text"], "〔工作表：營收〕\n季度 | 營收（億） |  | 日期\n第三季 | 12.5 |  | 2026-11-16\n"
+                                    "合計 | 12.5 | TRUE | 2026-11-16 12:00 | 3")
+        self.assertEqual(r["pages"], 2)                                   # 空白工作表不輸出 / empty sheets are skipped
+        with self.assertRaisesRegex(D.DocumentError, "xlsx"):
+            D.read_xlsx(make_docx(["x"]))
+
+    def test_xlsx_cell_limit_and_zip_bomb_guard(self):
+        from unittest import mock
+        with mock.patch.object(D, "MAX_CELLS", 4):
+            r = D.read_xlsx(make_xlsx())
+        self.assertIn("只讀前面的", r["warnings"][0])
+        self.assertNotIn("合計", r["text"])
+        with mock.patch.object(D, "MAX_DOCX_XML_BYTES", 100):
+            with self.assertRaisesRegex(D.DocumentError, "過大"):
+                D.read_xlsx(make_xlsx())
+
+    def test_read_through_child_process(self):
+        with tempfile.TemporaryDirectory() as d:
+            p, x = Path(d) / "簡報.pptx", Path(d) / "表.xlsx"
+            p.write_bytes(make_pptx([["芥子納須彌"]]))
+            x.write_bytes(make_xlsx())
+            self.assertEqual((D.read(p)["kind"], D.read(p)["text"]), ("pptx", "〔第 1 張投影片〕\n芥子納須彌"))
+            self.assertIn("第三季 | 12.5", D.read(x)["text"])
+
+
 class TestReaders(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

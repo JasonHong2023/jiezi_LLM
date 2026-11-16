@@ -21,11 +21,11 @@ The gateway binds only to `127.0.0.1:36100`; every request needs `JIEZI_GATEWAY_
 ## 1.0 附上文件 / Attaching documents
 
 ```bash
-scripts/jiezi ask --file 報告.pdf "請摘要重點"          # PDF、.docx、.html、.txt、.md；可重複 --file
+scripts/jiezi ask --file 報告.pdf "請摘要重點"          # PDF、.docx、.pptx、.xlsx、.html、.txt、.md；可重複 --file
 cat 會議記錄.txt | scripts/jiezi ask "列出待辦事項"     # 管線輸入也當成文件
 ```
 
-`jiezi chat` 裡輸入 `/file 路徑`，再輸入問題。文件會一直附著（狀態列顯示檔名），可以對同一份文件連續追問，每一題都會依那一題重新挑段落，也會參考上一輪問答（所以可以問「那相關數據呢？」）；`/file clear` 取消，重開 chat 後要重新 `/file`。掃描版 PDF 會自動用繁中 OCR（每頁約 2 秒）。文件超過本機模型的上下文時，gateway 會先分段處理：要摘要就逐段整理重點再合併；問問題就挑最相關的段落，並標出段落編號。
+`jiezi chat` 裡輸入 `/file 路徑`，再輸入問題。文件會一直附著（狀態列顯示檔名），可以對同一份文件連續追問，每一題都會依那一題重新挑段落，也會參考上一輪問答（所以可以問「那相關數據呢？」）；`/file clear` 取消，重開 chat 後要重新 `/file`。掃描版 PDF 會自動用繁中 OCR（每頁約 2 秒）。PowerPoint 讀每張投影片的文字與備忘稿（整張是圖片的簡報讀不到字，請先匯出成 PDF）；Excel 每個工作表讀成「欄 | 欄」的列，日期會轉成 2026-11-16 這種寫法，公式取上次計算的結果，上限 20 萬個儲存格。舊版 .doc／.ppt／.xls 不支援，請先另存成新格式。文件超過本機模型的上下文時，gateway 會先分段處理：要摘要就逐段整理重點再合併；問問題就挑最相關的段落，並標出段落編號。
 In chat use `/file path`. Long documents are condensed by the gateway before answering. The document stays attached for follow-up questions until `/file clear`.
 
 ### 只要 JSON（給腳本用）/ JSON answers for scripts
@@ -60,7 +60,7 @@ scripts/jiezi ui build      # 需要 Node.js；npm ci → npm audit → build
 重啟 gateway 後，在 Windows 或 Linux 的瀏覽器開 `http://127.0.0.1:36100/ui/`，貼上 `.env` 的 `JIEZI_GATEWAY_KEY`（只存在該分頁）。頁面有「對話」「稽核紀錄」「狀態」；回答中按 Esc 或「中止」立刻停止。不會操控你的電腦。
 After a gateway restart open `http://127.0.0.1:36100/ui/` and paste the gateway key (kept in that tab only).
 
-**附加文件**：按「附加文件」選檔（PDF、.docx、.html、純文字，可多選，單檔上限 50 MB）。檔案會送到本機 gateway 讀成文字（讀完就刪），之後每一題都帶著這些文件，可以一直追問；點檔名旁的 × 移除，「清除對話」會一併清除。文件裡有可疑指示時，回答下方會顯示警告。
+**附加文件**：按「附加文件」選檔（PDF、.docx、.pptx、.xlsx、.html、純文字，可多選，單檔上限 50 MB）。檔案會送到本機 gateway 讀成文字（讀完就刪），之後每一題都帶著這些文件，可以一直追問；點檔名旁的 × 移除，「清除對話」會一併清除。文件裡有可疑指示時，回答下方會顯示警告。
 Attach documents with the button; they are read by the local gateway (the upload is deleted afterwards) and stay attached for follow-up questions.
 
 ## 2. 策略 / Policies

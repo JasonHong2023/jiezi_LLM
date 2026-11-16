@@ -117,7 +117,7 @@ function Chat() {
         </select></label>
         <button onClick={() => { setMsgs([]); setDocs([]); }} disabled={busy}>清除對話</button>
         <input ref={picker} type="file" multiple hidden
-          accept=".pdf,.docx,.html,.htm,.txt,.md,.csv,.json,.log"
+          accept=".pdf,.docx,.pptx,.xlsx,.html,.htm,.txt,.md,.csv,.json,.log"
           onChange={(e) => { attach([...e.target.files]); e.target.value = ""; }} />
         <button onClick={() => picker.current?.click()} disabled={busy || !!reading}>附加文件</button>
       </div>
