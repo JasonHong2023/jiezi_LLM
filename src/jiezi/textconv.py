@@ -93,6 +93,59 @@ def to_taiwan(text: str | None) -> str | None:
     return _FENCE.join(p if i % 2 else _phrases(p) for i, p in enumerate(parts))
 
 
+# ── 整份簡體文件 → 繁體（add-translation；不經模型）/ Whole Simplified documents → Traditional, no model ──
+# 上面的 to_traditional 只換「純簡體字」，給模型輸出用（輸出本來就大多是繁體，不能動到正體字）。整份簡體文件不一樣：
+# 「后、发、干、里」在簡體文裡要依詞決定（后台→後臺、皇后→皇后、头发→頭髮、发展→發展），所以照 OpenCC 的 s2twp 流程：
+# 詞語表（STPhrases）最長比對 → 單字表（STCharacters）取第一個候選 → 台灣異體字（TWVariants：裏→裡、爲→為）→ 台灣用語。
+# to_traditional above only swaps Simplified-only characters, for model output. A Simplified document is different:
+# 后, 发, 干, 里 depend on the word, so this follows OpenCC's s2twp chain: longest match in STPhrases, first candidate
+# in STCharacters, Taiwan variants, then Taiwan phrasing.
+_DATA = Path(__file__).resolve().parent / "eval" / "data"
+
+
+def _read_table(name: str) -> dict[str, str]:
+    out = {}
+    for line in (_DATA / name).read_text(encoding="utf-8").splitlines():
+        if line and not line.startswith("#") and "\t" in line:
+            k, v = line.split("\t", 1)
+            cands = v.split()
+            if cands:
+                out[k] = cands[0]
+    return out
+
+
+@lru_cache(maxsize=1)
+def _s2t() -> tuple[dict[str, str], int, dict[int, str], dict[int, str]]:
+    phrases = _read_table("STPhrases.txt")
+    chars = {ord(k): v for k, v in _read_table("STCharacters.txt").items() if len(k) == 1}
+    variants = {ord(k): v for k, v in _read_table("TWVariants.txt").items() if len(k) == 1 and len(v) == 1}
+    return phrases, max((len(k) for k in phrases), default=1), chars, variants
+
+
+def simplified_to_taiwan(text: str | None) -> str | None:
+    """簡體中文文件轉成台灣的繁體中文（字、異體字、用語）。只用在確定是簡體的原文上。
+    Convert a Simplified Chinese document to Taiwan Traditional Chinese; only for text known to be Simplified."""
+    if not text:
+        return text
+    phrases, longest, chars, variants = _s2t()
+    out, i, n = [], 0, len(text)
+    while i < n:
+        if text[i] > "\u2e7f":  # 只有中日韓字需要查詞 / only CJK needs the phrase lookup
+            for size in range(min(longest, n - i), 1, -1):
+                v = phrases.get(text[i:i + size])
+                if v:
+                    out.append(v)
+                    i += size
+                    break
+            else:
+                out.append(text[i].translate(chars))
+                i += 1
+        else:
+            out.append(text[i])
+            i += 1
+    return _phrases("".join(out).translate(variants))
+
+
 class TaiwanStream:
     """串流版：只在後面的字夠判斷最長詞時才送出，詞不會被切在兩段之間；``` 程式碼區塊裡不換詞。
     Streaming version: text is released only when enough lookahead exists for the longest phrase, so phrases are
