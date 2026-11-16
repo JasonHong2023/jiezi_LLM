@@ -146,6 +146,9 @@ def main(argv: list[str] | None = None) -> int:
     cp.add_argument("--subject", help="plan：科目，如 數學 / subject")
     cp.add_argument("--grade", type=int, choices=range(1, 7), help="plan：年級 / grade")
     cp.add_argument("--stage", type=int, choices=(1, 2, 3), help="plan：學習階段 / learning stage")
+    lp = sub.add_parser("laws", help="national law database, MOJ (add-laws)")
+    lp.add_argument("action", choices=["build", "lookup"])
+    lp.add_argument("query", nargs="?", help="例如「民法第184條」/ e.g. 民法第184條")
     mp = sub.add_parser("memory", help="memory wiki: consulted answers, notes, corrections (add-memory)")
     mp.add_argument("action", choices=["list", "search", "forget", "path"])
     mp.add_argument("query", nargs="?", help="search：問題；forget：主題名稱 / search: question; forget: topic title")
@@ -200,6 +203,14 @@ def main(argv: list[str] | None = None) -> int:
                 print(dictionary.render(entry))
                 print(f"— {d.meta.get(src, {}).get('attribution', src)}\n")
             return 0 if hits else 1
+        if args.cmd == "laws":
+            from .. import laws as L
+            if args.action == "build":
+                print(f"built {L.db_path(root)}: {L.build(root)}; restart the gateway to use it")
+                return 0
+            g = L.grounding(L.Laws(L.db_path(root)), args.query or "")
+            print(g[3].split("\n", 3)[-1] if g else "（找不到 / not found）")
+            return 0 if g else 1
         if args.cmd == "memory":
             from .. import memory as M
             m = M.Memory(M.wiki_path(root))

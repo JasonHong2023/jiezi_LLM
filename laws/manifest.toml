@@ -1,0 +1,16 @@
+# 全國法規資料庫（add-laws）/ National law database (add-laws)
+# 官方每月更新；這裡鎖定一次下載的 SHA-256。更新時重新下載、核對後改 sha256、size、data_date（R18.3）。
+# Updated monthly by the MOJ; this pins one download. To update, re-download, verify, and bump the pins.
+
+[source]
+key = "moj-laws"
+title = "全國法規資料庫 中文法規_法律資料檔"
+url = "https://sendlaw.moj.gov.tw/PublicData/GetFile.ashx?DType=XML&AuData=CF"
+sha256 = "0c4f2685c06f4e70727b9b481a9467f6b15bf299b684c2bb0c1db8f58178a232"
+size = 6065682
+data_date = "2026-11-06"
+license = "政府資料開放授權條款第 1 版（法律條文依著作權法第 9 條不受著作權保護）"
+license_url = "https://data.gov.tw/dataset/18289"
+training_use = true
+attribution = "資料來源：法務部全國法規資料庫（政府資料開放平台資料集 18289，政府資料開放授權條款第 1 版）"
+license_checked = "2026-11-16"

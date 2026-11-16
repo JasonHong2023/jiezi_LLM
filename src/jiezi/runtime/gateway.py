@@ -102,6 +102,13 @@ class Gateway:
                 self.knowledge = Knowledge(knowledge_db(settings.root))
             except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
                 self.knowledge_note = str(exc)
+        self.laws, self.laws_note = None, None
+        if settings.laws:
+            from ..laws import Laws, db_path as laws_db
+            try:
+                self.laws = Laws(laws_db(settings.root))
+            except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
+                self.laws_note = str(exc)
         self.embedder, self.hybrid, self.rag_note = embedder, None, "off"
         if settings.rag and self.knowledge is not None and embedder is not None:
             from ..rag import HybridRetriever, VectorStore, vectors_path
@@ -242,7 +249,7 @@ class Gateway:
         """詞語問題查本機辭典、課綱問題查知識圖譜，把原文附給模型（add-dictionary D2、D3；add-curriculum D2、D3）。
         Attach verbatim dictionary entries for word questions and curriculum-graph data for curriculum questions."""
         if body.get("tools") or (not self.s.tools and all(x is None for x in (
-                self.memory, self.dictionary, self.curriculum, self.knowledge, self.writing))):
+                self.memory, self.dictionary, self.curriculum, self.knowledge, self.writing, self.laws))):
             return
         last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
         if not last or not isinstance(last.get("content"), str):
@@ -260,6 +267,9 @@ class Gateway:
         if self.curriculum is not None:
             from ..curriculum import grounding as curriculum_grounding
             found.append(curriculum_grounding(self.curriculum, last["content"]))
+        if self.laws is not None:
+            from ..laws import grounding as laws_grounding
+            found.append(laws_grounding(self.laws, last["content"]))
         if self.knowledge is not None:
             from ..knowledge import grounding as knowledge_grounding
             found.append(knowledge_grounding(self.knowledge, last["content"], self.hybrid))
@@ -390,6 +400,7 @@ class Gateway:
                              "writing_refs": "on" if self.writing else (self.writing_note or "off"),
                              "knowledge": "on" if self.knowledge else (self.knowledge_note or "off"),
                              "rag": self.rag_note,
+                             "laws": "on" if self.laws else (self.laws_note or "off"),
                              "memory": "on" if self.memory else (self.memory_note or "off"),
                              "tools": "on" if self.s.tools else "off",
                              "cloud_escalation": self.s.cloud_ready, "cloud_used_today": self.cap.used(),
