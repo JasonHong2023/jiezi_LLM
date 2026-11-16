@@ -95,7 +95,19 @@ def fmt(v: Fraction) -> str:
 
 EXPR = re.compile(r"(?:根號\s*)?[(\d](?:[\d\s.()+\-*/%根號]*[\d)%])?(?:\s*=\s*-?\d+(?:\.\d+)?)?")
 CALC_CUE = re.compile(r"多少|等於|=|算|幾|結果|答案|[?？]")
-DATE_LIKE = re.compile(r"^\s*\d{2,4}\s*[-/]\s*\d{1,2}\s*[-/]\s*\d{1,2}\s*$")
+_DATE_PARTS = re.compile(r"^\s*(\d{2,4})\s*[-/]\s*(\d{1,2})\s*[-/]\s*(\d{1,2})\s*$")
+
+
+class _DateLike:
+    """月 1–12、日 1–31 才算日期（「38-8-43」是算式）。 / Only plausible month/day counts as a date."""
+
+    @staticmethod
+    def match(s: str) -> bool:
+        m = _DATE_PARTS.match(s)
+        return bool(m) and 1 <= int(m.group(2)) <= 12 and 1 <= int(m.group(3)) <= 31
+
+
+DATE_LIKE = _DateLike()
 
 
 def calculations(text: str) -> list[str]:

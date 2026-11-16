@@ -131,6 +131,11 @@ def main(argv: list[str] | None = None) -> int:
     mp = sub.add_parser("memory", help="memory wiki: consulted answers, notes, corrections (add-memory)")
     mp.add_argument("action", choices=["list", "search", "forget", "path"])
     mp.add_argument("query", nargs="?", help="search：問題；forget：主題名稱 / search: question; forget: topic title")
+    sp = sub.add_parser("selftest", help="self-test generated from the bundled data (dictionary, curriculum, tools…)")
+    sp.add_argument("--policy", default="jiezi-local", help="gateway policy (default jiezi-local)")
+    sp.add_argument("--limit", type=int, help="at most N items per kind")
+    sp.add_argument("--list", action="store_true", help="only print the questions")
+    sp.add_argument("--dry", action="store_true", help="no model: check whether the attached data holds the answer")
     gp = sub.add_parser("gaps", help="gap report: questions the local model could not handle")
     gp.add_argument("--days", type=int, default=7, help="最近幾天 / how many recent days (default 7)")
     kp = sub.add_parser("knowledge", help="Taiwan knowledge base, taiwan-md (add-knowledge)")
@@ -211,6 +216,23 @@ def main(argv: list[str] | None = None) -> int:
                 e, sim = found
                 print(f"[答案 answer {sim:.2f}] {e.title}｜{e.question}（{e.at[:10]}，{e.provider}）\n{e.text}")
             return 0 if found else 1
+        if args.cmd == "selftest":
+            from .. import selftest
+            if args.list:
+                for it in selftest.build(root):
+                    print(f"[{it.kind}] {it.question}  →  {it.article or it.number or '、'.join(it.expect[:3])}")
+                return 0
+            if args.dry:
+                cov = selftest.coverage(root)
+                print("資料覆蓋 / data coverage:", cov["by_kind"])
+                for q in cov["misses"]:
+                    print("  miss:", q)
+                return 0
+            env = load_env(root)
+            out, summary = selftest.run(root, f"http://127.0.0.1:{port_base(env)}", env.get("JIEZI_GATEWAY_KEY") or "",
+                                        args.policy, args.limit)
+            print(f"{summary['correct']}/{summary['items']} correct {summary['by_kind']}; report: {out}")
+            return 0
         if args.cmd == "gaps":
             from . import gaps
             out, summary = gaps.write(root, args.days)
