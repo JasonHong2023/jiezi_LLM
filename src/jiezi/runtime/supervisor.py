@@ -163,6 +163,10 @@ class Supervisor:
             p = place_core(core, facts.get("budgets") or {})
             if p.get("excluded"):
                 raise EngineUnavailable(f"core model does not fit: {p['reason']}")
+            from .calibrate import measured_ngl
+            m = measured_ngl(self.s.root, core["name"], core["sha256"])
+            if p["ngl"] == 0 and m:  # 放不進整張顯卡：實測部分上 GPU 比較快就用（4.4）/ measured partial offload
+                p = {**p, "ngl": m, "placement": "partial", "reason": f"calibrated best ngl {m}"}
             kw = {"alias": core["name"]}
             if core.get("mmproj_path"):  # 有視覺模組才傳 / only with a vision projector
                 kw["mmproj"] = core["mmproj_path"]

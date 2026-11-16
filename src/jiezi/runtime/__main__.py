@@ -221,6 +221,8 @@ def main(argv: list[str] | None = None) -> int:
     trp.add_argument("--after", help="gate: 訓練後的評測目錄 / run dir after")
     trp.add_argument("--target", action="append", default=[], help="gate: 目標任務 tool|code|qa|summary")
     sub.add_parser("doctor", help="health check of every component, with fixes")
+    cal = sub.add_parser("calibrate", help="measure speed at several GPU layer counts (dev plan 4.4); heavy")
+    cal.add_argument("--model", help="清單名稱，預設為核心 / manifest name, default the core")
     skp = sub.add_parser("skills", help="skill library v0: verified tool-call examples")
     skp.add_argument("action", choices=["build", "list"])
     up = sub.add_parser("ui", help="desktop front end (Phase 8 prototype), served at /ui/")
@@ -366,6 +368,15 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             for r in SK.Skills(SK.skills_path(root)).rows:
                 print(f"{r['at'][:16] if r.get('at') else ''}  {r['question'][:50]}  →  {r['call'][:80]}")
+            return 0
+        if args.cmd == "calibrate":
+            from ..facts import fresh_facts
+            from .calibrate import run as calibrate
+            from .settings import load_settings
+            from .supervisor import resolve_core
+            core = resolve_core(load_settings(root), args.model)
+            r = calibrate(root, core["name"], core["path"], core["sha256"], fresh_facts(root))
+            print(f"{core['name']}: best ngl {r['best_ngl']}; {r['results']}")
             return 0
         if args.cmd == "doctor":
             from . import doctor

@@ -1,0 +1,3 @@
+- [x] 1.1 `runtime/calibrate.py`、`scripts/jiezi calibrate`、supervisor 採用實測值
+- [x] 1.2 單元測試；`openspec validate add-calibrator --strict`
+- [ ] 2.1 E0 後實測 qwen3.5-4b-q8_0、qwen3.5-9b-q4_k_m 與 G1 選定的核心
