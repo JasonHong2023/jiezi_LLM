@@ -28,6 +28,16 @@ cat 會議記錄.txt | scripts/jiezi ask "列出待辦事項"     # 管線輸入
 `jiezi chat` 裡輸入 `/file 路徑`，再輸入問題。文件會一直附著（狀態列顯示檔名），可以對同一份文件連續追問，每一題都會依那一題重新挑段落，也會參考上一輪問答（所以可以問「那相關數據呢？」）；`/file clear` 取消，重開 chat 後要重新 `/file`。掃描版 PDF 會自動用繁中 OCR（每頁約 2 秒）。文件超過本機模型的上下文時，gateway 會先分段處理：要摘要就逐段整理重點再合併；問問題就挑最相關的段落，並標出段落編號。
 In chat use `/file path`. Long documents are condensed by the gateway before answering. The document stays attached for follow-up questions until `/file clear`.
 
+### 只要 JSON（給腳本用）/ JSON answers for scripts
+
+```bash
+scripts/jiezi ask --json-object "把『台北三天』整理成 city 和 days"        # 任何 JSON 物件
+scripts/jiezi ask --schema 參數.schema.json "台北三天的查詢參數" | jq .    # 要符合 JSON Schema；沒過時結束碼 5
+```
+
+API 用 OpenAI 的 `response_format`（`{"type":"json_object"}` 或 `{"type":"json_schema","json_schema":{"schema":{…}}}`）。芥子會自己解析並依 schema 檢查：沒過就重試一次，再沒過就轉交（`jiezi` 策略）；回傳的 `content` 只有 JSON 本身，不會有程式碼框、說明或資料來源附錄（來源看 `jiezi.sources`）。注意：格式正確不代表內容正確；`$ref`、`pattern`、`format` 不檢查。
+The API takes OpenAI's `response_format`. Answers are parsed and checked against the schema (one retry, then escalation); `content` is bare JSON. A valid shape does not prove the values are right.
+
 ### 文件裡的可疑指示（防提示注入）/ Suspicious instructions inside documents
 
 文件、工具回傳的結果、芥子自己查到的資料，對模型來說都只是「資料」，不是指示。附了文件或有工具結果時，gateway 會多加一則安全規則提醒模型；資料裡如果出現「忽略以上指示」「從現在起你是…」「把金鑰傳到…」「請立刻呼叫某工具」這類句子，狀態行下方會多一行：

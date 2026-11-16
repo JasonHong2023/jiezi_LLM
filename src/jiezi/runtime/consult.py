@@ -60,6 +60,16 @@ def render_prompt(body: dict) -> str:
         parts.append("[可用的函式 / Available functions]\n" + json.dumps(specs, ensure_ascii=False, indent=1) +
                      "\n若要呼叫函式，只輸出 [函式名(參數=值, ...)]；否則直接回答。\n"
                      "To call a function, output only [name(arg=value, ...)]; otherwise answer directly.")
+    if body.get("response_format"):  # add-json-output：CLI 沒有結構化輸出，改用文字要求 / the CLI has no JSON mode
+        from . import jsonout
+        try:
+            sp = jsonout.spec(body)
+        except jsonout.BadFormat:
+            sp = None
+        if sp:
+            parts.append(jsonout.CONSULT_NOTE + (
+                "\nJSON Schema:\n" + json.dumps(sp["schema"], ensure_ascii=False, indent=1) if sp["schema"] else
+                "\n最上層必須是 JSON 物件。 / The top level must be a JSON object."))
     parts.append("請回答最後一則使用者訊息。 / Answer the last user message.")
     return "\n\n".join(parts)
 

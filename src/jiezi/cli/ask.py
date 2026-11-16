@@ -9,6 +9,7 @@ from __future__ import annotations
 import io
 
 import json
+from pathlib import Path
 import sys
 from typing import TextIO
 
@@ -45,8 +46,21 @@ def _piped(stdin: TextIO) -> bool:
 
 
 async def run_ask(question: str, policy: str, conn: Connection, as_json: bool, stdin: TextIO, stdout: TextIO,
-                  stderr: TextIO, client=None, files: list[str] | None = None) -> int:
+                  stderr: TextIO, client=None, files: list[str] | None = None, schema: str | None = None,
+                  json_object: bool = False) -> int:
     from ..documents import DocumentError, read
+    extra = None  # add-json-output：--schema 檔案 或 --json-object / structured output
+    if schema:
+        try:
+            sch = json.loads(Path(schema).expanduser().read_text(encoding="utf-8"))
+            if not isinstance(sch, dict):
+                raise ValueError("the schema must be a JSON object")
+        except (OSError, ValueError) as exc:
+            stderr.write(f"jiezi: --schema {schema}: {exc}\n")
+            return 4
+        extra = {"response_format": {"type": "json_schema", "json_schema": {"name": "answer", "schema": sch}}}
+    elif json_object:
+        extra = {"response_format": {"type": "json_object"}}
     attachment = stdin.read() if _piped(stdin) else None
     docs = []
     for f in files or []:
@@ -65,23 +79,30 @@ async def run_ask(question: str, policy: str, conn: Connection, as_json: bool, s
     tty = stdout.isatty()
     try:
         if as_json:
-            stdout.write(json.dumps(await complete(conn, messages, policy, client=client), ensure_ascii=False, indent=2) + "\n")
+            stdout.write(json.dumps(await complete(conn, messages, policy, client=client, extra=extra), ensure_ascii=False, indent=2) + "\n")
             return 0
         meta = None
-        async for kind, value in stream_chat(conn, messages, policy, client=client):
+        async for kind, value in stream_chat(conn, messages, policy, client=client, extra=extra):
             if kind == "delta":
                 stdout.write(value)
                 stdout.flush()
             else:
                 meta = value
         stdout.write("\n")
+        if extra and (meta or {}).get("verification") == "fail":
+            # 格式沒過：答案照印，但用結束碼 5 讓腳本知道 / printed anyway; exit 5 tells scripts it failed the check
+            stderr.write(f"jiezi: 回答沒有通過 JSON 格式檢查 / the answer failed the JSON check: "
+                         f"{meta.get('verification_error')}\n")
+            rc = 5
+        else:
+            rc = 0
         if tty and meta:
             stdout.write(f"{DIM}{status_line(meta)}{RESET}\n")
         elif ((meta or {}).get("injection") or {}).get("suspected"):
             # 管線輸出只有答案，警告寫到 stderr / pipes carry the answer only; the warning goes to stderr
             stderr.write(f"jiezi: 注意 warning: {meta['injection'].get('warning')} / possible prompt injection in "
                          f"the attached data ({', '.join(meta['injection']['suspected'])})\n")
-        return 0
+        return rc
     except GatewayUnreachable as exc:
         stderr.write(f"jiezi: {exc}; gateway 未啟動，請執行 scripts/jiezi serve / the gateway is not running; "
                      "start it with scripts/jiezi serve\n")
@@ -91,11 +112,12 @@ async def run_ask(question: str, policy: str, conn: Connection, as_json: bool, s
         return 3
 
 
-def main(question: str, policy: str = "jiezi", as_json: bool = False, files: list[str] | None = None) -> int:
+def main(question: str, policy: str = "jiezi", as_json: bool = False, files: list[str] | None = None,
+         schema: str | None = None, json_object: bool = False) -> int:
     conn = Connection.from_env()
     if not conn.key:
         sys.stderr.write("jiezi: JIEZI_GATEWAY_KEY is not set; run scripts/jiezi init-key\n")
         return 3
     ensure_gateway(conn, log=lambda m: sys.stderr.write(m + "\n"))
     return anyio.run(lambda: run_ask(question, policy, conn, as_json, sys.stdin, sys.stdout, sys.stderr,
-                                     files=files))
+                                     files=files, schema=schema, json_object=json_object))

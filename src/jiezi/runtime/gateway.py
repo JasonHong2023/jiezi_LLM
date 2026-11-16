@@ -215,9 +215,14 @@ class Gateway:
         r = await self.local.post(f"{base}/v1/chat/completions", json=self._local_body(body, messages))
         r.raise_for_status()
         data = r.json()
+        conv = to_taiwan if self.s.tw_phrases else to_traditional
         for ch in data.get("choices") or []:  # 本機輸出的純簡體字轉繁體 / Simplified-only chars → Traditional
             msg = ch.get("message") or {}
-            msg["content"] = (to_taiwan if self.s.tw_phrases else to_traditional)(msg.get("content"))
+            if body.get("response_format") and msg.get("content"):  # JSON：只轉值，鍵不動 / values only, keys untouched
+                from .jsonout import convert_values
+                msg["content"] = convert_values(msg["content"], conv)
+            else:
+                msg["content"] = conv(msg.get("content"))
         return data
 
     async def _cloud_once(self, body: dict) -> tuple[dict, dict]:
@@ -377,7 +382,7 @@ class Gateway:
     # ── 記憶 / Memory（add-memory）──
     def _remember(self, body: dict, rec: dict, msg: dict, provider: str, model: str | None) -> None:
         """把請教／雲端的答案存進記憶 wiki；存不了不影響回答。 / Save to the memory wiki; failures never block."""
-        if self.memory is None or body.get("tools") or rec.get("eval"):
+        if self.memory is None or body.get("tools") or rec.get("eval") or rec.get("json_mode"):
             return
         if self._injected(rec):  # 可疑資料影響過的答案不進記憶 / never remember an answer shaped by suspicious data
             rec["memory"] = {"saved": False, "why": "suspected_injection"}
@@ -580,6 +585,11 @@ class Gateway:
         if policy not in POLICIES:
             return _err(400, f"model must be one of {', '.join(POLICIES)}", "invalid_model")
         stream = bool(body.get("stream"))
+        from . import jsonout
+        try:
+            json_mode = jsonout.spec(body) is not None  # add-json-output
+        except jsonout.BadFormat as exc:
+            return _err(400, str(exc), "invalid_response_format")
         tid = new_id() if self.traj.enabled else None
         # training_use：None 表示訓練前要依授權表確認；請教 Claude 的回答一律 False（design D9）
         # training_use: None means check the license registry before training; Claude consultations are always False
@@ -589,6 +599,8 @@ class Gateway:
         # Evaluation traffic: no skill learning, no memory saving, so evaluations never contaminate themselves
         if request.headers.get("x-jiezi-eval") == "1":
             rec["eval"] = True
+        if json_mode:
+            rec["json_mode"] = True
         # 查資料可能要啟動 embedding 引擎，放到執行緒以免卡住其他請求 / may start the embedder; off the event loop
         data: list[dict] = []  # gateway 自己附加的資料訊息 / data messages the gateway attached
         await anyio.to_thread.run_sync(self._ground, body, rec, data)
@@ -596,7 +608,7 @@ class Gateway:
         if self.s.injection_guard:
             self._guard(body, rec, data)
         t0 = time.monotonic()
-        if self.memory is not None and not body.get("tools"):
+        if self.memory is not None and not body.get("tools") and not json_mode:  # 記憶的回答是文字，不是 JSON
             early = self._memory_early(body, rec, t0, stream, policy)
             if early is not None:
                 return early
@@ -642,7 +654,7 @@ class Gateway:
                 self.log(f"longdoc: condensing failed, sending as is: {type(exc).__name__}: {exc}")
                 rec["longdoc"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 
-        if stream and not body.get("tools") and not self._sample_kind(body):
+        if stream and not body.get("tools") and not json_mode and not self._sample_kind(body):
             return StreamingResponse(self._relay_stream(base, body, rec, t0, policy), media_type="text/event-stream")
         try:
             return await self._tiered(base, body, rec, t0, policy, stream)
@@ -743,6 +755,8 @@ class Gateway:
             return None
         if body.get("tools"):
             return "tools"
+        if body.get("response_format") and body["response_format"].get("type") in ("json_object", "json_schema"):
+            return "json"
         last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
         if last and isinstance(last.get("content"), str) and escalation.CODE_REQUEST.search(last["content"]):
             return "code"
@@ -829,7 +843,10 @@ class Gateway:
         rec["tiers"].append({"tier": 3, "provider": "cloud", "answer": _message(resp), "model": info["model"],
                              "reason": reason, "usage": info["usage"], "cost": info["cost"]})
         self._remember(body, rec, _message(resp), "cloud", info["model"])
-        meta = self._meta(rec, 3, resp, None, t0, escalation=reason, cloud=info)
+        ver = escalation.verify(body, _message(resp)) if rec.get("json_mode") else None
+        if ver:
+            rec["tiers"][-1]["verification"] = ver
+        meta = self._meta(rec, 3, resp, ver, t0, escalation=reason, cloud=info)
         return self._deliver(resp, meta, rec, stream)
 
     async def _consult_once(self, body: dict) -> tuple[dict, dict]:
@@ -856,7 +873,7 @@ class Gateway:
         rec["training_use"] = consult_mod.TRAINING_USE
         msg = _message(resp)
         self._remember(body, rec, msg, "claude", ans["model"])
-        ver = escalation.verify(body, msg) if body.get("tools") else None
+        ver = escalation.verify(body, msg) if body.get("tools") or rec.get("json_mode") else None
         rec["tiers"].append({"tier": tier, "provider": "claude", "answer": msg, "model": ans["model"],
                              "reason": reason, "usage": ans["usage"], "cost_equivalent_usd": ans.get("cost_equivalent_usd"),
                              "verification": ver, "training_use": consult_mod.TRAINING_USE})
@@ -896,7 +913,15 @@ class Gateway:
                 "confidence": rec.get("confidence")}
 
     def _deliver(self, resp: dict, meta: dict, rec: dict, stream: bool) -> Response:
-        if rec.get("dict_appendix"):
+        if rec.get("json_mode"):
+            # JSON 模式：回答只留 JSON（去掉程式碼框與說明），不加附錄；來源仍在 jiezi.sources
+            # JSON mode: the answer is bare JSON, no appendix; sources stay in jiezi.sources
+            from .jsonout import normalize
+            for ch in resp.get("choices") or []:
+                msg = ch.get("message") or {}
+                if not msg.get("tool_calls"):
+                    normalize(msg)
+        elif rec.get("dict_appendix"):
             for ch in resp.get("choices") or []:
                 msg = ch.get("message") or {}
                 msg["content"] = (msg.get("content") or "") + rec["dict_appendix"]

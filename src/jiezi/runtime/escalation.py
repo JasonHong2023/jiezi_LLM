@@ -186,6 +186,9 @@ def answer_key(message: dict, kind: str) -> str:
             return "invalid"
         return json.dumps(sorted(json.dumps([n, a], ensure_ascii=False, sort_keys=True, default=str) for n, a in calls),
                           ensure_ascii=False)
+    if kind == "json":
+        from . import jsonout
+        return jsonout.key(message)
     blocks = _CODE.findall(message.get("content") or "")
     return re.sub(r"\s+", "", "\n".join(blocks)) or re.sub(r"\s+", "", message.get("content") or "")
 
@@ -196,6 +199,14 @@ def verify(request: dict, message: dict, grounding: str | None = None) -> dict:
     checks = []
     if request.get("tools"):
         checks.append(verify_tools(request["tools"], message))
+    if request.get("response_format") and not message.get("tool_calls"):  # add-json-output
+        from . import jsonout
+        try:
+            sp = jsonout.spec(request)
+        except jsonout.BadFormat:
+            sp = None
+        if sp:
+            checks.append(jsonout.check(sp, message))
     checks.append(verify_code(message.get("content") or ""))
     checks.append(verify_grounded(message, grounding))
     applicable = [c for c in checks if c["status"] != "not_applicable"]

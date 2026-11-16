@@ -47,13 +47,14 @@ def _error_message(r: httpx.Response) -> str:
 
 
 async def stream_chat(conn: Connection, messages: list[dict], policy: str = "jiezi",
-                      client: httpx.AsyncClient | None = None, timeout: float = 900) -> AsyncIterator[tuple[str, object]]:
+                      client: httpx.AsyncClient | None = None, timeout: float = 900,
+                      extra: dict | None = None) -> AsyncIterator[tuple[str, object]]:
     """產生 ("delta", 文字)、("meta", jiezi 欄位)。 / Yield ("delta", text) and ("meta", jiezi field)."""
     own = client is None
     client = client or httpx.AsyncClient(timeout=httpx.Timeout(timeout, connect=5.0))
     try:
         async with client.stream("POST", f"{conn.url}/v1/chat/completions", headers=conn.headers,
-                                 json={"model": policy, "messages": messages, "stream": True}) as r:
+                                 json={**(extra or {}), "model": policy, "messages": messages, "stream": True}) as r:
             if r.status_code != 200:
                 await r.aread()
                 raise GatewayError(_error_message(r))
@@ -83,13 +84,13 @@ async def stream_chat(conn: Connection, messages: list[dict], policy: str = "jie
 
 
 async def complete(conn: Connection, messages: list[dict], policy: str = "jiezi", timeout: float = 900,
-                   client: httpx.AsyncClient | None = None) -> dict:
+                   client: httpx.AsyncClient | None = None, extra: dict | None = None) -> dict:
     """非串流，回傳完整 JSON（含 jiezi 欄位）。 / Non-streaming; return the full JSON (with the jiezi field)."""
     own = client is None
     client = client or httpx.AsyncClient(timeout=httpx.Timeout(timeout, connect=5.0))
     try:
         r = await client.post(f"{conn.url}/v1/chat/completions", headers=conn.headers,
-                              json={"model": policy, "messages": messages})
+                              json={**(extra or {}), "model": policy, "messages": messages})
     except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
         raise GatewayUnreachable(f"gateway not reachable at {conn.url}") from exc
     finally:

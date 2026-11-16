@@ -1,0 +1,5 @@
+- [x] 1.1 `jsonout.py`：`spec`、`extract`、`validate`、`check`、`normalize`、`key`、`convert_values`
+- [x] 1.2 gateway：400、檢查／重試／轉交、取樣、串流先驗證、只回 JSON、不加附錄、不走記憶捷徑；雲端與 Claude 的抽取與檢查
+- [x] 1.3 `consult.render_prompt` 附格式要求；`jiezi ask --schema`、`--json-object`、結束碼 5
+- [x] 1.4 單元測試；`docs/clients.md`；`openspec validate add-json-output --strict`
+- [ ] 2.1 E0 結束後實測：本機引擎是否接受 `json_object` 與 `json_schema`（文法限制）、通過率與耗時；Hermes 或 OpenCode 實際送出 `response_format` 一次
