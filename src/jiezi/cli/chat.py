@@ -5,7 +5,8 @@
 滑鼠拖曳選取，放開即自動複製（使用者 2026-11-15：跟 Claude Code 一樣）/ select by dragging, copied on release
 (user request: behave like Claude Code)；Ctrl+C 中斷生成 / stop generation；F3 複製最後一則回答 / copy the last
 answer；F2 切換策略 / switch policy；Ctrl+Q 離開 / quit。
-指令 / Commands：`/save 路徑`、`/copy`、`/clear`。"""
+指令 / Commands：`/save 路徑`、`/copy`、`/clear`、`/file 路徑`（附文件，之後每一題都帶著，可以一直追問；`/file clear`
+取消）/ attach a document that stays with every following question (`/file clear` detaches)、`/image 路徑`。"""
 
 from __future__ import annotations
 
@@ -30,6 +31,7 @@ from .herdr import HerdrReporter
 POLICIES = ("jiezi", "jiezi-local", "jiezi-ask-claude", "jiezi-cloud")
 # 聊天歷史（使用者 2026-11-15：重開時接續上次的對話）/ chat history, resumed on restart
 MAX_SAVED, MAX_SHOWN, MAX_CONTEXT = 200, 20, 12
+MAX_DOC_CHARS = 1_500_000  # 附加文件的總字數上限（每題都會送到本機 gateway）/ total attached characters
 IMAGE_TYPES, MAX_IMAGE_BYTES = {"image/png", "image/jpeg", "image/webp", "image/gif"}, 5 << 20  # add-vision
 
 
@@ -45,6 +47,28 @@ def for_context(history: list[dict]) -> list[dict]:
     """送給 gateway 的上下文：只有最後一則保留圖片，其他只留文字。 / Only the last message keeps its image."""
     out = [{**m, "content": text_of(m["content"])} for m in history[:-1]]
     return out + history[-1:]  # 引擎上下文 4096，只送最近 12 則 / engine ctx is 4096
+
+
+def with_documents(messages: list[dict], docs: list[dict]) -> list[dict]:
+    """把目前附著的文件包進最後一個問題（不改原本的訊息）。歷史只存問題本身，文件每一題重新附上，gateway 才能依
+    這一題重新挑段落（add-document-followup）。
+    Wrap the attached documents around the last question without touching the stored message. History keeps the
+    bare question; documents ride along with each new question so the gateway can re-select chunks for it."""
+    if not docs or not messages or messages[-1].get("role") != "user":
+        return messages
+    from ..documents import attach
+
+    def wrap(text: str) -> str:
+        for d in reversed(docs):
+            text = attach(d, text)
+        return text
+    last = messages[-1]
+    if isinstance(last.get("content"), list):
+        content = [{**p, "text": wrap(p.get("text", ""))} if isinstance(p, dict) and p.get("type") == "text" else p
+                   for p in last["content"]]
+    else:
+        content = wrap(last.get("content") or "")
+    return [*messages[:-1], {**last, "content": content}]
 
 
 class PromptArea(TextArea):
@@ -106,7 +130,7 @@ class ChatApp(App):
         self.last_status = ""
         self.copied: str | None = None
         self.pending_image: tuple[str, str] | None = None  # (檔名, data URL) / (name, data URL)
-        self.pending_docs: list[dict] = []                 # /file 讀好的文件 / documents read by /file
+        self.docs: list[dict] = []                         # /file 附著的文件，每一題都帶 / attached, sent with every question
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(Static("輸入問題後按 Enter / Type a question and press Enter. "
@@ -160,6 +184,8 @@ class ChatApp(App):
 
     def _update_bar(self, note: str = "") -> None:
         text = f"策略 policy: {self.policy} | {self.conn.url} | 雲端費用 cloud cost ~US${self.cost:.4f}"
+        if self.docs:
+            text += f" | 文件 docs: {'、'.join(d['name'] for d in self.docs)}（/file clear 取消）"
         self.query_one("#bar", Static).update(text + (f" | {note}" if note else ""))
 
     # ── 動作 / Actions ──
@@ -219,6 +245,7 @@ class ChatApp(App):
             return
         if text == "/clear":
             self.history.clear()
+            self.docs = []
             if self.history_path:
                 self.history_path.unlink(missing_ok=True)
             await self.query_one("#log", VerticalScroll).remove_children()
@@ -228,12 +255,8 @@ class ChatApp(App):
             return
         log = self.query_one("#log", VerticalScroll)
         content = text
-        if self.pending_docs:  # 這一題附文件（add-long-documents）/ this question carries documents
-            from ..documents import attach
-            for d in reversed(self.pending_docs):
-                content = attach(d, content)
-            text = f"{text}  [文件 documents: {'、'.join(d['name'] for d in self.pending_docs)}]"
-            self.pending_docs = []
+        if self.docs:  # 文件在送出時才附上（_answer），歷史只存問題 / attached when sending; history keeps the question
+            text = f"{text}  [文件 documents: {'、'.join(d['name'] for d in self.docs)}]"
         if self.pending_image:  # 這一題附圖 / this question carries the image
             name, url = self.pending_image
             content = [{"type": "text", "text": content}, {"type": "image_url", "image_url": {"url": url}}]
@@ -253,7 +276,8 @@ class ChatApp(App):
         meta = None
         stream = Markdown.get_stream(answer)
         try:
-            async for kind, value in stream_chat(self.conn, for_context(self.history[-MAX_CONTEXT:]), self.policy):
+            outgoing = with_documents(for_context(self.history[-MAX_CONTEXT:]), self.docs)
+            async for kind, value in stream_chat(self.conn, outgoing, self.policy):
                 if kind == "delta":
                     parts.append(value)
                     await stream.write(value)
@@ -276,7 +300,6 @@ class ChatApp(App):
         finally:
             await stream.stop()
             if parts:
-                self._shrink_documents()
                 self.history.append({"role": "assistant", "content": "".join(parts)})
             elif self.history and self.history[-1]["role"] == "user":
                 self.history.pop()  # 沒有答案就不留問題，避免下一題連續兩個 user / no answer: drop the question
@@ -285,10 +308,15 @@ class ChatApp(App):
             self.reporter.report("idle")
 
     async def _attach_file(self, path: str) -> None:
-        """`/file 路徑`：下一個問題附上這份文件（PDF、.docx、.html、純文字）。 / Attach a document to the next question."""
+        """`/file 路徑`：附上文件（PDF、.docx、.html、純文字），之後每一題都帶著，直到 `/file clear`。
+        Attach a document; it stays with every following question until `/file clear`."""
         from ..documents import DocumentError, read
+        if path in ("clear", "off", "none"):
+            n, self.docs = len(self.docs), []
+            self._update_bar(f"已取消 {n} 份文件 / detached {n} document(s)")
+            return
         if not path:
-            self._update_bar("用法 usage: /file 文件路徑（PDF、.docx、.html、.txt、.md）")
+            self._update_bar("用法 usage: /file 文件路徑（PDF、.docx、.html、.txt、.md）；/file clear 取消附加的文件")
             return
         self._update_bar(f"讀取中 reading: {Path(path).name}……")
         try:
@@ -299,26 +327,13 @@ class ChatApp(App):
         if not d["text"].strip():
             self._update_bar("讀不到文字（可能是掃描檔且 OCR 失敗）/ no text found")
             return
-        self.pending_docs.append(d)
-        extra = f"，OCR {len(d['ocr_pages'])} 頁" if d.get("ocr_pages") else ""
-        self._update_bar(f"已附文件 attached: {d['name']}（{d['chars']} 字{extra}）；輸入問題後按 Enter / type your question")
-
-    def _shrink_documents(self) -> None:
-        """回答完後，歷史裡的文件全文換成一行說明，避免之後每題都重送整份文件。
-        After the answer, replace document text in history with a one-line note so it is not resent every turn."""
-        from ..documents import DOC_RE
-        if not self.history or self.history[-1].get("role") != "user":
+        if sum(len(x["text"]) for x in self.docs) + len(d["text"]) > MAX_DOC_CHARS:
+            self._update_bar(f"附加的文件合計超過 {MAX_DOC_CHARS} 字，請先 /file clear / attached documents too large")
             return
-        m = self.history[-1]
-
-        def short(s: str) -> str:
-            return DOC_RE.sub(lambda x: f"【已附文件：{x['name']}（{len(x['text'])} 字；要再問內容請重新 /file）】", s)
-        if isinstance(m.get("content"), str):
-            m["content"] = short(m["content"])
-        elif isinstance(m.get("content"), list):
-            for p in m["content"]:
-                if isinstance(p, dict) and p.get("type") == "text":
-                    p["text"] = short(p.get("text", ""))
+        self.docs = [x for x in self.docs if x["name"] != d["name"]] + [d]  # 同名視為更新 / same name replaces
+        extra = f"，OCR {len(d['ocr_pages'])} 頁" if d.get("ocr_pages") else ""
+        self._update_bar(f"已附文件 attached: {d['name']}（{d['chars']} 字{extra}）；可以一直追問，/file clear 取消 / "
+                         "stays attached for follow-up questions")
 
     def _attach_image(self, path: str) -> None:
         """`/image 路徑`：下一個問題附上這張圖（add-vision）。 / Attach an image to the next question."""

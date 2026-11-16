@@ -163,6 +163,8 @@ class Gateway:
                 self.writing = WritingRefs(index_path(settings.root))
             except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
                 self.writing_note = str(exc)
+        from ..longdoc import NotesCache
+        self.doc_notes = NotesCache()  # 長文件各段重點（只在記憶體）/ per-chunk notes of long documents, memory only
         self.consult_cap = escalation.DailyCap(settings.var / "runtime" / "consult", settings.consult_daily_max) \
             if settings.consult_daily_max else None
         timeout = httpx.Timeout(settings.request_timeout_s, connect=10.0)
@@ -651,20 +653,30 @@ class Gateway:
     # ── 長文件（add-long-documents）/ Long documents ──
     async def _condense(self, base: str, body: dict, rec: dict) -> None:
         """最後一個問題放不進本機上下文時，先用本機模型分段濃縮。 / Condense with the local model when it does not fit."""
-        from ..longdoc import condense, needed
-        idx = next((i for i in range(len(body["messages"]) - 1, -1, -1)
-                    if body["messages"][i].get("role") == "user"), None)
-        if idx is None or not needed(body["messages"][idx].get("content")):
+        from ..documents import DOC_RE
+        from ..longdoc import FOLLOWUP_RESERVE, LIMIT, condense, needed
+        from .context import _msg_tokens
+        msgs = body["messages"]
+        idx = next((i for i in range(len(msgs) - 1, -1, -1) if msgs[i].get("role") == "user"), None)
+        if idx is None:
             return
+        # 追問：留空間給上一輪問答，並用它幫忙挑段落（add-document-followup）
+        # Follow-ups: keep room for the previous exchange and use it as a ranking hint
+        prev = [m for m in msgs[:idx] if m.get("role") in ("user", "assistant")][-2:]
+        budget = LIMIT - min(FOLLOWUP_RESERVE, sum(_msg_tokens(m) for m in prev))
+        if not needed(msgs[idx].get("content"), budget):
+            return
+        hint = "\n".join(DOC_RE.sub("", message_text(m))[:400] for m in prev)
 
         async def complete(msgs: list[dict], max_tokens: int) -> str:
             r = await self._local_once(base, {"messages": msgs, "max_tokens": max_tokens, "temperature": 0.3}, msgs)
             return ((r.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
 
         t = time.monotonic()
-        new, info = await condense(body["messages"][idx]["content"], complete)
-        body["messages"][idx] = {**body["messages"][idx], "content": new}
+        new, info = await condense(msgs[idx]["content"], complete, hint, budget, self.doc_notes)
+        msgs[idx] = {**msgs[idx], "content": new}
         info["seconds"] = round(time.monotonic() - t, 1)
+        info["followup"] = bool(prev)
         rec["longdoc"] = info
         rec["sources"] = (rec.get("sources") or []) + [{"source": "document", "name": n} for n in info["documents"]]
         self.log(f"longdoc: {info['mode']}, {info['chars']} chars → {info['after_tokens']} tokens in {info['seconds']} s")

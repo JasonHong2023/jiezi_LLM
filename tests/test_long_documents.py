@@ -162,7 +162,7 @@ class TestLongdoc(unittest.TestCase):
         self.assertLessEqual(est_tokens(new), L.LIMIT + 200)
 
     def test_question_selects_relevant_chunks(self):
-        parts = L.chunks(LONG)
+        parts = L.chunks(LONG, L.QA_CHUNK_TOKENS)
         target = next(i for i, p in enumerate(parts) if "風力發電" in p)
         new, info = anyio.run(L.condense, D.attach({"name": "報告.pdf", "text": LONG}, "風力發電的數據是多少？"),
                               fake_complete)
@@ -199,6 +199,144 @@ class TestGatewayLongdoc(unittest.TestCase):
             self.assertNotIn(LONG[:200], final)              # 原文沒有整份送進去 / not sent whole
             self.assertGreater(len(seen), 2)                  # 先分段整理 / chunks summarized first
             self.assertLessEqual(est_tokens(final), L.LIMIT + 200)
+
+
+class TestFollowUp(unittest.TestCase):
+    """長文件追問（add-document-followup）。 / Follow-up questions over the same document."""
+
+    def test_hint_finds_chunk_for_vague_follow_up(self):
+        parts = L.chunks(LONG, L.QA_CHUNK_TOKENS)
+        target = next(i for i, p in enumerate(parts) if "風力發電" in p)
+        vague = "那相關數據是多少？"
+        with_hint = L.rank(vague, parts, hint="風力發電的發展如何？\n報告提到風力發電持續成長。")
+        self.assertIn("風力發電", parts[with_hint[0][1]])                 # 靠上一輪問答找到 / found through the hint
+        top = L.rank("核能的數據是多少？", parts, hint="風力發電的發展如何？")[0][1]
+        self.assertIn("核能", parts[top])                                 # 這一題的字比上一輪重要 / the question outweighs
+        self.assertEqual(L.rank(vague, parts), L.rank(vague, parts, hint="  "))
+        self.assertIsNotNone(target)
+
+    def test_budget_leaves_room_for_previous_turn(self):
+        content = D.attach({"name": "報告.pdf", "text": LONG}, "風力發電的數據是多少？")
+        full, _ = anyio.run(L.condense, content, fake_complete)
+        small, _ = anyio.run(lambda: L.condense(content, fake_complete, budget=L.LIMIT - L.FOLLOWUP_RESERVE))
+        self.assertLess(est_tokens(small), est_tokens(full))
+        self.assertLessEqual(est_tokens(small), L.LIMIT - L.FOLLOWUP_RESERVE + 200)
+
+    def test_notes_cache_skips_map_step(self):
+        cache, calls = L.NotesCache(size=2), []
+        content = D.attach({"name": "報告.pdf", "text": LONG}, "請整理重點")
+
+        async def run():
+            return await L.condense(content, lambda m, n: fake_complete(m, n, calls), cache=cache)
+        _, first = anyio.run(run)
+        n = len(calls)
+        self.assertFalse(first["summaries"][0]["cached"])
+        _, second = anyio.run(run)
+        self.assertTrue(second["summaries"][0]["cached"])
+        self.assertLess(len(calls) - n, first["summaries"][0]["chunks"])  # 不重跑各段整理 / map step not repeated
+        for i in range(3):                                                # 只留最近幾份 / bounded
+            cache.put(f"d{i}", "x", ["n"])
+        self.assertEqual(len(cache.rows), 2)
+        self.assertIsNone(cache.get("報告.pdf", LONG))
+
+    def test_failed_chunk_is_not_cached(self):
+        cache = L.NotesCache()
+
+        async def flaky(msgs, max_tokens):
+            return "" if "第 2/" in msgs[0]["content"] else "- 重點"
+        anyio.run(lambda: L.summarize("a", LONG, flaky, cache=cache))
+        self.assertEqual(len(cache.rows), 0)
+
+    def test_gateway_follow_up(self):
+        import httpx
+        from starlette.testclient import TestClient
+        from test_runtime_gateway import KEY, local_handler, make_supervisor
+        from jiezi.runtime.gateway import Gateway, create_app
+        from jiezi.runtime.trajectory import TrajectoryWriter
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            sup, _, patch = make_supervisor(tmp, samples=1)
+            lh, seen = local_handler([{"role": "assistant", "content": "- 重點"}])
+            gw = Gateway(sup.s, sup, TrajectoryWriter(tmp / "traj", log=lambda *_: None),
+                         local_http=httpx.AsyncClient(transport=httpx.MockTransport(lh)), log=lambda *_: None)
+            h = {"Authorization": f"Bearer {KEY}"}
+            doc = {"name": "報告.pdf", "text": LONG}
+            with patch, TestClient(create_app(gw)) as c:
+                c.post("/v1/chat/completions", headers=h, json={"model": "jiezi-local", "messages": [
+                    {"role": "user", "content": D.attach(doc, "請摘要")}]})
+                first = len(seen)
+                c.post("/v1/chat/completions", headers=h, json={"model": "jiezi-local", "messages": [
+                    {"role": "user", "content": "請摘要"}, {"role": "assistant", "content": "這份報告談能源政策。"},
+                    {"role": "user", "content": D.attach(doc, "再整理一次重點")}]})
+                second = len(seen) - first
+                c.post("/v1/chat/completions", headers=h, json={"model": "jiezi-local", "messages": [
+                    {"role": "user", "content": "核能那一節談了什麼？"}, {"role": "assistant", "content": "談核能的預算。"},
+                    {"role": "user", "content": D.attach(doc, "那相關數據是多少？")}]})
+            recs = [json.loads(x) for f in (tmp / "traj").glob("*.jsonl") for x in f.read_text(encoding="utf-8").splitlines()]
+        self.assertLess(second, first)                                    # 第二次摘要用快取 / the second summary is cached
+        self.assertTrue(recs[1]["longdoc"]["summaries"][0]["cached"])
+        self.assertEqual([r["longdoc"]["followup"] for r in recs], [False, True, True])
+        final = seen[-1]["messages"]
+        self.assertEqual(recs[2]["longdoc"]["mode"], "qa")
+        self.assertIn("核能", final[-1]["content"])                        # 依上一輪挑到核能的段落 / chosen via the hint
+        self.assertEqual([m["content"] for m in final if m["role"] == "assistant"], ["談核能的預算。"])  # 上一輪還在 / kept
+        self.assertLessEqual(est_tokens(final[-1]["content"]), L.LIMIT)
+        self.assertLess(len(final[-1]["content"]), len(LONG) // 2)       # 不是整份送 / not sent whole
+
+
+class TestChatDocuments(unittest.TestCase):
+    def test_documents_ride_with_every_question(self):
+        from jiezi.cli.chat import with_documents
+        docs = [{"name": "a.pdf", "text": "甲文件"}, {"name": "b.docx", "text": "乙文件"}]
+        history = [{"role": "user", "content": "第一題"}, {"role": "assistant", "content": "答"},
+                   {"role": "user", "content": "第二題"}]
+        out = with_documents(history, docs)
+        got, q = L.split_message(out[-1]["content"])
+        self.assertEqual(([n for n, _ in got], q), (["a.pdf", "b.docx"], "第二題"))
+        self.assertEqual(history[-1]["content"], "第二題")                  # 歷史只存問題 / history keeps the bare question
+        self.assertEqual(out[0]["content"], "第一題")                       # 舊的問題不重附 / older turns stay bare
+        self.assertIs(with_documents(history, []), history)
+        multi = [{"role": "user", "content": [{"type": "text", "text": "看圖"}, {"type": "image_url", "image_url": {"url": "x"}}]}]
+        out = with_documents(multi, docs[:1])
+        self.assertIn("【文件：a.pdf】", out[0]["content"][0]["text"])
+        self.assertEqual(multi[0]["content"][0]["text"], "看圖")
+
+    def test_chat_file_stays_attached_until_cleared(self):
+        from unittest import mock
+        from jiezi.cli import chat
+        from jiezi.cli.client import Connection
+        sent = []
+
+        async def fake_stream(conn, messages, policy, **kw):
+            sent.append(messages)
+            yield "delta", "答案"
+            yield "meta", {"tier": 0, "model": "core"}
+
+        async def go():
+            with tempfile.TemporaryDirectory() as d:
+                f = Path(d) / "筆記.txt"
+                f.write_text("芥子納須彌的出處是維摩詰經。", encoding="utf-8")
+                app = chat.ChatApp(Connection("http://x", "k"), reporter=mock.Mock())
+                with mock.patch.object(chat, "stream_chat", fake_stream):
+                    async with app.run_test(size=(80, 24)) as pilot:
+                        async def ask(q):
+                            app.query_one("#prompt").text = q
+                            await pilot.press("enter")
+                            await app.workers.wait_for_complete()
+                            await pilot.pause()
+                        await ask(f"/file {f}")
+                        await ask("出處是什麼")
+                        await ask("再說一次")
+                        await ask("/file clear")
+                        await ask("謝謝")
+                        return app.history
+        history = anyio.run(go)
+        self.assertEqual(len(sent), 3)
+        self.assertIn("【文件：筆記.txt】", sent[0][-1]["content"])
+        self.assertIn("【文件：筆記.txt】", sent[1][-1]["content"])           # 追問仍帶文件 / follow-up carries it
+        self.assertNotIn("【文件：", sent[1][0]["content"])                    # 上一題不重複帶 / not duplicated in history
+        self.assertNotIn("【文件：", sent[2][-1]["content"])                   # 取消後不帶 / detached
+        self.assertEqual([m["content"] for m in history if m["role"] == "user"], ["出處是什麼", "再說一次", "謝謝"])
 
 
 class TestAskFile(unittest.TestCase):

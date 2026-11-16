@@ -17,6 +17,7 @@ Summarization is a core task, but the local slot holds 4096 tokens and PDF/Word 
 - 轉交雲端時改送原文（目前取得本機引擎後才濃縮；本機無法使用而直接轉交時，雲端收到的是原文）。/ Sending the original to the cloud after condensing.
 - 舊版 .doc、.pptx、試算表。/ Legacy .doc, .pptx, spreadsheets.
 - 長文件的追問（目前一份文件對應一題；要再問請重新附檔）。/ Follow-up questions over the same document.
+  （更正 2026-11-16，R19.4：已由 add-document-followup 補上；chat 不再於回答後縮短歷史，歷史一開始就只存問題。/ Correction: added by add-document-followup.）
 
 ## Capabilities
 

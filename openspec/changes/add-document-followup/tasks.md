@@ -1,0 +1,6 @@
+- [x] 1.1 `longdoc.py`：`rank`／`select` 的提示、評分正規化、問答分段 600 token、`budget`、`NotesCache`
+- [x] 1.2 gateway `_condense`：上一輪問答當提示、預留空間、快取、`longdoc.followup`
+- [x] 1.3 chat：文件持續附著（`with_documents`）、`/file clear`、狀態列、移除回答後縮短
+- [x] 1.4 單元測試；`docs/clients.md`；`openspec validate add-document-followup --strict`
+- [ ] 2.1 E0 結束後以本機模型實測：同一份長文件先摘要、再連問兩題（含一題沒有關鍵字的追問），記錄品質與耗時
+- [ ] 2.2 歸檔順序：先 add-long-documents，再本變更

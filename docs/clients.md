@@ -25,8 +25,8 @@ scripts/jiezi ask --file 報告.pdf "請摘要重點"          # PDF、.docx、.
 cat 會議記錄.txt | scripts/jiezi ask "列出待辦事項"     # 管線輸入也當成文件
 ```
 
-`jiezi chat` 裡輸入 `/file 路徑`，再輸入問題。掃描版 PDF 會自動用繁中 OCR（每頁約 2 秒）。文件超過本機模型的上下文時，gateway 會先分段處理：要摘要就逐段整理重點再合併；問問題就挑最相關的段落，並標出段落編號。
-In chat use `/file path`. Long documents are condensed by the gateway before answering.
+`jiezi chat` 裡輸入 `/file 路徑`，再輸入問題。文件會一直附著（狀態列顯示檔名），可以對同一份文件連續追問，每一題都會依那一題重新挑段落，也會參考上一輪問答（所以可以問「那相關數據呢？」）；`/file clear` 取消，重開 chat 後要重新 `/file`。掃描版 PDF 會自動用繁中 OCR（每頁約 2 秒）。文件超過本機模型的上下文時，gateway 會先分段處理：要摘要就逐段整理重點再合併；問問題就挑最相關的段落，並標出段落編號。
+In chat use `/file path`. Long documents are condensed by the gateway before answering. The document stays attached for follow-up questions until `/file clear`.
 
 ### 文件裡的可疑指示（防提示注入）/ Suspicious instructions inside documents
 
