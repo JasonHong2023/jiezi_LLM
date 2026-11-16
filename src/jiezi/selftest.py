@@ -172,7 +172,8 @@ def score(item: Item, content: str, sources: list[dict]) -> bool:
 def ask(url: str, key: str, policy: str, question: str, timeout: float = 300) -> dict:
     req = urllib.request.Request(f"{url}/v1/chat/completions", method="POST",
                                  data=json.dumps({"model": policy, "messages": [{"role": "user", "content": question}]})
-                                 .encode(), headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+                                 .encode(), headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+                                          "X-Jiezi-Eval": "1"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read())
 

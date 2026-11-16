@@ -83,6 +83,9 @@ def from_trajectories(root: Path, days: int = 3650) -> tuple[list[dict], Counter
         if rec.get("training_use") is False:
             why["marked_not_trainable"] += 1
             continue
+        if rec.get("eval"):
+            why["evaluation_traffic"] += 1
+            continue
         if rec.get("final_tier") not in LOCAL_TIERS:
             why["not_answered_locally"] += 1
             continue

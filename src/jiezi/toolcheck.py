@@ -65,7 +65,8 @@ def calls_text(message: dict) -> str:
 def ask(url: str, key: str, policy: str, messages: list[dict], tools: list[dict], timeout: float = 300) -> dict:
     req = urllib.request.Request(f"{url}/v1/chat/completions", method="POST",
                                  data=json.dumps({"model": policy, "messages": messages, "tools": tools}).encode(),
-                                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+                                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+                                          "X-Jiezi-Eval": "1"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read())
 

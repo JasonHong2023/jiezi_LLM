@@ -123,6 +123,10 @@ class Gateway:
                 self.knowledge = Knowledge(knowledge_db(settings.root))
             except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
                 self.knowledge_note = str(exc)
+        self.skills = None
+        if settings.skills:
+            from ..skills import Skills, skills_path
+            self.skills = Skills(skills_path(settings.root))
         self.laws, self.laws_note = None, None
         if settings.laws:
             from ..laws import Laws, db_path as laws_db
@@ -337,7 +341,7 @@ class Gateway:
     # ── 記憶 / Memory（add-memory）──
     def _remember(self, body: dict, rec: dict, msg: dict, provider: str, model: str | None) -> None:
         """把請教／雲端的答案存進記憶 wiki；存不了不影響回答。 / Save to the memory wiki; failures never block."""
-        if self.memory is None or body.get("tools"):
+        if self.memory is None or body.get("tools") or rec.get("eval"):
             return
         from ..memory import storable
         users = [m["content"] for m in body["messages"] if m.get("role") == "user" and isinstance(m.get("content"), str)]
@@ -542,8 +546,13 @@ class Gateway:
         # training_use: None means check the license registry before training; Claude consultations are always False
         rec = {"id": tid, "at": now_iso(), "policy": policy, "stream": stream, "request": body, "tiers": [],
                "final_tier": None, "status": "ok", "training_use": None, "sources": []}
+        # 評測流量（selftest、toolcheck）：不學技能、不存記憶，避免評測污染自己（2026-11-16）
+        # Evaluation traffic: no skill learning, no memory saving, so evaluations never contaminate themselves
+        if request.headers.get("x-jiezi-eval") == "1":
+            rec["eval"] = True
         # 查資料可能要啟動 embedding 引擎，放到執行緒以免卡住其他請求 / may start the embedder; off the event loop
         await anyio.to_thread.run_sync(self._ground, body, rec)
+        self._attach_skills(body, rec)
         t0 = time.monotonic()
         if self.memory is not None and not body.get("tools"):
             early = self._memory_early(body, rec, t0, stream, policy)
@@ -592,6 +601,44 @@ class Gateway:
             self.sup.release()
 
     # ── 分層 / Tiers ──
+    # ── 技能庫 v0（開發計畫 5.2）/ Skill library v0 ──
+    def _attach_skills(self, body: dict, rec: dict) -> None:
+        """工具呼叫請求：附上最相似的成功範例。 / Tool-call requests get the most similar verified examples."""
+        if self.skills is None or not body.get("tools"):
+            return
+        from ..skills import prompt
+        users = [m for m in body["messages"] if m.get("role") == "user"]
+        if not users:
+            return
+        names = {(t.get("function") or t).get("name") for t in body["tools"]}
+        ex = self.skills.examples(message_text(users[-1]), names)
+        text = prompt(ex)
+        if text:
+            idx = body["messages"].index(users[-1])
+            body["messages"].insert(idx, {"role": "system", "content": text})
+            rec["sources"] = (rec.get("sources") or []) + [{"source": "skills", "question": e["question"][:60]}
+                                                             for e in ex]
+
+    def _learn_skill(self, body: dict, rec: dict, resp: dict, ver: dict) -> None:
+        """通過 schema 驗證、信心夠的本機工具呼叫加入技能庫。 / Verified, confident local calls join the library."""
+        if self.skills is None or not body.get("tools") or ver.get("status") != "pass" or rec.get("eval"):
+            return
+        if rec.get("confidence") is not None and rec["confidence"] < 0.75:
+            return
+        from ..skills import _calls_text
+        msg = _message(resp)
+        call = _calls_text(msg.get("tool_calls")) or (msg.get("content") or "").strip()
+        users = [m for m in body["messages"] if m.get("role") == "user"]
+        if not users or not call.startswith("["):
+            return
+        names = sorted({(t.get("function") or t).get("name") for t in body["tools"]})
+        used = sorted({c.split("(")[0].strip("[ ") for c in call.split("),") if "(" in c})
+        try:
+            self.skills.add({"question": message_text(users[-1]), "call": call, "functions": names, "used": used,
+                             "at": rec.get("at"), "trajectory_id": rec.get("id")})
+        except OSError as exc:
+            self.log(f"skills: could not save: {exc}")
+
     # ── 路由器 v0（add-router；開發計畫 4.5 的規則版）/ Router v0 ──
     def _pre_route(self, body: dict, rec: dict) -> str | None:
         """需要上網或即時資料、且沒有程式算好的答案時，直接轉交。 / Web/live questions without computed facts."""
@@ -683,6 +730,8 @@ class Gateway:
                     escalate_reason = self._no_route_reason()
                 else:
                     escalate_reason = "local_only_policy"
+        if not escalate_reason:
+            self._learn_skill(body, rec, final, ver)
         meta = self._meta(rec, tier, final, ver, t0, escalation=escalate_reason)
         return self._deliver(final, meta, rec, stream)
 

@@ -221,6 +221,8 @@ def main(argv: list[str] | None = None) -> int:
     trp.add_argument("--after", help="gate: 訓練後的評測目錄 / run dir after")
     trp.add_argument("--target", action="append", default=[], help="gate: 目標任務 tool|code|qa|summary")
     sub.add_parser("doctor", help="health check of every component, with fixes")
+    skp = sub.add_parser("skills", help="skill library v0: verified tool-call examples")
+    skp.add_argument("action", choices=["build", "list"])
     up = sub.add_parser("ui", help="desktop front end (Phase 8 prototype), served at /ui/")
     up.add_argument("action", choices=["build"])
     sub.add_parser("audit", help="dependency security audit against OSV (R23); queries only")
@@ -356,6 +358,14 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"failed: {' '.join(cmd[1:])}", file=sys.stderr)
                     return 1
             print("built ui/dist; restart the gateway, then open http://127.0.0.1:36100/ui/")
+            return 0
+        if args.cmd == "skills":
+            from .. import skills as SK
+            if args.action == "build":
+                print(SK.build(root))
+                return 0
+            for r in SK.Skills(SK.skills_path(root)).rows:
+                print(f"{r['at'][:16] if r.get('at') else ''}  {r['question'][:50]}  →  {r['call'][:80]}")
             return 0
         if args.cmd == "doctor":
             from . import doctor

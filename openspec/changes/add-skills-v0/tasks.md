@@ -1,0 +1,4 @@
+- [x] 1.1 `skills.py`、gateway 附範例與即時學習、`scripts/jiezi skills build|list`、`JIEZI_SKILLS`
+- [x] 1.2 評測流量標記（selftest、toolcheck）並排除於技能、記憶、訓練資料
+- [x] 1.3 單元測試；`openspec validate add-skills-v0 --strict`
+- [ ] 2.1 累積真實使用的工具呼叫後，以 toolcheck 比較有無技能庫的差異
