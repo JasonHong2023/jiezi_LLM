@@ -221,6 +221,7 @@ def main(argv: list[str] | None = None) -> int:
     trp.add_argument("--after", help="gate: 訓練後的評測目錄 / run dir after")
     trp.add_argument("--target", action="append", default=[], help="gate: 目標任務 tool|code|qa|summary")
     sub.add_parser("doctor", help="health check of every component, with fixes")
+    sub.add_parser("g1", help="G1 recommendation from the E0 results (the user decides)")
     cal = sub.add_parser("calibrate", help="measure speed at several GPU layer counts (dev plan 4.4); heavy")
     cal.add_argument("--model", help="清單名稱，預設為核心 / manifest name, default the core")
     skp = sub.add_parser("skills", help="skill library v0: verified tool-call examples")
@@ -368,6 +369,12 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             for r in SK.Skills(SK.skills_path(root)).rows:
                 print(f"{r['at'][:16] if r.get('at') else ''}  {r['question'][:50]}  →  {r['call'][:80]}")
+            return 0
+        if args.cmd == "g1":
+            from . import g1
+            out, rec = g1.report(root)
+            w = rec.get("winner")
+            print(f"recommended: {w['name'] if w else None} — {rec['reason']}; report: {out}")
             return 0
         if args.cmd == "calibrate":
             from ..facts import fresh_facts
