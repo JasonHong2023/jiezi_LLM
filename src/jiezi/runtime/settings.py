@@ -60,6 +60,7 @@ class Settings:
     consult_web: bool = True        # 請教時可讀網頁與搜尋（使用者 2026-11-15）/ web reading and search when consulting
     dictionary: bool = True         # 詞語問題先查本機辭典（add-dictionary）/ consult the local dictionary for word questions
     longdoc: bool = True            # 長文件先分段濃縮（add-long-documents）/ condense long documents first
+    tier2: bool = False             # 第 2 層：只向協助者要回饋、本機重答（add-partial-escalation；量測後才預設開啟）
     translate: bool = True          # 整份文件逐段翻譯、譯文檢查、簡轉繁（add-translation）/ chunked translation with checks
     injection_guard: bool = True    # 文件、工具結果、附加資料只當資料（add-injection-guard）/ external content is data
     skills: bool = True             # 工具呼叫附上過去成功的範例（技能庫 v0）/ verified tool-call examples
@@ -129,6 +130,7 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         longdoc=_onoff(env, "JIEZI_LONGDOC", True),
         injection_guard=_onoff(env, "JIEZI_INJECTION_GUARD", True),
         translate=_onoff(env, "JIEZI_TRANSLATE", True),
+        tier2=_onoff(env, "JIEZI_TIER2", False),
         rag_min=float(env.get("JIEZI_RAG_MIN") or 0.5),
         consult_web=_onoff(env, "JIEZI_CONSULT_WEB", True),
         system_prompt=_system_prompt(root, env),

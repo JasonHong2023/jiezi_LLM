@@ -108,6 +108,8 @@ def status_line(meta: dict | None) -> str:
     tier = meta.get("tier")
     who = {"consult": "Claude", 3: "Claude" if meta.get("provider") == "claude" else "cloud",
            "memory": "記憶 memory"}.get(tier, "local")
+    if tier == 2:  # 第 2 層：本機作答，協助者只給回饋 / local answer, helper feedback only
+        who = f"local + {meta.get('feedback_from') or 'helper'} 回饋 feedback"
     parts = [f"tier {tier} ({who})", str(meta.get("model") or "?")]
     if meta.get("tps"):
         parts.append(f"{meta['tps']} t/s")

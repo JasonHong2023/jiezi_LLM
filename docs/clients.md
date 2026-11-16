@@ -28,6 +28,11 @@ cat 會議記錄.txt | scripts/jiezi ask "列出待辦事項"     # 管線輸入
 `jiezi chat` 裡輸入 `/file 路徑`，再輸入問題。文件會一直附著（狀態列顯示檔名），可以對同一份文件連續追問，每一題都會依那一題重新挑段落，也會參考上一輪問答（所以可以問「那相關數據呢？」）；`/file clear` 取消，重開 chat 後要重新 `/file`。掃描版 PDF 會自動用繁中 OCR（每頁約 2 秒）。PowerPoint 讀每張投影片的文字與備忘稿（整張是圖片的簡報讀不到字，請先匯出成 PDF）；Excel 每個工作表讀成「欄 | 欄」的列，日期會轉成 2026-11-16 這種寫法，公式取上次計算的結果，上限 20 萬個儲存格。舊版 .doc／.ppt／.xls 不支援，請先另存成新格式。文件超過本機模型的上下文時，gateway 會先分段處理：要摘要就逐段整理重點再合併；問問題就挑最相關的段落，並標出段落編號。
 In chat use `/file path`. Long documents are condensed by the gateway before answering. The document stays attached for follow-up questions until `/file clear`.
 
+### 第 2 層：只請 Claude 指出錯誤（預設關閉）/ Tier 2: feedback only (off by default)
+
+`.env` 設 `JIEZI_TIER2=on` 後，工具呼叫、JSON 輸出、程式語法、短文字翻譯這類「有自動檢查」的問題，本機重試一次仍沒過時，芥子會先只請 Claude（或雲端）指出錯在哪、怎麼改，再由本機照著意見重答一次。通過了就用本機的答案，狀態行顯示 `tier 2 (local + claude 回饋 feedback)`；沒通過才整題轉交。這類回答受 Claude 影響，不會進訓練資料。目前預設關閉，等量測結果（第 2 層通過率 ≥ 40%）再決定要不要預設開啟。
+With `JIEZI_TIER2=on`, a verifiable answer that still fails after the local retry first gets feedback only from the helper and one more local attempt; passing answers stay local (tier 2), otherwise the request escalates as before. Off by default until measured.
+
 ### 翻譯整份文件 / Translating a whole document
 
 ```bash

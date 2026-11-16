@@ -993,6 +993,10 @@ class Gateway:
             if ver["status"] == "fail":
                 if policy == "jiezi":
                     if self._auto_route():
+                        if self.s.tier2:  # 第 2 層：先只要回饋，本機再答一次（add-partial-escalation）
+                            done = await self._tier2(base, body, rec, t0, stream, final, ver)
+                            if done is not None:
+                                return done
                         return await self._escalate(body, rec, t0, stream, reason="verification_failed")
                     escalate_reason = self._no_route_reason()
                 else:
@@ -1001,6 +1005,45 @@ class Gateway:
             self._learn_skill(body, rec, final, ver)
         meta = self._meta(rec, tier, final, ver, t0, escalation=escalate_reason)
         return self._deliver(final, meta, rec, stream)
+
+    async def _tier2(self, base: str, body: dict, rec: dict, t0: float, stream: bool, last: dict, ver: dict
+                     ) -> Response | None:
+        """第 2 層：協助者只給回饋，本機帶著回饋重答一次。通過就回覆；回傳 None 表示繼續第 3 層。
+        Tier 2: the helper gives feedback only and the local model answers once more. None means go on to tier 3."""
+        msgs = escalation.feedback_request(body, _message(last), ver.get("error") or "")
+        try:
+            if self._auto_route() == "consult":
+                ans = await self.consultant.ask({"messages": msgs})
+                if self.consult_cap:
+                    self.consult_cap.take()
+                helper, model, feedback, usage = "claude", ans.get("model"), ans.get("content") or "", ans.get("usage")
+            else:
+                self.cap.take()
+                resp, info = await self._cloud_once({"messages": msgs, "max_tokens": escalation.FEEDBACK_MAX_TOKENS})
+                helper, model, feedback, usage = "cloud", info["model"], _message(resp).get("content") or "", info["usage"]
+        except (consult_mod.ConsultError, httpx.HTTPError) as exc:
+            rec["tiers"].append({"tier": 2, "error": f"feedback unavailable: {exc}"})
+            return None
+        if not feedback.strip():
+            rec["tiers"].append({"tier": 2, "error": "empty feedback"})
+            return None
+        rec["training_use"] = False  # 答案受協助者影響（Claude 的內容不當訓練資料；其他雲端待查條款）/ shaped by the helper
+        try:
+            resp2 = await self._local_once(base, body, escalation.feedback_messages(
+                body["messages"], _message(last), ver.get("error") or "", feedback))
+        except httpx.HTTPError as exc:
+            rec["tiers"].append({"tier": 2, "helper": helper, "error": str(exc)})
+            return None
+        ver2 = escalation.verify(body, _message(resp2), self._grounding(body, rec))
+        rec["tiers"].append({"tier": 2, "answer": _message(resp2), "verification": ver2, "model": resp2.get("model"),
+                             "tps": _tps(resp2), "helper": helper, "helper_model": model,
+                             "feedback": feedback[:escalation.FEEDBACK_MAX_CHARS], "helper_usage": usage,
+                             "training_use": False})
+        if ver2["status"] == "fail":
+            return None
+        meta = self._meta(rec, 2, resp2, ver2, t0, escalation="feedback")
+        meta.update(training_use=False, feedback_from=helper)
+        return self._deliver(resp2, meta, rec, stream)
 
     async def _respond_cloud(self, body: dict, rec: dict, t0: float, stream: bool, reason: str) -> Response:
         self.cap.take()

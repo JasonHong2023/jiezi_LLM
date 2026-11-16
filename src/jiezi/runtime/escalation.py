@@ -258,6 +258,45 @@ def retry_messages(messages: list[dict], answer: dict, error: str) -> list[dict]
     return [*messages, prev, {"role": "user", "content": RETRY_PROMPT.format(error=error)}]
 
 
+# ── 第 2 層：只要回饋（add-partial-escalation；依據 Self-Refine 的混合修正）/ Tier 2: feedback only ──
+FEEDBACK_MAX_TOKENS, FEEDBACK_MAX_CHARS = 300, 1200
+FEEDBACK_SYSTEM = ("你是審稿人。下面有一個問題、一個沒有通過自動檢查的答案，以及檢查的錯誤訊息。"
+                   "請只指出答案錯在哪裡、該怎麼改，用條列、最多 5 點。不要寫出完整的正確答案，不要重寫整個回答。\n"
+                   "You are a reviewer. Point out what is wrong with the answer and how to fix it, in at most five bullets. "
+                   "Do not write the full corrected answer.")
+FEEDBACK_RETRY = ("上一個回答沒有通過檢查 / the previous answer failed a check：{error}\n"
+                  "審稿人的意見 / reviewer feedback：\n{feedback}\n"
+                  "請依意見修正，只輸出修正後的完整回答。\nFix it accordingly and answer again with the full corrected answer only.")
+
+
+def _answer_text(answer: dict) -> str:
+    text = answer.get("content") or ""
+    if answer.get("tool_calls"):
+        text = text or json.dumps(answer["tool_calls"], ensure_ascii=False)
+    return text
+
+
+def feedback_request(request: dict, answer: dict, error: str) -> list[dict]:
+    """給協助者的訊息：問題、可用的函式或格式、本機的答案、錯誤。 / What the helper sees."""
+    users = [m for m in request.get("messages") or [] if m.get("role") == "user"]
+    q = users[-1].get("content") if users else ""
+    if isinstance(q, list):
+        q = "\n".join(p.get("text", "") for p in q if isinstance(p, dict) and p.get("type") == "text")
+    parts = [f"[問題 / Question]\n{q}"]
+    if request.get("tools"):
+        parts.append("[可用的函式 / Available functions]\n" + json.dumps(
+            [t.get("function") or t for t in request["tools"]], ensure_ascii=False)[:4000])
+    if request.get("response_format"):
+        parts.append("[要求的輸出格式 / Required format]\n" + json.dumps(request["response_format"], ensure_ascii=False)[:4000])
+    parts += [f"[沒有通過檢查的答案 / Failing answer]\n{_answer_text(answer)[:4000]}", f"[檢查的錯誤 / Check error]\n{error}"]
+    return [{"role": "system", "content": FEEDBACK_SYSTEM}, {"role": "user", "content": "\n\n".join(parts)}]
+
+
+def feedback_messages(messages: list[dict], answer: dict, error: str, feedback: str) -> list[dict]:
+    return [*messages, {"role": "assistant", "content": _answer_text(answer)},
+            {"role": "user", "content": FEEDBACK_RETRY.format(error=error, feedback=feedback.strip()[:FEEDBACK_MAX_CHARS])}]
+
+
 class DailyCap:
     """每日雲端轉交次數（存在 var/runtime/cloud-YYYY-MM-DD.json）。 / Daily cloud escalation counter."""
 

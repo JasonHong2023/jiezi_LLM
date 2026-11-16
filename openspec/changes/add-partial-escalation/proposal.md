@@ -1,4 +1,4 @@
-> **狀態 / Status**：提案，**尚未實作**；等使用者審閱並回覆「可以實作」（R4）。
+> **狀態 / Status**：使用者 2026-11-17 審閱並同意。
 > Proposal only, **not implemented**; awaiting the user's go-ahead.
 
 ## Why
@@ -42,7 +42,7 @@ Benefits: cheaper than a full answer on paid clouds, and it records near-misses.
 - 無新相依。失敗路徑多一次協助者呼叫與一次本機生成 **[估：Claude 約 5–25 秒 [實測 11-15 的請教耗時]，本機 1–3 秒]**。
 - **[推論]** 目前協助者主要是本機的 Claude Code CLI（不另外計費），「省雲端費用」這項好處暫時不明顯；主要價值在留下近失誤紀錄與提高「本機處理率」。這也是建議預設關閉、先量測的原因。
 
-## Open Questions（需要使用者決定 / for the user）
+## 已決事項（原 Open Questions）/ Resolved
 
-- **OQ1 預設值**：(a) 預設關閉，用 toolcheck 與 JSON 題量測「第 2 層通過率」後再決定（建議）；(b) 直接預設開啟。
-- **OQ2 啟用門檻**（若選 a）：我建議「進到第 2 層的請求中 ≥ 40% 通過」才預設開啟。同意嗎？
+- **OQ1**：預設關閉，量測後再決定（使用者 2026-11-17 同意）。/ Off by default until measured.
+- **OQ2**：進到第 2 層的請求中 ≥ 40% 通過才預設開啟（同意）。/ Default on only at a ≥ 40% tier-2 pass rate.

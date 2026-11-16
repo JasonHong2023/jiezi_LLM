@@ -26,7 +26,8 @@ function KeyGate({ onDone }) {
 
 function statusLine(m) {
   if (!m) return "";
-  const who = m.tier === "memory" ? "記憶" : m.provider === "claude" ? "Claude" : m.tier === 3 ? "雲端" : "本機";
+  const who = m.tier === "memory" ? "記憶" : m.tier === 2 ? `本機＋${m.feedback_from === "claude" ? "Claude" : "雲端"}回饋`
+    : m.provider === "claude" ? "Claude" : m.tier === 3 ? "雲端" : "本機";
   const parts = [`第 ${m.tier} 層（${who}）`, m.model];
   if (m.tps) parts.push(`${m.tps} t/s`);
   if (m.latency_s != null) parts.push(`${m.latency_s} 秒`);
