@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# 安裝 LibreOffice 無介面版（Ubuntu / WSL2；add-legacy-office）：讀舊版 .doc／.ppt／.xls、.rtf、OpenDocument 用。
+# Install headless LibreOffice (Ubuntu / WSL2): for legacy .doc/.ppt/.xls, .rtf and OpenDocument files.
+# 約 59 個套件、下載約 104 MB；芥子只在沒有網路的沙盒裡用它轉檔。 / ~59 packages, ~104 MB; used only inside the offline sandbox.
+set -euo pipefail
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends libreoffice-writer-nogui libreoffice-calc-nogui libreoffice-impress-nogui
+soffice --version

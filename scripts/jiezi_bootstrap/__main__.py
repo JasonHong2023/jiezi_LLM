@@ -168,6 +168,19 @@ def step_sandbox(ctx: Ctx) -> str:
     return f"bubblewrap {state}: {rec['version']} ({rec['commit'][:12]})"
 
 
+def step_office(ctx: Ctx) -> str:
+    """選用：LibreOffice 無介面版，讀舊版 .doc／.ppt／.xls 用；沒裝只是這些格式讀不了（add-legacy-office）。
+    Optional: headless LibreOffice for legacy Office files; without it only those formats are unreadable."""
+    import shutil
+    if shutil.which("soffice") or shutil.which("libreoffice"):
+        return "LibreOffice present"
+    hint = ("舊版 Office 檔（.doc／.ppt／.xls）需要 LibreOffice；安裝：scripts/setup/common/install_office / "
+            "legacy Office files need LibreOffice; install with scripts/setup/common/install_office")
+    # 不自動安裝：約 104 MB 的系統套件要使用者自己決定（R4）/ never installed automatically; the user decides
+    ctx.notes.append(hint)
+    return "skipped: not installed"
+
+
 def step_model(ctx: Ctx) -> str:
     m = models.smoke_model(models.load_manifest(ctx.root / "models" / "manifest.toml"))
     ctx.model_path, state = models.ensure(m, models.models_dir(ctx.root))
@@ -196,7 +209,7 @@ def step_smoke(ctx: Ctx) -> str:
 
 STEPS = [
     ("prereqs", step_prereqs), ("env", step_env), ("python", step_python), ("llama.cpp", step_llama_cpp),
-    ("hwprobe", step_hwprobe), ("cuda", step_cuda), ("build", step_build), ("sandbox", step_sandbox),
+    ("hwprobe", step_hwprobe), ("cuda", step_cuda), ("build", step_build), ("sandbox", step_sandbox), ("office", step_office),
     ("model", step_model), ("data", step_data),
     ("smoke", step_smoke),
 ]

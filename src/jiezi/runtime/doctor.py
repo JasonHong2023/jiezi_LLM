@@ -67,6 +67,12 @@ def checks(root: Path, port: int) -> list[tuple[str, str, str, str]]:
     sandbox = root / "var" / "tools" / "bubblewrap" / "bin" / "bwrap"  # 與 verify/sandbox.py 相同 / same as the sandbox
     add("程式驗證沙盒", OK if sandbox.exists() or shutil.which("bwrap") else WARN,
         "bubblewrap 可用" if sandbox.exists() or shutil.which("bwrap") else "缺（程式題驗證停用）", "scripts/bootstrap")
+    from ..documents import OFFICE_INSTALL, find_soffice  # 舊版 Office（add-legacy-office）/ legacy Office formats
+    office = find_soffice()
+    add("舊版 Office 檔（.doc／.ppt／.xls）", OK if office and sandbox.exists() else WARN,
+        "LibreOffice 與沙盒可用" if office and sandbox.exists() else
+        ("缺 LibreOffice" if not office else "缺沙盒") + "（這些格式讀不了；其他格式不受影響）",
+        OFFICE_INSTALL if not office else "scripts/bootstrap")
     data = [("國語／台語／客語辭典", root / "var" / "dict" / "dict.sqlite", "SELECT COUNT(*) FROM entries"),
             ("台灣知識庫", root / "var" / "knowledge" / "knowledge.sqlite", "SELECT COUNT(*) FROM sections"),
             ("全國法規", root / "var" / "laws" / "laws.sqlite", "SELECT COUNT(*) FROM articles"),

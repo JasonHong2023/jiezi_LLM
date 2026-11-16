@@ -146,6 +146,116 @@ class TestOffice(unittest.TestCase):
             self.assertIn("第三季 | 12.5", D.read(x)["text"])
 
 
+class FakeSandbox:
+    """假沙盒：記下收到的東西，回傳指定的轉檔結果。 / A fake sandbox recording its input."""
+
+    def __init__(self, out: bytes | None, limit=None, unavailable=False):
+        self.out, self.limit, self.unavailable, self.calls = out, limit, unavailable, []
+
+    def run_python(self, files, argv, limits=None, stdin=b"", collect=None, extra_ro=None):
+        from jiezi.verify.sandbox import Result, SandboxUnavailable
+        if self.unavailable:
+            raise SandboxUnavailable("bubblewrap not found")
+        self.calls.append({"files": files, "argv": argv, "limits": limits, "collect": collect, "extra_ro": extra_ro})
+        return Result(0 if self.out else 1, "", "Error: source file could not be loaded", self.limit, 1.0,
+                      {collect[0]: self.out} if self.out else {})
+
+
+class TestLegacyOffice(unittest.TestCase):
+    """舊版 Office（add-legacy-office）：沙盒內轉檔後交給既有讀取程式。"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.d = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def patch_soffice(self, value="/usr/lib/libreoffice/program/soffice"):
+        from unittest import mock
+        return mock.patch.object(D, "find_soffice", lambda *a, **k: value)
+
+    def test_converted_then_read_by_existing_reader(self):
+        f = self.d / "舊報告.doc"
+        f.write_bytes(b"\xd0\xcf\x11\xe0 legacy bytes")
+        sb = FakeSandbox(make_docx(["本季營收 12 億元", "第二段"]))
+        with self.patch_soffice():
+            r = D.read(f, sandbox=sb)
+        self.assertEqual((r["name"], r["kind"], r["converted_from"]), ("舊報告.doc", "doc", ".doc"))
+        self.assertIn("本季營收 12 億元", r["text"])
+        call = sb.calls[0]
+        self.assertEqual(call["argv"][1:3], ["in.doc", "docx"])               # 只給沙盒這一個檔案 / one file only
+        self.assertEqual(set(call["files"]), {"convert.py", "in.doc"})
+        self.assertEqual(call["collect"], ["out/in.docx"])
+        self.assertEqual((call["limits"].wall_s, call["limits"].memory_mib), (D.CONVERT_S, D.CONVERT_MIB))
+        self.assertIn("UserInstallation=file:///tmp/lo", call["files"]["convert.py"])   # 不碰使用者的設定 / private profile
+
+    def test_formats_map_to_the_right_reader(self):
+        for suf, fmt, payload in ((".xls", "xlsx", make_xlsx()), (".ods", "xlsx", make_xlsx()),
+                                  (".ppt", "pptx", make_pptx([["芥子納須彌的出處是維摩詰經，這一頁有足夠的文字。"]])),
+                                  (".rtf", "docx", make_docx(["RTF 內容"])), (".odt", "docx", make_docx(["ODT 內容"]))):
+            f = self.d / f"x{suf}"
+            f.write_bytes(b"data")
+            sb = FakeSandbox(payload)
+            with self.patch_soffice():
+                r = D.read(f, sandbox=sb)
+            self.assertEqual((sb.calls[0]["argv"][2], r["kind"]), (fmt, suf.lstrip(".")))
+            self.assertTrue(r["text"])
+        self.assertTrue(set(D.LEGACY) <= D.SUPPORTED)
+
+    def test_missing_libreoffice_names_the_install_command(self):
+        f = self.d / "a.xls"
+        f.write_bytes(b"data")
+        with self.patch_soffice(None), self.assertRaisesRegex(D.DocumentError, "LibreOffice.*apt install"):
+            D.read(f, sandbox=FakeSandbox(make_xlsx()))
+        x = self.d / "b.xlsx"
+        x.write_bytes(make_xlsx())
+        with self.patch_soffice(None):
+            self.assertIn("第三季", D.read(x)["text"])                         # 其他格式不受影響 / other formats unaffected
+
+    def test_never_converted_outside_the_sandbox(self):
+        f = self.d / "a.doc"
+        f.write_bytes(b"data")
+        with self.patch_soffice(), self.assertRaisesRegex(D.DocumentError, "沙盒不可用"):
+            D.read(f, sandbox=FakeSandbox(None, unavailable=True))
+
+    def test_conversion_failure_timeout_and_macros(self):
+        f = self.d / "a.doc"
+        f.write_bytes(b"data")
+        with self.patch_soffice():
+            with self.assertRaisesRegex(D.DocumentError, "無法轉換"):
+                D.read(f, sandbox=FakeSandbox(None))
+            with self.assertRaisesRegex(D.DocumentError, "120 秒"):
+                D.read(f, sandbox=FakeSandbox(None, limit="timeout"))
+            f.write_bytes(b"\xd0\xcf header _VBA_PROJECT more")
+            r = D.read(f, sandbox=FakeSandbox(make_docx(["內文"])))
+        self.assertIn("巨集", r["warnings"][0])                                # 含巨集：取文字並提醒 / macros: text plus a warning
+        self.assertEqual(r["text"], "內文")
+
+    def test_child_never_parses_legacy_bytes_as_text(self):
+        f = self.d / "a.doc"
+        f.write_bytes(b"data")
+        with self.assertRaisesRegex(D.DocumentError, "轉檔"):
+            D.extract(f)
+
+    def test_find_soffice_must_be_under_usr(self):
+        self.assertIsNone(D.find_soffice(which=lambda n: None))
+        self.assertIsNone(D.find_soffice(which=lambda n: str(self.d / "soffice")))   # 沙盒只掛 /usr / only /usr is mounted
+
+    def test_real_rtf_when_libreoffice_is_installed(self):
+        """有 LibreOffice 與沙盒時的真實轉檔（沒有就略過）。 / A real conversion when the tools are present."""
+        from jiezi.config import project_root
+        from jiezi.verify.sandbox import Sandbox
+        sb = Sandbox(project_root(), {})
+        if not D.find_soffice() or not sb.available()[0]:
+            self.skipTest("LibreOffice or the sandbox is not available")
+        f = self.d / "note.rtf"
+        f.write_bytes(rb"{\rtf1\ansi\deff0 {\fonttbl{\f0 Arial;}}\f0 Quarterly revenue was 1250 in 2026.\par Second paragraph.}")
+        r = D.read(f, sandbox=sb)
+        self.assertIn("Quarterly revenue was 1250 in 2026.", r["text"])
+        self.assertIn("Second paragraph.", r["text"])
+
+
 class TestReaders(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

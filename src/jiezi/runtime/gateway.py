@@ -556,7 +556,7 @@ class Gateway:
         name = Path((request.query_params.get("name") or "").replace("\\", "/")).name[:200]
         suffix = Path(name).suffix.lower()
         if not name or suffix not in D.SUPPORTED:
-            return _err(400, f"不支援的格式 {suffix or '（無副檔名）'}；支援 PDF、.docx、.pptx、.xlsx、.html、純文字 / unsupported format",
+            return _err(400, f"不支援的格式 {suffix or '（無副檔名）'}；支援 PDF、Word、PowerPoint、Excel（含舊版與 OpenDocument）、.html、純文字 / unsupported format",
                         "unsupported_document")
         n = request.headers.get("content-length")
         if n and n.isdigit() and int(n) > D.MAX_FILE_BYTES:

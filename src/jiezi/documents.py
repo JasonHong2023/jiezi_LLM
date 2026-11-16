@@ -10,6 +10,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import zipfile
@@ -24,7 +25,13 @@ OCR_THREADS = "2"                         # 不佔滿 CPU（資源預算）/ nev
 MIN_PAGE_CHARS = 20                   # 少於這個字數的 PDF 頁視為掃描頁 / fewer chars → scanned page
 TEXT_SUFFIXES = {".txt", ".md", ".markdown", ".csv", ".tsv", ".json", ".log", ".rst", ".py", ".js", ".toml", ".yaml",
                  ".yml"}
-SUPPORTED = TEXT_SUFFIXES | {".pdf", ".docx", ".pptx", ".xlsx", ".html", ".htm"}
+# 舊版與其他辦公室格式：先在沙盒內用 LibreOffice 轉成新格式再讀（add-legacy-office）
+# Legacy and other office formats: converted by LibreOffice inside the sandbox first (add-legacy-office)
+LEGACY = {".doc": "docx", ".rtf": "docx", ".odt": "docx", ".ppt": "pptx", ".odp": "pptx", ".xls": "xlsx", ".ods": "xlsx"}
+OFFICE_INSTALL = ("sudo apt install --no-install-recommends libreoffice-writer-nogui libreoffice-calc-nogui "
+                  "libreoffice-impress-nogui")
+CONVERT_S, CONVERT_MIB, CONVERT_OUT_MIB = 120, 1536, 64
+SUPPORTED = TEXT_SUFFIXES | {".pdf", ".docx", ".pptx", ".xlsx", ".html", ".htm"} | set(LEGACY)
 
 
 class DocumentError(Exception):
@@ -332,9 +339,11 @@ def extract(path: Path) -> dict:
     """在目前行程解析（由子行程呼叫）。 / Parse in this process (called inside the child)."""
     suf = path.suffix.lower()
     if suf not in SUPPORTED:
-        raise DocumentError(f"不支援的格式 {suf or '（無副檔名）'}；支援 PDF、.docx、.pptx、.xlsx、.html、純文字 / unsupported format")
+        raise DocumentError(f"不支援的格式 {suf or '（無副檔名）'}；支援 PDF、Word、PowerPoint、Excel（含舊版 .doc／.ppt／.xls、.rtf、OpenDocument）、.html、純文字 / unsupported format")
     if path.stat().st_size > MAX_FILE_BYTES:
         raise DocumentError(f"檔案超過 {MAX_FILE_BYTES // 2**20} MB / file too large")
+    if suf in LEGACY:  # 舊版格式由 read() 先轉檔；這裡不該收到 / converted by read() first, never parsed here
+        raise DocumentError(f"{suf} 需要先轉檔 / {suf} must be converted first")
     data = path.read_bytes()
     if suf == ".pdf":
         r = read_pdf(data)
@@ -356,13 +365,97 @@ def _limit():  # pragma: no cover - 在子行程中執行 / runs in the child
     resource.setrlimit(resource.RLIMIT_AS, (MEM_LIMIT, MEM_LIMIT))
 
 
-def read(path: str | Path, timeout: float = TIMEOUT_S) -> dict:
+# 在沙盒裡執行的轉檔程式：只看得到 /work 裡的那一個檔案；LibreOffice 的設定檔目錄放在沙盒的 /tmp
+# The converter driver run inside the sandbox: it sees one file in /work; the LibreOffice profile lives in the sandbox /tmp
+_CONVERT_DRIVER = """
+import os, subprocess, sys
+src, fmt, exe = sys.argv[1], sys.argv[2], sys.argv[3]
+os.makedirs("/tmp/lo", exist_ok=True)
+os.makedirs("out", exist_ok=True)
+r = subprocess.run([exe, "--headless", "--norestore", "--nolockcheck", "--nodefault", "--nofirststartwizard",
+                    "-env:UserInstallation=file:///tmp/lo", "--convert-to", fmt, "--outdir", "out", src],
+                   capture_output=True, text=True,
+                   env={"HOME": "/tmp", "PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "SAL_USE_VCLPLUGIN": "svp"})
+sys.stdout.write(r.stdout[-1500:])
+sys.stderr.write(r.stderr[-1500:])
+sys.exit(r.returncode)
+"""
+_MACRO_MARKS = (b"_VBA_PROJECT", "_VBA_PROJECT".encode("utf-16-le"), b"Basic/script-lc.xml")
+
+
+def find_soffice(which=shutil.which) -> str | None:
+    """LibreOffice 的執行檔；沙盒只掛 /usr，所以必須在 /usr 之下。 / The soffice binary; it must live under /usr."""
+    for name in ("soffice", "libreoffice"):
+        p = which(name)
+        if p:
+            real = str(Path(p).resolve())
+            if real.startswith("/usr/"):
+                return real
+    return None
+
+
+def convert_legacy(path: Path, sandbox=None, soffice: str | None = None) -> tuple[bytes, str, list[str]]:
+    """把舊版檔案轉成新格式；回傳 (新檔內容, 新副檔名, 警告)。只在沙盒內執行，沙盒或 LibreOffice 不可用就報錯。
+    Convert a legacy file to the modern format: (bytes, new suffix, warnings). Sandbox only; errors when the
+    sandbox or LibreOffice is unavailable."""
+    suf = path.suffix.lower()
+    fmt = LEGACY[suf]
+    if path.stat().st_size > MAX_FILE_BYTES:
+        raise DocumentError(f"檔案超過 {MAX_FILE_BYTES // 2**20} MB / file too large")
+    soffice = soffice or find_soffice()
+    if not soffice:
+        raise DocumentError(f"讀取 {suf} 需要 LibreOffice（或先另存成 .{fmt}）；安裝：{OFFICE_INSTALL} / "
+                            f"reading {suf} needs LibreOffice (or re-save as .{fmt})")
+    if sandbox is None:
+        from .config import project_root
+        from .verify.sandbox import Sandbox
+        root = project_root()
+        try:
+            facts = json.loads((root / "facts.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            facts = {}
+        sandbox = Sandbox(root, facts)
+    from .verify.sandbox import Limits, SandboxUnavailable
+    data = path.read_bytes()
+    name = f"in{suf}"
+    try:
+        r = sandbox.run_python({"convert.py": _CONVERT_DRIVER, name: data}, ["convert.py", name, fmt, soffice],
+                               Limits(wall_s=CONVERT_S, memory_mib=CONVERT_MIB, tasks=256, output_mib=CONVERT_OUT_MIB),
+                               collect=[f"out/in.{fmt}"], extra_ro=["/etc/libreoffice", "/etc/fonts"])
+    except SandboxUnavailable as exc:
+        # 沙盒不可用就不轉檔（絕不在沙盒外執行 LibreOffice）/ never convert outside the sandbox
+        raise DocumentError(f"無法安全地轉換 {suf}（沙盒不可用：{exc}）；請先另存成 .{fmt} / "
+                            f"cannot convert {suf} safely (sandbox unavailable); re-save as .{fmt}") from exc
+    out = r.files.get(f"out/in.{fmt}")
+    if r.limit or not out:
+        why = {"timeout": f"超過 {CONVERT_S} 秒", "resource_limit": "超過記憶體或輸出上限"}.get(r.limit or "", "")
+        raise DocumentError(f"LibreOffice 無法轉換這個檔案（{why or (r.stderr or r.stdout).strip()[-200:] or '沒有輸出'}）；"
+                            f"可能是損壞、加密或格式不符 / LibreOffice could not convert the file")
+    warnings = []
+    if any(m in data for m in _MACRO_MARKS):
+        warnings.append("檔案含巨集；只取文字，巨集不會執行 / the file contains macros; only its text is read, macros never run")
+    return out, f".{fmt}", warnings
+
+
+def read(path: str | Path, timeout: float = TIMEOUT_S, sandbox=None) -> dict:
     """在受限的子行程中讀取文件。 / Read a document inside a limited child process."""
     path = Path(path).expanduser().resolve()
     if not path.is_file():
         raise DocumentError(f"找不到檔案 / no such file: {path}")
+    if path.suffix.lower() in LEGACY:
+        # 轉檔在這裡（子行程之外）做：子行程有位址空間上限，LibreOffice 在裡面起不來；轉檔自己有沙盒與上限
+        # Conversion happens here, outside the address-space-limited child; it has its own sandbox and limits
+        import tempfile
+        converted, suffix, warnings = convert_legacy(path, sandbox)
+        with tempfile.TemporaryDirectory(prefix="jiezi-doc-") as d:
+            tmp = Path(d) / f"converted{suffix}"
+            tmp.write_bytes(converted)
+            out = read(tmp, timeout)
+        out.update(name=path.name, kind=path.suffix.lower().lstrip("."), warnings=warnings + (out.get("warnings") or []),
+                   converted_from=path.suffix.lower())
+        return out
     if path.suffix.lower() not in SUPPORTED:
-        raise DocumentError(f"不支援的格式 {path.suffix or '（無副檔名）'}；支援 PDF、.docx、.pptx、.xlsx、.html、純文字 / unsupported format")
+        raise DocumentError(f"不支援的格式 {path.suffix or '（無副檔名）'}；支援 PDF、Word、PowerPoint、Excel（含舊版 .doc／.ppt／.xls、.rtf、OpenDocument）、.html、純文字 / unsupported format")
     src = str(Path(__file__).resolve().parent.parent)
     env = {**os.environ, "PYTHONPATH": src}
     try:

@@ -41,6 +41,7 @@
 | `lunar-python` | lunar-python 1.4.9（農曆、節氣、節日換算，add-tools）/ lunar calendar | https://pypi.org/project/lunar-python/ | MIT | 是 / yes | 不適用 / n/a | 2026-11-16 | PyPI 套件 metadata；OSV 無已知漏洞（`scripts/jiezi audit` 2026-11-16）；無其他相依 / PyPI metadata; no OSV advisories; no dependencies |
 | `pillow` | Pillow 13.0.0（從 PDF 取出掃描頁圖片以 OCR）/ image extraction for OCR | https://pypi.org/project/pillow/ | MIT-CMU | 是 / yes | 不適用 / n/a | 2026-11-16 | PyPI 套件 metadata；OSV 至 2026-11-12 的漏洞皆在 13.0.0 修正 / PyPI metadata; advisories up to 2026-11-12 fixed in 13.0.0 |
 | `tesseract-chi-tra` | tesseract-ocr 5.3.4 與繁體中文語言檔 `chi_tra`（Ubuntu 套件 tesseract-ocr-chi-tra 1:4.1.0-2；OCR）| Ubuntu 套件庫 / Ubuntu archive | Apache-2.0 | 是 / yes | 不適用 / n/a | 2026-11-16 | `/usr/share/doc/tesseract-ocr-chi-tra/copyright` |
+| `libreoffice` | LibreOffice 24.2.7 無介面版（Ubuntu 套件 libreoffice-{writer,calc,impress}-nogui；選用，沙盒內轉換舊版 Office 檔，add-legacy-office）| Ubuntu 套件庫 / Ubuntu archive | MPL-2.0（部分元件 LGPL-3.0+ 等，見套件 copyright ⚠️ 安裝後再核對）| 是 / yes | 不適用 / n/a | 2026-11-17 | 上游 https://www.libreoffice.org/about-us/licenses/ ；安裝後 `/usr/share/doc/libreoffice-core-nogui/copyright` |
 
 ## 已排除 / Excluded
 

@@ -15,6 +15,7 @@ Slides and spreadsheets were out of scope for add-long-documents but are common 
 ## Non-Goals
 
 - 舊版二進位格式 .doc／.ppt／.xls（需要 LibreOffice 或 antiword 之類的系統套件；請先另存成新格式）。/ Legacy binary formats.
+  （更正 2026-11-17，R19.4：已由 add-legacy-office 補上，沙盒內以 LibreOffice 轉檔。/ Correction: added by add-legacy-office.）
 - 投影片或儲存格裡內嵌圖片的 OCR、圖表、SmartArt 的結構。/ OCR of embedded images, charts.
 - 重新計算公式（只取檔案裡存的上次計算結果；從未計算過的公式是空的）。/ Recomputing formulas.
 - .ods／.odp／.odt。/ OpenDocument formats.

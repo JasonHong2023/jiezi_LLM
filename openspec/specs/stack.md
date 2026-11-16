@@ -33,6 +33,7 @@
 | C/C++ 編譯器 / Compiler | 系統提供；須為 CUDA toolkit 支援的版本 |
 | OpenSSL | 系統提供（≥ 3.0；Ubuntu 套件 `libssl-dev`），由發行版提供資安更新 / System-provided (≥ 3.0), patched by the distribution |
 | libcap 開發檔、pkg-config / libcap headers, pkg-config | 系統提供（Ubuntu：`libcap-dev`、`pkgconf`，`scripts/setup/common/install_sandbox_deps`）；只有建置 bubblewrap 需要，缺少時只停用程式驗證 / System-provided; only needed to build bubblewrap, missing only disables code verification |
+| LibreOffice 無介面版 / headless LibreOffice | 系統提供、選用（Ubuntu：`libreoffice-writer-nogui`、`-calc-nogui`、`-impress-nogui`，`scripts/setup/common/install_office`）；只有讀舊版 .doc／.ppt／.xls、.rtf、OpenDocument 需要，缺少時只有這些格式讀不了；**只在沙盒內執行**（add-legacy-office）/ System-provided and optional; only for legacy Office, RTF and OpenDocument files; run only inside the sandbox |
 | 建置的後端 / Backends built | 依 `facts.json` 的 `backends.buildable`；CPU 一律建置 |
 | CUDA 架構 / CUDA architectures | `-DCMAKE_CUDA_ARCHITECTURES=native` |
 
@@ -70,6 +71,7 @@ Building or running `rpc-server`; binding any llama.cpp service to anything othe
 | TUI 套件 / TUI packages（textual 8.2.8、rich 15.0.0、markdown-it-py 4.3.0、mdit-py-plugins 0.7.0、mdurl 0.1.2、linkify-it-py 2.2.0、uc-micro-py、pygments 2.21.0、platformdirs 4.14.5） | OSV `querybatch`，`uv.lock` 全部 21 個套件 / all 21 `uv.lock` packages | 0 個已知漏洞；textual 與 rich 歷來沒有任何公告 [實測查詢 2026-11-15] |
 | bubblewrap v0.13.1 | GitHub Security Advisories（`containers/bubblewrap`）、OSV（`Ubuntu:24.04:LTS`） | 3 則公告皆不影響 v0.13.1：GHSA-pxhw-h44j-8pfx / CVE-2026-87766（`< 0.12.0`）、CVE-2026-41163（setuid，`0.11.0`–`0.11.1`）、CVE-2020-5291（setuid）。**不用 Ubuntu 24.04 套件**：`0.9.0-1ubuntu0.3`（USN-8779-2）撤回了 CVE-2026-87766 的修正，仍受影響（使用者 2026-11-15 決定改建上游）[實測查詢 2026-11-15] |
 | libcap-dev `1:2.66-5ubuntu2.4`、pkgconf `1.8.1-2build1` | Ubuntu CVE tracker | libcap：CVE-2026-4878 已於此版修正（USN-8193-1）；pkgconf：CVE-2023-24056 對 noble 標為 Not affected [實測查詢 2026-11-15] |
+| LibreOffice `4:24.2.7-0ubuntu0.24.04.7`（Ubuntu 24.04） | OSV `Ubuntu:24.04:LTS` | 8 則未修補公告，嚴重度皆 medium、無 High／Critical：CVE-2026-63266／63267／63268／63277（Calc 外部資料連結）、CVE-2026-63269（連結影音交給 GStreamer）、CVE-2026-63270（URL 展開環境變數）、CVE-2026-76181（dBASE 驅動）、CVE-2023-36268（已撤回）。緩解：轉檔只在沒有網路、看不到家目錄與專案目錄的 bubblewrap 沙盒中執行，設定檔目錄在沙盒的 /tmp [OSV 查詢 2026-11-17；緩解是否涵蓋每一則為推論，未逐一重現]。`scripts/jiezi audit` 不涵蓋系統套件，升級系統時需重查 |
 | Python 3.13 | — | 由 uv 取得官方版本；每次決策關卡以 `pip-audit` 複查（R23.5） |
 
 ## 5. 已選定、尚未鎖定版本 / Chosen but not yet pinned
