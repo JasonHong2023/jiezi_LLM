@@ -152,7 +152,12 @@ scripts/jiezi toolcheck                 # ACEBench 經 gateway 的工具呼叫�
 scripts/jiezi dashboard                 # 成功指標儀表板 / metrics dashboard
 scripts/jiezi gaps                      # 缺口報告 / gap report
 scripts/jiezi dataset export            # 匯出可訓練、已驗證、不與評測重疊的 SFT 資料 / gated SFT export
+scripts/jiezi doctor                    # 所有元件的健康檢查與修復指令 / health check with fixes
+scripts/jiezi audit                     # 相依套件安全稽核（R23）/ dependency audit
 ```
+
+gateway 也提供 OpenAI 相容的 `POST /v1/embeddings`（Qwen3-Embedding-0.6B；`"input_type": "query"` 會加查詢指令），客戶端可以拿來做自己的檢索。
+The gateway also serves OpenAI-compatible embeddings for clients.
 
 ## 6. Hermes Agent 與 OpenCode / Hermes Agent and OpenCode
 

@@ -39,7 +39,8 @@ from .settings import POLICIES, Settings
 # Questions that truly need the web or live data (stricter than memory's WEB)
 LIVE = re.compile(r"https?://|網址|網頁|網站|新聞|天氣|氣溫|下雨|颱風動態|股價|匯率|油價|最新消息|即時|"
                   r"現在幾點|上網查|網路上(找|查|搜)|搜尋一下")
-CORRECTION_DIRECT = 0.5  # 問題和更正過的問題相似到這個程度，就直接照更正回答 / serve a correction at this similarity
+CORRECTION_DIRECT = 0.5
+EMBED_MAX_INPUTS, EMBED_MAX_CHARS = 64, 8000  # 問題和更正過的問題相似到這個程度，就直接照更正回答 / serve a correction at this similarity
 from .supervisor import EngineUnavailable, Supervisor
 from .trajectory import TrajectoryWriter, elapsed, new_id, now_iso
 
@@ -416,6 +417,44 @@ class Gateway:
                              "cloud_escalation": self.s.cloud_ready, "cloud_used_today": self.cap.used(),
                              "cloud_daily_max": self.s.cloud_daily_max,
                              "trajectory": {"enabled": self.traj.enabled, "error": self.traj.last_error}})
+
+    async def embeddings(self, request: Request) -> Response:
+        """OpenAI 相容的 /v1/embeddings（add-embeddings-endpoint）：給客戶端做自己的檢索。
+        `input_type: "query"` 會加上查詢指令前綴（Qwen3-Embedding 建議）。
+        OpenAI-compatible embeddings for clients; `input_type: "query"` adds the query instruction."""
+        if not self._authorized(request):
+            return _err(401, "invalid or missing gateway key", "unauthorized")
+        if self.embedder is None:
+            return _err(503, "embedding model not available (see scripts/jiezi doctor)", "embeddings_unavailable")
+        body = await self._read_json_any(request)
+        if isinstance(body, Response):
+            return body
+        texts = body.get("input")
+        texts = [texts] if isinstance(texts, str) else texts
+        if not isinstance(texts, list) or not texts or not all(isinstance(t, str) for t in texts):
+            return _err(400, "input must be a string or a list of strings", "invalid_request")
+        if len(texts) > EMBED_MAX_INPUTS or any(len(t) > EMBED_MAX_CHARS for t in texts):
+            return _err(400, f"at most {EMBED_MAX_INPUTS} inputs of {EMBED_MAX_CHARS} characters", "invalid_request")
+        from ..rag import EMBED_MODEL, QUERY_INSTRUCT
+        if body.get("input_type") == "query":
+            texts = [QUERY_INSTRUCT + t for t in texts]
+        try:
+            vecs = await anyio.to_thread.run_sync(self.embedder.embed, texts)
+        except Exception as exc:  # noqa: BLE001
+            return _err(502, f"embedding engine error: {exc}", "engine_error")
+        return JSONResponse({"object": "list", "model": EMBED_MODEL,
+                             "data": [{"object": "embedding", "index": i, "embedding": list(v)} for i, v in enumerate(vecs)],
+                             "usage": {"prompt_tokens": sum(len(t) for t in texts), "total_tokens": sum(len(t) for t in texts)}})
+
+    async def _read_json_any(self, request: Request) -> dict | Response:
+        n = request.headers.get("content-length")
+        if n and n.isdigit() and int(n) > self.s.request_max_bytes:
+            return _err(413, f"request larger than {self.s.request_max_bytes} bytes", "request_too_large")
+        try:
+            data = json.loads(await request.body() or b"{}")
+        except json.JSONDecodeError as exc:
+            return _err(400, f"invalid JSON: {exc.msg}", "invalid_request")
+        return data if isinstance(data, dict) else _err(400, "body must be a JSON object", "invalid_request")
 
     async def admin_unload(self, request: Request) -> Response:
         if not self._authorized(request):
@@ -849,6 +888,7 @@ def create_app(gw: Gateway) -> Starlette:
     return Starlette(routes=[
         Route("/v1/chat/completions", gw.chat, methods=["POST"]),
         Route("/v1/models", gw.models, methods=["GET"]),
+        Route("/v1/embeddings", gw.embeddings, methods=["POST"]),
         Route("/health", gw.health, methods=["GET"]),
         Route("/admin/unload", gw.admin_unload, methods=["POST"]),
     ], lifespan=lifespan)

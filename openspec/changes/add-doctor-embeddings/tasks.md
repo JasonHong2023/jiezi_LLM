@@ -1,0 +1,3 @@
+- [x] 1.1 `runtime/doctor.py`、`scripts/jiezi doctor`
+- [x] 1.2 gateway `/v1/embeddings`
+- [x] 1.3 單元測試；`openspec validate add-doctor-embeddings --strict`；實跑 doctor

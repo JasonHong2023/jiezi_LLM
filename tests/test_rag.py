@@ -93,5 +93,39 @@ class TestEmbedderLifecycle(unittest.TestCase):
         self.assertEqual(events, ["start", "stop"])
 
 
+
+class TestEmbeddingsEndpoint(unittest.TestCase):
+    def test_openai_shape_auth_and_limits(self):
+        from starlette.testclient import TestClient
+        from test_runtime_gateway import KEY, make_supervisor
+        from jiezi.runtime.gateway import Gateway, create_app
+        from jiezi.runtime.trajectory import TrajectoryWriter
+        seen = []
+
+        class Emb:
+            def embed(self, texts):
+                seen.extend(texts)
+                return [rag._norm([1.0, 2.0]) for _ in texts]
+
+            def tick(self):
+                pass
+
+            def stop(self):
+                pass
+        with tempfile.TemporaryDirectory() as d:
+            sup, _, patch = make_supervisor(Path(d))
+            gw = Gateway(sup.s, sup, TrajectoryWriter(Path(d) / "traj", log=lambda *_: None), embedder=Emb(),
+                         log=lambda *_: None)
+            with patch, TestClient(create_app(gw)) as c:
+                h = {"Authorization": f"Bearer {KEY}"}
+                self.assertEqual(c.post("/v1/embeddings", json={"input": "x"}).status_code, 401)
+                r = c.post("/v1/embeddings", headers=h, json={"input": ["甲", "乙"]}).json()
+                self.assertEqual([x["index"] for x in r["data"]], [0, 1])
+                self.assertAlmostEqual(sum(v * v for v in r["data"][0]["embedding"]), 1.0, places=5)
+                c.post("/v1/embeddings", headers=h, json={"input": "問題", "input_type": "query"})
+                self.assertTrue(seen[-1].startswith("Instruct:"))
+                self.assertEqual(c.post("/v1/embeddings", headers=h, json={"input": ["x"] * 65}).status_code, 400)
+
+
 if __name__ == "__main__":
     unittest.main()
