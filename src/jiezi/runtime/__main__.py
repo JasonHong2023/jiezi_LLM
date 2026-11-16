@@ -194,6 +194,15 @@ def main(argv: list[str] | None = None) -> int:
                    help="attach a document (PDF, .docx, .html, text); repeatable")
     for flag, p in (("--local", "jiezi-local"), ("--cloud", "jiezi-cloud"), ("--claude", "jiezi-ask-claude")):
         a.add_argument(flag, dest="policy", action="store_const", const=p)
+    tr = sub.add_parser("translate", help="translate a whole document chunk by chunk (add-translation)")
+    tr.add_argument("file")
+    tr.add_argument("--to", choices=["zh-TW", "en"], help="target language (default: Chinese → en, otherwise zh-TW)")
+    tr.add_argument("--out", metavar="PATH", help="write the result to a file instead of stdout")
+    tr.add_argument("--glossary", metavar="PATH", help="required translations: TSV or `source=translation` lines")
+    tr.add_argument("--plain", action="store_true", help="translation only (default: source and translation side by side)")
+    tr.add_argument("--yes", "-y", action="store_true", help="do not ask before a long translation")
+    tr.add_argument("--local", dest="policy", action="store_const", const="jiezi-local",
+                    help="never leave this machine (no escalation when the local engine is unavailable)")
     c = sub.add_parser("chat", help="full-screen chat (Textual)")
     c.add_argument("--new", action="store_true", help="開新對話，不接續上次 / start fresh instead of resuming")
     for flag, p in (("--local", "jiezi-local"), ("--cloud", "jiezi-cloud"), ("--claude", "jiezi-ask-claude")):
@@ -273,6 +282,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "ask":
             from ..cli import ask
             return ask.main(args.question, args.policy or "jiezi", args.json, args.file, args.schema, args.json_object)
+        if args.cmd == "translate":
+            from ..cli import translate as translate_cli
+            return translate_cli.main(args.file, args.to, args.out, args.glossary, args.plain, args.yes,
+                                      args.policy or "jiezi")
         if args.cmd == "chat":
             from ..cli import chat
             return chat.main(args.policy or "jiezi", new=args.new)
