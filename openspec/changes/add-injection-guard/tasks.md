@@ -2,4 +2,4 @@
 - [x] 1.2 gateway 接入：安全規則、`rec["injection"]`、`training_use=false`、不學技能、不存記憶、`jiezi.injection`；`JIEZI_INJECTION_GUARD`
 - [x] 1.3 訓練資料匯出排除；CLI 狀態行與 stderr 警告；桌面網頁警告
 - [x] 1.4 單元測試（句型命中與不誤判、零寬字元、偽造標記、gateway 整合、一般與評測請求不變、開關）；`docs/clients.md`、`.env.example`；`openspec validate add-injection-guard --strict`
-- [ ] 2.1 E0 結束後以本機模型實測：附含注入句的文件，確認回答沒有照做、狀態行出現警告；重建桌面網頁（`scripts/jiezi ui build`）確認警告顯示
+- [ ] 2.1 E0 結束後以本機模型實測：附含注入句的文件，確認回答沒有照做、狀態行出現警告；桌面網頁確認警告顯示（前端已於 2026-11-16 重建）
