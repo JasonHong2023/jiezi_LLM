@@ -47,5 +47,23 @@ class TestUi(unittest.TestCase):
             self.assertEqual(ui_routes(Path(d)), [])
 
 
+
+class TestCors(unittest.TestCase):
+    def test_only_tauri_origins(self):
+        from starlette.testclient import TestClient
+        from test_runtime_gateway import make_supervisor
+        from jiezi.runtime.gateway import Gateway, create_app
+        from jiezi.runtime.trajectory import TrajectoryWriter
+        with tempfile.TemporaryDirectory() as d:
+            sup, _, patch = make_supervisor(Path(d))
+            gw = Gateway(sup.s, sup, TrajectoryWriter(Path(d) / "traj", log=lambda *_: None), log=lambda *_: None)
+            with patch, TestClient(create_app(gw)) as c:
+                pre = {"Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "authorization"}
+                ok = c.options("/v1/chat/completions", headers={"Origin": "tauri://localhost", **pre})
+                bad = c.options("/v1/chat/completions", headers={"Origin": "https://evil.example", **pre})
+        self.assertEqual(ok.headers.get("access-control-allow-origin"), "tauri://localhost")
+        self.assertIsNone(bad.headers.get("access-control-allow-origin"))
+
+
 if __name__ == "__main__":
     unittest.main()

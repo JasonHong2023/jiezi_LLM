@@ -1,0 +1,17 @@
+# 芥子桌面 App 外殼（Phase 8.4；Tauri 2.12.5 ≥ GHSA-w28w-mhc8-qvjv 的修正版本，R23）。
+# Jiezi desktop shell (Phase 8.4; Tauri 2.12.5, past the fix for GHSA-w28w-mhc8-qvjv).
+[package]
+name = "jiezi-desktop"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "=2.7.4", features = [] }
+
+[dependencies]
+tauri = { version = "=2.12.5", features = [] }
+
+[profile.release]
+strip = true
+lto = true

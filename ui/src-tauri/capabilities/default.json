@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "唯讀雛形：只有核心預設權限，不開放 shell、檔案或其他外掛 / read-only prototype: core defaults only",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

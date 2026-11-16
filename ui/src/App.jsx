@@ -1,7 +1,7 @@
 // 芥子桌面 App 雛形：對話、稽核紀錄、狀態（唯讀；不操控作業系統）。
 // Jiezi desktop prototype: chat, audit log, status (read-only; no OS control).
 import { useEffect, useRef, useState } from "react";
-import { getJSON, getKey, setKey, streamChat } from "./api.js";
+import { BASE, getJSON, getKey, setKey, streamChat } from "./api.js";
 
 const POLICIES = [
   ["jiezi", "芥子（本機優先，答不出來請教 Claude）"],
@@ -139,7 +139,7 @@ function Status() {
   const [doctor, setDoctor] = useState(null);
   const [error, setError] = useState("");
   useEffect(() => {
-    fetch("/health").then((r) => r.json()).then(setHealth).catch((e) => setError(String(e)));
+    fetch(BASE + "/health").then((r) => r.json()).then(setHealth).catch((e) => setError(String(e)));
     getJSON("/admin/doctor").then(setDoctor).catch((e) => setError(String(e.message)));
   }, []);
   return (

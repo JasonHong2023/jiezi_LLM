@@ -4,7 +4,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  base: "/ui/",
+  base: "./",  // 相對路徑：gateway 的 /ui/ 與 Tauri 共用 / relative: shared by /ui/ and Tauri
   plugins: [react()],
   build: { outDir: "dist", emptyOutDir: true, sourcemap: false },
 });

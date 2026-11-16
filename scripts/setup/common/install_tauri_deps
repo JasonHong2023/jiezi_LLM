@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# 安裝建置 Tauri 2 桌面 App 所需的系統套件（Ubuntu / WSL2；Phase 8；Tauri 官方 Linux 前置清單）。
+# Install system packages needed to build the Tauri 2 desktop app (Ubuntu / WSL2; Phase 8; Tauri's Linux prerequisites).
+set -euo pipefail
+sudo apt-get update
+sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
+  build-essential file
+dpkg-query -W -f='${Package} ${Version}\n' libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev

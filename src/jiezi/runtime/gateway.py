@@ -940,6 +940,11 @@ class Gateway:
         await self.cloud.aclose()
 
 
+# Tauri 外殼的來源（Phase 8.4）；只對這些來源開放跨來源請求，其他網站一律不行。
+# Origins of the Tauri shell; cross-origin requests are allowed for these only.
+TAURI_ORIGINS = ["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"]
+
+
 def create_app(gw: Gateway) -> Starlette:
     @contextlib.asynccontextmanager
     async def lifespan(app):
@@ -964,7 +969,14 @@ def create_app(gw: Gateway) -> Starlette:
         Route("/admin/trajectories", gw.admin_trajectories, methods=["GET"]),
         Route("/admin/doctor", gw.admin_doctor, methods=["GET"]),
         *ui_routes(gw.s.root),
-    ], lifespan=lifespan)
+    ], lifespan=lifespan, middleware=[_cors()])
+
+
+def _cors():
+    from starlette.middleware import Middleware
+    from starlette.middleware.cors import CORSMiddleware
+    return Middleware(CORSMiddleware, allow_origins=TAURI_ORIGINS, allow_methods=["GET", "POST"],
+                      allow_headers=["Authorization", "Content-Type"], allow_credentials=False)
 
 
 # 桌面 App 前端（Phase 8.4 雛形）：只提供本機建好的檔案，嚴格 CSP，不載入遠端內容（Phase 8.5）。
