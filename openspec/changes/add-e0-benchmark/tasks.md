@@ -1,7 +1,7 @@
 ## 0. 前置 / Prerequisites
 
 - [x] 0.1 使用者決定 OQ1～OQ4（BitNet、候選清單與下載量、取樣範圍、評審用量與模型）/ User decides OQ1–OQ4（2026-11-15：排除 BitNet；其餘同意；評審 Nemotron / BitNet excluded; rest approved; Nemotron judge）
-- [ ] 0.2 `add-verifiers` 歸檔（E0 的推理 / 工具分數依賴驗證器）/ `add-verifiers` archived (E0 reasoning / tool scores depend on verifiers)
+- [x] 0.2 `add-verifiers` 歸檔（E0 的推理 / 工具分數依賴驗證器）/ `add-verifiers` archived (E0 reasoning / tool scores depend on verifiers)
 
 ## 1. 模型清單 / Manifest
 
@@ -26,7 +26,7 @@
 ## 5. 驗證 / Verification（長時間工作一律 00:00 之後）
 
 - [x] 5.1 單元測試全部通過（263 個）；冒煙檢查以 Qwen3-0.6B 在 CPU 實跑一次（使用者同意白天慢速試跑；4/5 可解析，38 秒）；`openspec validate add-e0-benchmark --strict` / Unit tests and strict validation
-- [ ] 5.2 夜間：下載候選並核對 SHA-256 / Night: download candidates and verify SHA-256
+- [x] 5.2 夜間：下載候選並核對 SHA-256（2026-11-16 夜間完成，16 個模型全部 ok） / Night: download candidates and verify SHA-256
 - [ ] 5.3 夜間：冒煙檢查；Qwen3.5-2B Q4_K_M 在 GPU 與 CPU 各跑一次（擺放對照）/ Night: smoke checks; GPU-vs-CPU placement check
 - [ ] 5.4 夜間（約 3 晚）：全部候選的貪婪解碼評測與驗證 / Night (about 3 nights): greedy runs and verification for all candidates
 - [ ] 5.5 夜間（約 2～3 晚）：取樣設定 / Night (about 2–3 nights): sampled setting

@@ -1,6 +1,6 @@
 ## 0. 前置 / Prerequisites
 
-- [ ] 0.1 `add-eval-harness` 的 6.2 / 6.3 完成並歸檔（本變更修改 `eval` 規格）/ `add-eval-harness` 6.2 / 6.3 done and archived (this change modifies the `eval` spec)
+- [x] 0.1 `add-eval-harness` 的 6.2 / 6.3 完成並歸檔（本變更修改 `eval` 規格）/ `add-eval-harness` 6.2 / 6.3 done and archived (this change modifies the `eval` spec)
 - [x] 0.2 使用者決定 OQ1（bubblewrap 取得方式）與 OQ2（評審模型、呼叫量）/ User decides OQ1 (bubblewrap source) and OQ2 (judge model, call volume)
 
 ## 1. 授權登記 / License registry
@@ -28,4 +28,8 @@
 
 - [x] 5.1 單元測試全部通過（231 個）；`openspec validate add-verifiers --strict` / Unit tests and strict validation
 - [x] 5.2 立即執行（秒級）：對 2026-11-15 本機執行做工具呼叫與摘要規則評分 / Immediate (second-scale): tool-call and summary-rule scoring of the 2026-11-15 local run（工具 17/50；摘要字數合格 0/50、無簡體字 33/50 / tool 17/50; summary length 0/50, no simplified 33/50）
-- [ ] 5.3 排程到 00:00 之後：本機執行的程式題沙盒評分；ACEBench 官方對照（`disagree` 須為 0 或已修正）；經同意後的評審（本機執行 + 雲端基準的 SimpleQA）；人工複核 10 題評審結果 / After 00:00: sandboxed code scoring; judge runs with consent; hand-check 10 judged items
+- [x] 5.3 排程到 00:00 之後：本機執行的程式題沙盒評分；ACEBench 官方對照（`disagree` 須為 0 或已修正）；經同意後的評審（本機執行 + 雲端基準的 SimpleQA）；人工複核 10 題評審結果 / After 00:00: sandboxed code scoring; judge runs with consent; hand-check 10 judged items
+
+  - 5.3（2026-11-16）：本機程式題沙盒評分完成；ACEBench 官方對照 0 不一致（手寫 29 題：agree 26、known_crash 1、upstream_limit 1、known_eval 1）；評審：本機執行以 Nemotron、雲端知識基準以 deepseek（雲端推理基準用 Nemotron 會被自我偏好保護拒絕，改 deepseek）。
+    人工複核 10 題 SimpleQA 評審（本機 0.6B，種子 20261116 抽樣）：10/10 與人工判斷一致（8 incorrect、1 correct「LD50」、1 not_attempted「抗微生物藥」對「喹諾酮類」——過於籠統但不矛盾，依 SimpleQA 規則屬未作答）。
+    Hand-check: 10/10 judge verdicts agree with manual review.

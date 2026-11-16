@@ -29,7 +29,7 @@
 
 - [x] 6.1 下載來源並產生 `r0.lock.json`（只下載約 20 MB 資料，非長時間工作），確認各類 ≥ 50 題後 commit 鎖定檔 / Fetch sources, generate and commit the lock (small download, not a long job)
 - [x] 6.2 以 `scripts/eval schedule` 排程到 00:00 之後：本機 Qwen3-0.6B-Q8_0、純 CPU、貪婪解碼跑完整 R0；隔天確認排程確實執行並記錄結果（R17 條件） / Schedule a full local R0 run after 00:00 and record results next day
-- [ ] 6.3 經使用者同意後（OQ3），排程到 00:00 之後以雲端基準模型跑 150 題知識題（基準模式），記錄作廢題數、失敗題數與實際模型；有失敗時隔夜以 `--retry-errors` 補跑 / With consent (OQ3), schedule the 150 knowledge items on the cloud baseline after 00:00
+- [x] 6.3 經使用者同意後（OQ3），排程到 00:00 之後以雲端基準模型跑 150 題知識題（基準模式），記錄作廢題數、失敗題數與實際模型；有失敗時隔夜以 `--retry-errors` 補跑 / With consent (OQ3), schedule the 150 knowledge items on the cloud baseline after 00:00
 - [x] 6.4 執行 `openspec validate add-eval-harness --strict` 與完整單元測試，結果記入討論記錄 / Validate the change and run all unit tests; log results
 
 ### 6.2 / 6.3 結果記錄 / Result notes（2026-11-15）
@@ -40,3 +40,6 @@
   6.3 pending: the cloud baseline run is void (reasoning ate the token limit); a rerun needs fresh user consent.
 - 第 1 步 `bank verify` 遇到維基 429 失敗；已改為依 Retry-After 重試。00:44 重跑通過（300 題，bank_hash 2138a26f02db842a）。
   Job 1 failed on a Wikipedia 429; retries now honor Retry-After; the 00:44 rerun passed.
+
+  - 2026-11-16 完成：`20261116-r0-cloud-baseline-knowledge`，實際模型 nvidia-nemotron-3-ultra；第一輪 150 題失敗 4、作廢 0，`--retry-errors` 補跑後失敗 0；知識小計 72.3%（C-Eval 94.0%、CMMLU 85.4%、SimpleQA 近似 38.0%／官方評審 60.0%）。完整性標 incomplete 是因為推理／工具題另跑（`20261116-r0-cloud-baseline-reasoning`）。
+    Done: actual model nemotron; 4 errors then 0 after retry; 0 void.
