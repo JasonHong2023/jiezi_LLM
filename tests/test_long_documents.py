@@ -104,11 +104,11 @@ class TestOffice(unittest.TestCase):
     """PowerPoint、Excel（add-office-documents）。"""
 
     def test_pptx_slides_in_order_with_notes(self):
-        slides = [[f"第{i}頁標題", f"內容{i}"] for i in range(1, 12)]
+        slides = [[f"第{i}頁標題", f"內容{i}：本季營收成長百分之十二，主要來自海外市場。"] for i in range(1, 12)]
         r = D.read_pptx(make_pptx(slides, notes={2: "記得提預算"}))
         self.assertEqual(r["pages"], 11)
         blocks = r["text"].split("\n\n")
-        self.assertEqual(blocks[1], "〔第 2 張投影片〕\n第2頁標題\n內容2\n（備忘稿）記得提預算")   # 頁碼不算備忘稿 / no page number
+        self.assertEqual(blocks[1], "〔第 2 張投影片〕\n第2頁標題\n內容2：本季營收成長百分之十二，主要來自海外市場。\n（備忘稿）記得提預算")   # 頁碼不算備忘稿 / no page number
         self.assertTrue(blocks[9].startswith("〔第 10 張投影片〕\n第10頁標題"))          # 10 排在 9 後面 / numeric order
         self.assertEqual(r["warnings"], [])
         self.assertIn("OCR", D.read_pptx(make_pptx([["1"], [], []]))["warnings"][0])   # 圖片簡報的提醒 / image-only decks
