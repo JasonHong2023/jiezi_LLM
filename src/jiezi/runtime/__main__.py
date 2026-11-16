@@ -147,7 +147,8 @@ def main(argv: list[str] | None = None) -> int:
     cp.add_argument("--grade", type=int, choices=range(1, 7), help="plan：年級 / grade")
     cp.add_argument("--stage", type=int, choices=(1, 2, 3), help="plan：學習階段 / learning stage")
     lp = sub.add_parser("laws", help="national law database, MOJ (add-laws)")
-    lp.add_argument("action", choices=["build", "lookup"])
+    lp.add_argument("action", choices=["build", "lookup", "embed"])
+    lp.add_argument("--gpu", action="store_true", help="embed: 用 GPU 建向量 / use the GPU")
     lp.add_argument("query", nargs="?", help="例如「民法第184條」/ e.g. 民法第184條")
     mp = sub.add_parser("memory", help="memory wiki: consulted answers, notes, corrections (add-memory)")
     mp.add_argument("action", choices=["list", "search", "forget", "path"])
@@ -207,6 +208,21 @@ def main(argv: list[str] | None = None) -> int:
             from .. import laws as L
             if args.action == "build":
                 print(f"built {L.db_path(root)}: {L.build(root)}; restart the gateway to use it")
+                return 0
+            if args.action == "embed":
+                from .. import rag
+                from .settings import load_settings
+                emb = _embedder(root, load_settings(root), load_env(root), ngl=99 if args.gpu else 0)
+                if emb is None:
+                    print("embedding model not found or JIEZI_RAG=off", file=sys.stderr)
+                    return 1
+                lw = L.Laws(L.db_path(root))
+                try:
+                    res = rag.build(lw, rag.VectorStore(L.vectors_path(root), model_sha="06507c7b4268", create=True),
+                                    emb, ids=L.current_ids(lw), text_of=lambda i: L.doc_text(lw, i))
+                finally:
+                    emb.stop()
+                print(f"law vectors: {res}; restart the gateway to use them")
                 return 0
             g = L.grounding(L.Laws(L.db_path(root)), args.query or "")
             print(g[3].split("\n", 3)[-1] if g else "（找不到 / not found）")

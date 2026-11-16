@@ -1,9 +1,10 @@
-"""向量檢索：Qwen3-Embedding 為台灣知識庫段落建向量，查詢時「全文候選＋向量重排」（add-rag；開發計畫 5.1）。
-Vector retrieval: Qwen3-Embedding vectors for the knowledge-base sections; queries use full-text candidates reranked
-by cosine similarity (add-rag; dev plan 5.1).
+"""向量檢索：Qwen3-Embedding 為知識庫段落與法規條文建向量（add-rag；開發計畫 5.1）。
+Vector retrieval: Qwen3-Embedding vectors for knowledge sections and statutes (add-rag; dev plan 5.1).
 
-不需要 numpy：全文索引先取最多 200 個候選，只對它們算相似度（約 20 萬次乘加）。
-No numpy: the full-text index yields at most 200 candidates and only those are scored."""
+不需要 numpy：記憶體只放截短到 256 維的向量（Qwen3-Embedding 支援 MRL），用 C 實作的 math.sumprod 全部掃描
+（4.7 萬條約 0.4 秒），前 50 名再用完整 1024 維重排（2026-11-16：「酒駕」這類與條文用語不同的問題，全文候選撈不到）。
+No numpy: 256-dim prefixes (MRL) are scanned with math.sumprod (47k items in about 0.4 s); the top 50 are reranked
+with full vectors. Full-text candidates missed questions worded unlike the statutes."""
 
 from __future__ import annotations
 
@@ -22,7 +23,7 @@ from .errors import JieziError
 EMBED_MODEL = "qwen3-embedding-0.6b-q8_0"
 QUERY_INSTRUCT = ("Instruct: Given a question in Traditional Chinese, retrieve passages from a Taiwan knowledge base "
                   "that answer it\nQuery: ")
-DOC_CHARS, CANDIDATES, BATCH = 800, 200, 16
+DOC_CHARS, CANDIDATES, BATCH, SCAN_DIM, RERANK = 800, 200, 16, 256, 50
 DEFAULT_MIN = 0.5
 
 
@@ -36,7 +37,7 @@ def _norm(v: list[float]) -> array:
 
 
 def cosine(a: array, b: array) -> float:
-    return sum(x * y for x, y in zip(a, b))  # 都已正規化 / both normalized
+    return math.sumprod(a, b) if len(a) == len(b) else sum(x * y for x, y in zip(a, b))  # 都已正規化 / normalized
 
 
 class Embedder:
@@ -123,19 +124,32 @@ class VectorStore:
     def count(self) -> int:
         return self.con.execute("SELECT COUNT(*) FROM vecs").fetchone()[0]
 
+    def prefixes(self, dim: int = SCAN_DIM) -> tuple[list[int], list[array]]:
+        """全部向量的前 dim 維（重新正規化），掃描用。 / Normalized dim-prefixes of all vectors, for scanning."""
+        ids, vecs = [], []
+        for sid, blob in self.con.execute("SELECT section, v FROM vecs ORDER BY section"):
+            a = array("f")
+            a.frombytes(blob[:dim * 4])
+            ids.append(sid)
+            vecs.append(_norm(list(a)))
+        return ids, vecs
+
 
 def doc_text(section: dict) -> str:
     return f"{section['title']}｜{section['heading']}\n{section['text'][:DOC_CHARS]}"
 
 
-def build(knowledge, store: VectorStore, embedder: Embedder, log=print) -> dict:
-    """為還沒有向量的段落建向量，可中斷後續跑。 / Embed sections that lack vectors; resumable."""
-    ids = [r[0] for r in knowledge.con.execute("SELECT id FROM sections ORDER BY id")]
+def build(knowledge, store: VectorStore, embedder: Embedder, log=print, ids: list[int] | None = None,
+          text_of: Callable[[int], str] | None = None) -> dict:
+    """為還沒有向量的項目建向量，可中斷後續跑；預設是知識庫段落。 / Embed missing items; resumable."""
+    if ids is None:
+        ids = [r[0] for r in knowledge.con.execute("SELECT id FROM sections ORDER BY id")]
+        text_of = lambda i: doc_text(knowledge.section(i))  # noqa: E731
     todo = [i for i in ids if i not in store.have()]
     t0 = time.monotonic()
     for n in range(0, len(todo), BATCH):
         batch = todo[n:n + BATCH]
-        vecs = embedder.embed([doc_text(knowledge.section(i)) for i in batch])
+        vecs = embedder.embed([text_of(i) for i in batch])
         store.put(list(zip(batch, vecs)))
         if (n // BATCH) % 25 == 0:
             log(f"  {min(n + BATCH, len(todo))}/{len(todo)} ({time.monotonic() - t0:.0f}s)")
@@ -143,18 +157,18 @@ def build(knowledge, store: VectorStore, embedder: Embedder, log=print) -> dict:
 
 
 class HybridRetriever:
-    """全文候選＋向量重排；給 knowledge.grounding 用。 / Full-text candidates reranked by vectors."""
+    """截短向量全掃描 → 完整向量重排 → 門檻。 / Prefix scan, full rerank, threshold."""
 
     def __init__(self, knowledge, store: VectorStore, embedder: Embedder, min_score: float = DEFAULT_MIN):
         self.k, self.store, self.embedder, self.min = knowledge, store, embedder, min_score
+        self._ids, self._pref = store.prefixes()
 
     def __call__(self, text: str, limit: int = 2) -> list[tuple[int, float]]:
-        cands = self.k.candidates(text, CANDIDATES)
-        if not cands:
-            return []
-        vecs = self.store.get(cands)
-        if not vecs:
+        if not self._ids:
             return []
         q = self.embedder.embed_query(text)
-        scored = sorted(((sid, cosine(q, v)) for sid, v in vecs.items()), key=lambda x: -x[1])
+        qp = _norm(list(q[:SCAN_DIM]))
+        top = sorted(zip(self._ids, (cosine(qp, v) for v in self._pref)), key=lambda x: -x[1])[:RERANK]
+        full = self.store.get([i for i, _ in top])
+        scored = sorted(((sid, cosine(q, v)) for sid, v in full.items()), key=lambda x: -x[1])
         return [(sid, s) for sid, s in scored[:limit] if s >= self.min]

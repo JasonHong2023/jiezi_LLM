@@ -109,7 +109,7 @@ class Gateway:
                 self.laws = Laws(laws_db(settings.root))
             except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
                 self.laws_note = str(exc)
-        self.embedder, self.hybrid, self.rag_note = embedder, None, "off"
+        self.embedder, self.hybrid, self.rag_note, self.laws_hybrid = embedder, None, "off", None
         if settings.rag and self.knowledge is not None and embedder is not None:
             from ..rag import HybridRetriever, VectorStore, vectors_path
             try:
@@ -121,6 +121,16 @@ class Gateway:
                     self.rag_note = "no vectors; run scripts/jiezi knowledge embed"
             except Exception as exc:  # noqa: BLE001 - 沒有向量就用全文 / full text without vectors
                 self.rag_note = str(exc)
+        if settings.rag and self.laws is not None and embedder is not None:
+            from ..laws import vectors_path as law_vectors
+            from ..rag import HybridRetriever, VectorStore
+            try:
+                store = VectorStore(law_vectors(settings.root))
+                if store.count():
+                    self.laws_hybrid = HybridRetriever(self.laws, store, embedder, settings.rag_min)
+                    self.rag_note += f"; laws {store.count()} vectors"
+            except Exception:  # noqa: BLE001 - 沒有法規向量就用全文 / full text without law vectors
+                pass
         self.writing, self.writing_note = None, None
         if settings.writing_refs:
             from ..writing_refs import WritingRefs, index_path
@@ -269,7 +279,7 @@ class Gateway:
             found.append(curriculum_grounding(self.curriculum, last["content"]))
         if self.laws is not None:
             from ..laws import grounding as laws_grounding
-            found.append(laws_grounding(self.laws, last["content"]))
+            found.append(laws_grounding(self.laws, last["content"], self.laws_hybrid))
         if self.knowledge is not None:
             from ..knowledge import grounding as knowledge_grounding
             found.append(knowledge_grounding(self.knowledge, last["content"], self.hybrid))

@@ -178,7 +178,21 @@ def _render(a: dict) -> str:
     return f"【{a['law']} {a['no']}】{where}\n{text}"
 
 
-def grounding(lw: Laws, text: str) -> tuple[str, list[dict], bool, str] | None:
+def vectors_path(root: Path) -> Path:
+    return root / "var" / "laws" / "vectors.sqlite"
+
+
+def doc_text(lw: Laws, aid: int) -> str:
+    a = lw.by_id(aid)
+    return f"{a['law']} {a['no']} {a['chapter']}\n{a['text'][:600]}"
+
+
+def current_ids(lw: Laws) -> list[int]:
+    return [r[0] for r in lw.con.execute("SELECT a.id FROM articles a JOIN laws l ON l.id = a.law "
+                                         "WHERE l.abolished = 0 ORDER BY a.id")]
+
+
+def grounding(lw: Laws, text: str, hybrid=None) -> tuple[str, list[dict], bool, str] | None:
     text = (text or "")[:2000]
     named = lw.law_in(text)
     hits: list[dict] = []
@@ -195,7 +209,15 @@ def grounding(lw: Laws, text: str) -> tuple[str, list[dict], bool, str] | None:
         if not hits and not notes:
             hits = [lw.by_id(i) for i in lw.search(text, law=lid, strict=False)]
     elif LAW_CUE.search(text):
-        hits = [lw.by_id(i) for i in lw.search(text)]
+        ids = []
+        if hybrid is not None:  # 語意向量：「酒駕」也找得到「酒精濃度…駕駛」/ semantic match across wording
+            try:
+                ids = [i for i, _ in hybrid(text, 2)]
+            except Exception:  # noqa: BLE001 - 出錯就用全文 / full text on errors
+                ids = lw.search(text)
+        else:
+            ids = lw.search(text)
+        hits = [lw.by_id(i) for i in ids]
         for n, _ in sorted(lw.abolished.items(), key=lambda x: -len(x[0])):
             if n in text:
                 notes.append(f"《{n}》已廢止")
