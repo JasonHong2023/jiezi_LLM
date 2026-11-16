@@ -251,6 +251,21 @@ license_checked = "2026-11-16"  # ⚠️ repo 沒有 LICENSE 檔，依模型卡 
 source = "Qwen 官方 Hugging Face repo / official Qwen Hugging Face repo (Qwen/Qwen3-Embedding-0.6B-GGUF)"
 role = "embedding"  # 用 --embedding --pooling last 啟動 / served with --embedding --pooling last
 
+# ── 重排序（add-reranker；開發計畫 5.1；量測過門檻才啟用）/ Reranker (enabled only past the measured threshold) ──
+[[model]]
+name = "qwen3-reranker-0.6b-q8_0"
+file = "qwen3-reranker-0.6b-q8_0.gguf"
+url = "https://huggingface.co/ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/resolve/a02f48bb4f057028298c21fa033da2b30d7742d5/qwen3-reranker-0.6b-q8_0.gguf"
+sha256 = "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48"
+size = 639153184
+license = "Apache-2.0"
+license_url = "https://huggingface.co/Qwen/Qwen3-Reranker-0.6B/blob/e61197ed45024b0ed8a2d74b80b4d909f1255473/README.md"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-17"  # ⚠️ 上游與轉檔 repo 都沒有 LICENSE 檔，依兩者模型卡 metadata `license: apache-2.0` / no LICENSE file; model-card metadata
+source = "ggml-org 的官方轉檔（llama.cpp 維護者；上游 Qwen/Qwen3-Reranker-0.6B）/ ggml-org conversion of Qwen/Qwen3-Reranker-0.6B"
+role = "rerank"  # 用 --rerank 啟動；啟動時自我檢查分數能否區分相關與不相關 / served with --rerank; self-checked at startup
+
 # ── 視覺模組（add-vision；Qwen3.5 原生多模態，unsloth 附的 mmproj，同一個鎖定 commit）/ vision projectors ──
 [[model]]
 name = "qwen3.5-0.8b-mmproj-f16"
