@@ -153,6 +153,8 @@ def main(argv: list[str] | None = None) -> int:
     mp = sub.add_parser("memory", help="memory wiki: consulted answers, notes, corrections (add-memory)")
     mp.add_argument("action", choices=["list", "search", "forget", "path"])
     mp.add_argument("query", nargs="?", help="search：問題；forget：主題名稱 / search: question; forget: topic title")
+    tc = sub.add_parser("toolcheck", help="ACEBench through the gateway as OpenAI tools (system-level tool-call score)")
+    tc.add_argument("--policy", default="jiezi-local")
     sub.add_parser("dashboard", help="metrics dashboard: achievement rate, local handling, E0, self-test, gaps")
     sp = sub.add_parser("selftest", help="self-test generated from the bundled data (dictionary, curriculum, tools…)")
     sp.add_argument("--policy", default="jiezi-local", help="gateway policy (default jiezi-local)")
@@ -263,6 +265,13 @@ def main(argv: list[str] | None = None) -> int:
                 e, sim = found
                 print(f"[答案 answer {sim:.2f}] {e.title}｜{e.question}（{e.at[:10]}，{e.provider}）\n{e.text}")
             return 0 if found else 1
+        if args.cmd == "toolcheck":
+            from .. import toolcheck
+            env = load_env(root)
+            out, summary = toolcheck.run(root, f"http://127.0.0.1:{port_base(env)}", env.get("JIEZI_GATEWAY_KEY") or "",
+                                         args.policy)
+            print(f"{summary['correct']}/{summary['items']} correct {summary['by_status']}; report: {out}")
+            return 0
         if args.cmd == "dashboard":
             from . import dashboard
             print(f"dashboard: {dashboard.write(root)}")

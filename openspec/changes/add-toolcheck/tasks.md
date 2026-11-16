@@ -1,0 +1,3 @@
+- [x] 1.1 `src/jiezi/toolcheck.py`、`scripts/jiezi toolcheck` / Module and command
+- [x] 1.2 單元測試；`openspec validate add-toolcheck --strict`
+- [ ] 1.3 E0 結束後實跑，與 E0 原始分數比較 / Real run after E0
