@@ -74,7 +74,9 @@ def _launcher(root: Path, sid: str, jobs: list[list[str]], uv: str) -> str:
     lines = [
         "#!/usr/bin/env bash",
         f"# jiezi eval 排程 {sid}（自動產生）/ jiezi eval schedule {sid} (generated)",
-        f"export PATH={shlex.quote(str(Path(uv).parent))}:\"$PATH\"",
+        # 帶上排程當下的 PATH（使用者層級 systemd 的 PATH 很短，例如缺 WSL 的 nvidia-smi 目錄）
+        # Carry the scheduling shell's PATH (user systemd's PATH is short, e.g. lacks WSL's nvidia-smi directory)
+        f"export PATH={shlex.quote(str(Path(uv).parent))}:{shlex.quote(os.environ.get('PATH', ''))}:\"$PATH\"",
         f"cd {shlex.quote(str(root))}",
         "results=()",
     ]

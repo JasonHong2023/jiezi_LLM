@@ -59,13 +59,32 @@ ISA_MAP = {
 }
 
 
+# PATH 裡找不到時再試的驅動工具目錄（存在才用）。WSL 的 nvidia-smi 在 /usr/lib/wsl/lib，使用者層級 systemd
+# 的 PATH 沒有它，2026-11-16 夜間 E0 因此誤判為沒有 GPU、全部跑在 CPU。
+# Driver tool directories tried when PATH lacks a tool (used only if present). On WSL, nvidia-smi lives in
+# /usr/lib/wsl/lib, which user systemd's PATH lacks; the 2026-11-16 night E0 ran on CPU because of it.
+EXTRA_TOOL_DIRS = ("/usr/lib/wsl/lib",)
+
+
+def which(name: str) -> str | None:
+    found = shutil.which(name)
+    if found:
+        return found
+    for d in EXTRA_TOOL_DIRS:
+        cand = Path(d) / name
+        if cand.is_file() and os.access(cand, os.X_OK):
+            return str(cand)
+    return None
+
+
 def run(cmd: list[str], timeout: int = 10) -> tuple[bool, str, str]:
     """執行外部指令，永不拋錯。"""
-    if shutil.which(cmd[0]) is None:
+    exe = which(cmd[0])
+    if exe is None:
         return False, "", f"{cmd[0]}: not found"
     try:
         p = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout, errors="replace"
+            [exe, *cmd[1:]], capture_output=True, text=True, timeout=timeout, errors="replace"
         )
         return p.returncode == 0, p.stdout.strip(), p.stderr.strip()
     except Exception as exc:  # noqa: BLE001 - 探測器不得因單一失敗中斷
