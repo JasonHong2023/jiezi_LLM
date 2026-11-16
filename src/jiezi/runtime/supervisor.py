@@ -89,7 +89,9 @@ class Supervisor:
         async with self._lock:
             self._expire_hold()
             if self.status == "held":
-                raise EngineUnavailable(f"held for a night evaluation until {self.hold_until:%H:%M}")
+                raise EngineUnavailable(
+                    f"本機模型保留給評測，到 {self.hold_until:%m/%d %H:%M} 才開放；請改用 jiezi（會轉交雲端）"
+                    f" / local engine reserved for an evaluation until {self.hold_until:%Y-%m-%d %H:%M}; use the jiezi policy")
             if self.status == "unavailable":
                 raise EngineUnavailable(self.reason or "engine unavailable")
             if self.status != "loaded":

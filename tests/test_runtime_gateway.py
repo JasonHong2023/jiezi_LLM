@@ -195,7 +195,7 @@ class TestSupervisor(unittest.TestCase):
                     sup.release()
                     r = await sup.unload(datetime(2026, 11, 16, 7, 0), "night eval")
                     self.assertEqual((r["was"], r["status"]), ("loaded", "held"))
-                    with self.assertRaisesRegex(EngineUnavailable, "held"):
+                    with self.assertRaisesRegex(EngineUnavailable, "reserved for an evaluation until 2026"):
                         await sup.acquire()
                     now[0] = datetime(2026, 11, 16, 7, 1)
                     await sup.acquire()
