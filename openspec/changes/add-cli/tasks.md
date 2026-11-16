@@ -24,3 +24,6 @@
 
 - [x] 5.1 單元測試（11 個；另以 run_test 對真的 gateway 跑多輪對話、F2 切換到 Claude）：假 gateway 下的 `ask` 輸出與結束碼、`chat` 的 `run_test()` 按鍵與版面、中文寬度、Herdr 回報（假 `herdr`）；`openspec validate add-cli --strict` / Unit tests
 - [ ] 5.2 人工檢查清單：Herdr（Claude 可在 Herdr pane 內執行）、Windows Terminal 與 GNOME Terminal（需使用者協助）；結果記入討論記錄 / Manual checklist in the three terminals（待：Herdr、Windows Terminal、GNOME Terminal 人工檢查需使用者協助 / pending: manual checks need the user）
+
+  - 5.2 Herdr 部分（2026-11-16，Claude 以 herdr-core.exe 開啟 `jiezi chat` 並讀取畫面）：中文說明、輸入框、狀態列、底部按鍵提示排版正常，寬字元未錯位；已關閉檢查用的終端機。Windows Terminal 與 GNOME Terminal 仍待使用者檢查。
+    Herdr part checked: CJK layout correct. Windows Terminal and GNOME Terminal still need the user.
