@@ -60,6 +60,9 @@ scripts/jiezi ui build      # 需要 Node.js；npm ci → npm audit → build
 重啟 gateway 後，在 Windows 或 Linux 的瀏覽器開 `http://127.0.0.1:36100/ui/`，貼上 `.env` 的 `JIEZI_GATEWAY_KEY`（只存在該分頁）。頁面有「對話」「稽核紀錄」「狀態」；回答中按 Esc 或「中止」立刻停止。不會操控你的電腦。
 After a gateway restart open `http://127.0.0.1:36100/ui/` and paste the gateway key (kept in that tab only).
 
+**附加文件**：按「附加文件」選檔（PDF、.docx、.html、純文字，可多選，單檔上限 50 MB）。檔案會送到本機 gateway 讀成文字（讀完就刪），之後每一題都帶著這些文件，可以一直追問；點檔名旁的 × 移除，「清除對話」會一併清除。文件裡有可疑指示時，回答下方會顯示警告。
+Attach documents with the button; they are read by the local gateway (the upload is deleted afterwards) and stay attached for follow-up questions.
+
 ## 2. 策略 / Policies
 
 | 模型名稱 / Model name | 行為 / Behavior | 旗標 / Flag |

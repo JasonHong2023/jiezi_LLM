@@ -21,6 +21,33 @@ export async function getJSON(path) {
   return r.json();
 }
 
+// 上傳文件給 gateway 讀成文字（PDF、Word、網頁、純文字）；檔案讀完就刪，不留在 gateway。
+// Upload a document for the gateway to read; the file is deleted once read.
+export async function readDocument(file) {
+  const r = await fetch(`${BASE}/v1/documents?name=${encodeURIComponent(file.name)}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getKey()}`, "Content-Type": "application/octet-stream" },
+    body: file,
+  });
+  if (!r.ok) {
+    let msg = `${r.status}`;
+    try { msg = (await r.json()).error.message; } catch { /* 不是 JSON / not JSON */ }
+    throw new Error(msg);
+  }
+  return r.json();
+}
+
+// 把附著的文件包進問題（和 jiezi chat 相同的標記；文字已由 gateway 清理過）。
+// Wrap the attached documents around a question (same markers as jiezi chat; text already cleaned).
+export function withDocuments(question, docs) {
+  let out = question;
+  for (const d of [...docs].reverse()) {
+    const name = d.name.replace(/[】\n]/g, "").slice(0, 200) || "文件";
+    out = `【文件：${name}】\n${d.text}\n【文件結束】\n\n${out}`;
+  }
+  return out;
+}
+
 // 串流對話：每段文字呼叫 onDelta，最後的 jiezi 狀態呼叫 onMeta；signal 用來一鍵中止。
 // Streaming chat: onDelta per chunk, onMeta for the final jiezi status; signal aborts at once.
 export async function streamChat(messages, policy, { onDelta, onMeta, signal }) {

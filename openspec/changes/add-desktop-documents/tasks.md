@@ -1,0 +1,4 @@
+- [x] 1.1 gateway `POST /v1/documents`：金鑰、檔名與格式檢查、大小上限、暫存後刪除、子行程讀取、清理
+- [x] 1.2 前端：`readDocument`、`withDocuments`、附加按鈕、文件標籤、每題重新附上
+- [x] 1.3 單元測試（含標記與 `documents.attach` 一致）；重建前端；重啟 gateway 後以 curl 實測端點；`openspec validate add-desktop-documents --strict`
+- [ ] 2.1 人工檢查：瀏覽器開 `http://127.0.0.1:36100/ui/` 附一份 PDF 並追問兩題（E0 結束、本機模型可用後）；Tauri 外殼內同樣操作一次

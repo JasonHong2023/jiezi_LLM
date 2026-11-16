@@ -33,3 +33,6 @@ td.q { max-width: 28rem; }
 tr.warn td:first-child { color: var(--warn); }
 tr.fail td:first-child { color: var(--bad); }
 pre { background: #fff; border: 1px solid var(--line); padding: .5rem; overflow: auto; }
+.docs { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-bottom: .5rem; font-size: .85rem; }
+.doc { border: 1px solid var(--line); border-radius: 999px; padding: .1rem .2rem .1rem .6rem; background: #fff; }
+.doc button { border: 0; background: none; cursor: pointer; padding: 0 .35rem; font: inherit; }

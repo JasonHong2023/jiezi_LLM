@@ -5,6 +5,7 @@ The local OpenAI-compatible gateway (specs gateway, escalation, trajectory; desi
   POST /v1/chat/completions   三種策略：jiezi、jiezi-local、jiezi-cloud（含串流）/ three policies (streaming too)
   GET  /v1/models             列出策略 / lists the policies
   GET  /health                狀態（不含機密）/ state (no secrets)
+  POST /v1/documents          上傳文件、回傳文字（桌面網頁附檔用）/ upload a document, get its text (desktop page)
   POST /admin/unload          卸載引擎，可暫停到指定時間（夜間評測用）/ unload, optionally hold (night evaluations)
 
 串流的取捨（design D5）：請求帶 `tools` 時，先完整取得並驗證答案，再以串流格式送出；沒有 `tools` 時直接轉送本機
@@ -164,6 +165,7 @@ class Gateway:
             except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
                 self.writing_note = str(exc)
         from ..longdoc import NotesCache
+        self._doc_limit = anyio.Semaphore(1)  # 一次只讀一份上傳的文件 / one uploaded document at a time
         self.doc_notes = NotesCache()  # 長文件各段重點（只在記憶體）/ per-chunk notes of long documents, memory only
         self.consult_cap = escalation.DailyCap(settings.var / "runtime" / "consult", settings.consult_daily_max) \
             if settings.consult_daily_max else None
@@ -535,6 +537,53 @@ class Gateway:
         except json.JSONDecodeError as exc:
             return _err(400, f"invalid JSON: {exc.msg}", "invalid_request")
         return data if isinstance(data, dict) else _err(400, "body must be a JSON object", "invalid_request")
+
+    async def documents(self, request: Request) -> Response:
+        """桌面網頁附檔（add-desktop-documents）：上傳一個檔案（原始位元組，`?name=檔名`），在受限的子行程讀成文字後回傳。
+        檔案只暫存在 var/runtime/uploads，讀完就刪；一次只讀一份。
+        Desktop attachments: upload one file (raw bytes, `?name=`), read it in the limited child process and return
+        the text. The file is kept only while it is read; one at a time."""
+        if not self._authorized(request):
+            return _err(401, "invalid or missing gateway key", "unauthorized")
+        import shutil
+        import tempfile
+        from pathlib import Path
+        from .. import documents as D
+        from ..injection import clean
+        name = Path((request.query_params.get("name") or "").replace("\\", "/")).name[:200]
+        suffix = Path(name).suffix.lower()
+        if not name or suffix not in D.SUPPORTED:
+            return _err(400, f"不支援的格式 {suffix or '（無副檔名）'}；支援 PDF、.docx、.html、純文字 / unsupported format",
+                        "unsupported_document")
+        n = request.headers.get("content-length")
+        if n and n.isdigit() and int(n) > D.MAX_FILE_BYTES:
+            return _err(413, f"檔案超過 {D.MAX_FILE_BYTES // 2**20} MB / file too large", "request_too_large")
+        base = self.s.var / "runtime" / "uploads"
+        base.mkdir(parents=True, exist_ok=True)
+        tmp = Path(tempfile.mkdtemp(dir=base))
+        try:
+            path, size = tmp / f"upload{suffix}", 0
+            with path.open("wb") as f:
+                async for chunk in request.stream():
+                    size += len(chunk)
+                    if size > D.MAX_FILE_BYTES:
+                        return _err(413, f"檔案超過 {D.MAX_FILE_BYTES // 2**20} MB / file too large", "request_too_large")
+                    f.write(chunk)
+            if not size:
+                return _err(400, "empty upload", "invalid_request")
+            async with self._doc_limit:
+                try:
+                    d = await anyio.to_thread.run_sync(D.read, path)
+                except D.DocumentError as exc:
+                    return _err(422, str(exc), "document_unreadable")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        text, _ = clean(d["text"])  # 偽造的文件標記與零寬字元 / forged markers and invisible characters
+        if not text.strip():
+            return _err(422, "讀不到文字（可能是掃描檔且 OCR 失敗）/ no text found", "document_unreadable")
+        return JSONResponse({"name": name, "kind": d.get("kind"), "chars": len(text), "pages": d.get("pages"),
+                             "ocr_pages": len(d.get("ocr_pages") or []), "warnings": d.get("warnings") or [],
+                             "text": text})
 
     async def admin_trajectories(self, request: Request) -> Response:
         """桌面 App 的稽核紀錄（Phase 8.1）：最近的對話摘要，只讀、需要金鑰。
@@ -1125,6 +1174,7 @@ def create_app(gw: Gateway) -> Starlette:
         Route("/v1/chat/completions", gw.chat, methods=["POST"]),
         Route("/v1/models", gw.models, methods=["GET"]),
         Route("/v1/embeddings", gw.embeddings, methods=["POST"]),
+        Route("/v1/documents", gw.documents, methods=["POST"]),
         Route("/health", gw.health, methods=["GET"]),
         Route("/admin/unload", gw.admin_unload, methods=["POST"]),
         Route("/admin/trajectories", gw.admin_trajectories, methods=["GET"]),

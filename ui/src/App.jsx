@@ -1,7 +1,9 @@
 // 芥子桌面 App 雛形：對話、稽核紀錄、狀態（唯讀；不操控作業系統）。
 // Jiezi desktop prototype: chat, audit log, status (read-only; no OS control).
 import { useEffect, useRef, useState } from "react";
-import { BASE, getJSON, getKey, setKey, streamChat } from "./api.js";
+import { BASE, getJSON, getKey, readDocument, setKey, streamChat, withDocuments } from "./api.js";
+
+const MAX_DOC_CHARS = 1500000;  // 附著文件的總字數上限（和 jiezi chat 相同）/ same cap as jiezi chat
 
 const POLICIES = [
   ["jiezi", "芥子（本機優先，答不出來請教 Claude）"],
@@ -40,8 +42,33 @@ function Chat() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [docs, setDocs] = useState([]);       // 附著的文件，每一題都帶 / attached documents, sent with every question
+  const [reading, setReading] = useState("");
   const abort = useRef(null);
   const end = useRef(null);
+  const picker = useRef(null);
+
+  async function attach(files) {
+    setError("");
+    for (const f of files) {
+      setReading(f.name);
+      try {
+        const d = await readDocument(f);
+        setDocs((cur) => {
+          const rest = cur.filter((x) => x.name !== d.name);  // 同名視為更新 / same name replaces
+          if (rest.reduce((n, x) => n + x.chars, 0) + d.chars > MAX_DOC_CHARS) {
+            setError(`附著的文件合計超過 ${MAX_DOC_CHARS} 字，請先移除一些`);
+            return cur;
+          }
+          return [...rest, d];
+        });
+        if (d.warnings?.length) setError(`${d.name}：${d.warnings.join("；")}`);
+      } catch (e) {
+        setError(`${f.name}：${e.message || e}`);
+      }
+    }
+    setReading("");
+  }
 
   useEffect(() => end.current?.scrollIntoView({ block: "end" }), [msgs]);
   useEffect(() => {
@@ -54,6 +81,10 @@ function Chat() {
     const text = input.trim();
     if (!text || busy) return;
     const history = [...msgs.map(({ role, content }) => ({ role, content })), { role: "user", content: text }];
+    // 畫面與歷史只留問題；文件在送出時包進最新的問題，gateway 才能依這一題重新挑段落
+    // The log keeps the bare question; documents are wrapped around the latest question when sending
+    const outgoing = [...history.slice(-12)];
+    outgoing[outgoing.length - 1] = { role: "user", content: withDocuments(text, docs) };
     setMsgs([...history, { role: "assistant", content: "", meta: null }]);
     setInput("");
     setBusy(true);
@@ -61,7 +92,7 @@ function Chat() {
     abort.current = new AbortController();
     const t0 = performance.now();
     try {
-      await streamChat(history.slice(-12), policy, {
+      await streamChat(outgoing, policy, {
         signal: abort.current.signal,
         onDelta: (t) => setMsgs((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + t }; return c; }),
         onMeta: (meta) => setMsgs((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], meta }; return c; }),
@@ -84,8 +115,24 @@ function Chat() {
         <label>策略 <select value={policy} onChange={(e) => setPolicy(e.target.value)}>
           {POLICIES.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
         </select></label>
-        <button onClick={() => setMsgs([])} disabled={busy}>清除對話</button>
+        <button onClick={() => { setMsgs([]); setDocs([]); }} disabled={busy}>清除對話</button>
+        <input ref={picker} type="file" multiple hidden
+          accept=".pdf,.docx,.html,.htm,.txt,.md,.csv,.json,.log"
+          onChange={(e) => { attach([...e.target.files]); e.target.value = ""; }} />
+        <button onClick={() => picker.current?.click()} disabled={busy || !!reading}>附加文件</button>
       </div>
+      {(docs.length > 0 || reading) && (
+        <div className="docs">
+          {docs.map((d) => (
+            <span key={d.name} className="doc" title={d.ocr_pages ? `OCR ${d.ocr_pages} 頁` : ""}>
+              {d.name}（{d.chars} 字）
+              <button aria-label={`移除 ${d.name}`} onClick={() => setDocs((c) => c.filter((x) => x !== d))} disabled={busy}>×</button>
+            </span>
+          ))}
+          {reading && <span className="muted">讀取中：{reading}…</span>}
+          {docs.length > 0 && <span className="muted">文件會跟著每一題送出，可以一直追問</span>}
+        </div>
+      )}
       <div className="log">
         {msgs.length === 0 && <p className="muted">輸入問題後按 Enter；Shift+Enter 換行；Esc 或「中止」立刻停止。</p>}
         {msgs.map((m, i) => (
