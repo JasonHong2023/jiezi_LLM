@@ -166,4 +166,9 @@ scripts/jiezi check-clients    # 只檢查並列出建議設定，不修改任�
 ```
 
 是否把 Hermes Agent 或 OpenCode 的預設改指向 gateway 由你決定（會改變日常工具的行為）；`check-clients` 不會替你修改。
+
+> **已設定（2026-11-16，使用者決定「只新增選項、不改預設」）/ Configured**
+> - Hermes：`~/.hermes/config.yaml` 的 `providers.jiezi`（`api` 指向 gateway、`key_env: JIEZI_GATEWAY_KEY`，金鑰在 `~/.hermes/.env`）；預設模型不變。切換：`hermes model` 選 Jiezi。
+> - OpenCode：`opencode.jsonc` 的 `provider.jiezi`，金鑰以 `{file:~/.config/opencode/jiezi.key}`（權限 600）讀取；`opencode models jiezi` 列出 jiezi、jiezi-local、jiezi-ask-claude。
+> - 兩者修改前都已備份（`*.bak-20261116-113127-jiezi`）。換新的 gateway 金鑰時，兩個地方也要更新。
 Whether to point Hermes Agent or OpenCode at the gateway is your call (it changes your everyday tools); `check-clients` never changes them.
