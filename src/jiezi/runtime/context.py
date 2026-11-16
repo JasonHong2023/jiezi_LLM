@@ -11,6 +11,7 @@ import json
 import re
 
 SLOT_CTX = 4096
+IMAGE_TOKENS = 400              # 一張圖的估計 token（不把 base64 長度算進去）/ per image, never the base64 length
 DEFAULT_ANSWER = 1024           # 沒指定 max_tokens 時為回答保留 / reserved for the answer when max_tokens is unset
 MSG_OVERHEAD, MIN_DATA_CHARS = 8, 200
 _CJK = re.compile(r"[⺀-鿿豈-﫿＀-￯]")
@@ -26,6 +27,10 @@ def est_tokens(text: str) -> int:
 
 def _msg_tokens(m: dict) -> int:
     c = m.get("content")
+    if isinstance(c, list):  # 多段內容：文字照算，圖片固定估計 / text parts counted, images estimated
+        text = "".join(p.get("text", "") for p in c if isinstance(p, dict) and p.get("type") == "text")
+        images = sum(1 for p in c if isinstance(p, dict) and p.get("type") in ("image_url", "input_image"))
+        return est_tokens(text) + images * IMAGE_TOKENS + MSG_OVERHEAD
     text = c if isinstance(c, str) else json.dumps(c, ensure_ascii=False) if c else ""
     if m.get("tool_calls"):
         text += json.dumps(m["tool_calls"], ensure_ascii=False)

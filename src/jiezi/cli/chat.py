@@ -9,7 +9,9 @@ answer；F2 切換策略 / switch policy；Ctrl+Q 離開 / quit。
 
 from __future__ import annotations
 
+import base64
 import json
+import mimetypes
 from pathlib import Path
 
 import anyio
@@ -27,7 +29,22 @@ from .herdr import HerdrReporter
 
 POLICIES = ("jiezi", "jiezi-local", "jiezi-ask-claude", "jiezi-cloud")
 # 聊天歷史（使用者 2026-11-15：重開時接續上次的對話）/ chat history, resumed on restart
-MAX_SAVED, MAX_SHOWN, MAX_CONTEXT = 200, 20, 12  # 引擎上下文 4096，只送最近 12 則 / engine ctx is 4096
+MAX_SAVED, MAX_SHOWN, MAX_CONTEXT = 200, 20, 12
+IMAGE_TYPES, MAX_IMAGE_BYTES = {"image/png", "image/jpeg", "image/webp", "image/gif"}, 5 << 20  # add-vision
+
+
+def text_of(content) -> str:
+    """訊息的文字；圖片換成「[圖片]」。 / The text of a message; images become 「[圖片]」."""
+    if isinstance(content, list):
+        return " ".join(p.get("text", "") if p.get("type") == "text" else "[圖片 image]"
+                        for p in content if isinstance(p, dict)).strip()
+    return content or ""
+
+
+def for_context(history: list[dict]) -> list[dict]:
+    """送給 gateway 的上下文：只有最後一則保留圖片，其他只留文字。 / Only the last message keeps its image."""
+    out = [{**m, "content": text_of(m["content"])} for m in history[:-1]]
+    return out + history[-1:]  # 引擎上下文 4096，只送最近 12 則 / engine ctx is 4096
 
 
 class PromptArea(TextArea):
@@ -88,6 +105,7 @@ class ChatApp(App):
         self.worker: Worker | None = None
         self.last_status = ""
         self.copied: str | None = None
+        self.pending_image: tuple[str, str] | None = None  # (檔名, data URL) / (name, data URL)
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(Static("輸入問題後按 Enter / Type a question and press Enter. "
@@ -113,7 +131,8 @@ class ChatApp(App):
         try:
             self.history_path.parent.mkdir(parents=True, exist_ok=True)
             tmp = self.history_path.with_suffix(".tmp")
-            tmp.write_text(json.dumps(self.history[-MAX_SAVED:], ensure_ascii=False, indent=1), encoding="utf-8")
+            saved = [{**m, "content": text_of(m["content"])} for m in self.history[-MAX_SAVED:]]  # 不存圖片 / no images
+            tmp.write_text(json.dumps(saved, ensure_ascii=False, indent=1), encoding="utf-8")
             tmp.replace(self.history_path)
         except OSError:
             pass
@@ -127,7 +146,7 @@ class ChatApp(App):
                                f"或用 --new 開新對話）/ resumed ——", classes="meta", markup=False))
         for m in shown:
             if m["role"] == "user":
-                await log.mount(Static(f"> {m['content']}", classes="user", markup=False))
+                await log.mount(Static(f"> {text_of(m['content'])}", classes="user", markup=False))
             else:
                 await log.mount(Markdown(m["content"], classes="answer"))
         log.scroll_end(animate=False)
@@ -191,6 +210,9 @@ class ChatApp(App):
         if text == "/copy":
             self.action_copy_last()
             return
+        if text.startswith("/image"):
+            self._attach_image(text[6:].strip())
+            return
         if text == "/clear":
             self.history.clear()
             if self.history_path:
@@ -201,12 +223,18 @@ class ChatApp(App):
             self._update_bar("上一題還在回答 / still answering")
             return
         log = self.query_one("#log", VerticalScroll)
+        content = text
+        if self.pending_image:  # 這一題附圖 / this question carries the image
+            name, url = self.pending_image
+            content = [{"type": "text", "text": text}, {"type": "image_url", "image_url": {"url": url}}]
+            text = f"{text}  [圖片 image: {name}]"
+            self.pending_image = None
         await log.mount(Static(f"> {text}", classes="user", markup=False))
         answer = Markdown(classes="answer")
         meta = Static("", classes="meta", markup=False)
         await log.mount(answer, meta)
         log.scroll_end(animate=False)
-        self.history.append({"role": "user", "content": text})
+        self.history.append({"role": "user", "content": content})
         self.worker = self.run_worker(self._answer(answer, meta, log), exclusive=True)
 
     async def _answer(self, answer: Markdown, meta_w: Static, log: VerticalScroll) -> None:
@@ -215,7 +243,7 @@ class ChatApp(App):
         meta = None
         stream = Markdown.get_stream(answer)
         try:
-            async for kind, value in stream_chat(self.conn, self.history[-MAX_CONTEXT:], self.policy):
+            async for kind, value in stream_chat(self.conn, for_context(self.history[-MAX_CONTEXT:]), self.policy):
                 if kind == "delta":
                     parts.append(value)
                     await stream.write(value)
@@ -245,13 +273,27 @@ class ChatApp(App):
             self._update_bar()
             self.reporter.report("idle")
 
+    def _attach_image(self, path: str) -> None:
+        """`/image 路徑`：下一個問題附上這張圖（add-vision）。 / Attach an image to the next question."""
+        p = Path(path).expanduser()
+        kind = mimetypes.guess_type(p.name)[0]
+        if not path or not p.is_file():
+            self._update_bar("用法 usage: /image 圖片路徑（png、jpg、webp、gif）")
+        elif kind not in IMAGE_TYPES:
+            self._update_bar(f"不支援的格式 unsupported: {kind or p.suffix}")
+        elif p.stat().st_size > MAX_IMAGE_BYTES:
+            self._update_bar("圖片超過 5 MB / image larger than 5 MB")
+        else:
+            self.pending_image = (p.name, f"data:{kind};base64,{base64.b64encode(p.read_bytes()).decode()}")
+            self._update_bar(f"已附圖 attached: {p.name}；輸入問題後按 Enter / type your question")
+
     def _save(self, path: str) -> None:
         if not path:
             self._update_bar("用法 usage: /save 檔案.md")
             return
         lines = []
         for m in self.history:
-            lines.append(("## 你 / You\n\n" if m["role"] == "user" else "## 芥子 / Jiezi\n\n") + m["content"] + "\n")
+            lines.append(("## 你 / You\n\n" if m["role"] == "user" else "## 芥子 / Jiezi\n\n") + text_of(m["content"]) + "\n")
         p = Path(path).expanduser()
         p.write_text("\n".join(lines), encoding="utf-8")
         self._update_bar(f"已儲存 saved: {p}")

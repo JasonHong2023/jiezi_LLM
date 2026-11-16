@@ -395,7 +395,7 @@ class TestGateway(unittest.TestCase):
 
     def test_request_size_limit_and_admin_unload(self):
         with self.client([{"role": "assistant", "content": "x"}]) as c:
-            big = {"messages": [{"role": "user", "content": "x" * (2 << 20)}]}
+            big = {"messages": [{"role": "user", "content": "x" * (9 << 20)}]}  # 上限 8 MB / limit is 8 MB
             self.assertEqual(self.post(c, big).status_code, 413)
             r = c.post("/admin/unload", json={"hold_until": "2099-01-01T07:00:00"},
                        headers={"Authorization": f"Bearer {KEY}"}).json()

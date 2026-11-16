@@ -1,0 +1,5 @@
+- [x] 1.1 模型清單 mmproj 條目與核心 `mmproj` 欄位；supervisor 偵測、引擎 `--mmproj`
+- [x] 1.2 gateway 圖片路由、文字部分查資料、請求上限 8 MB；上下文估算
+- [x] 1.3 `jiezi chat` 的 `/image`；doctor 顯示視覺狀態
+- [x] 1.4 單元測試；`openspec validate add-vision --strict`
+- [ ] 2.1 G1 選定 Qwen3.5 核心後下載對應 mmproj，以真實圖片實測（本機中文看圖說明）

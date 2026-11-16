@@ -58,6 +58,7 @@ scripts/jiezi chat            # 或 / or: scripts/jiezi chat --claude
 | F2 | 切換策略 / switch policy |
 | Ctrl+Q | 離開 / quit |
 | `/save 檔案.md` | 存成 Markdown / save as Markdown |
+| `/image 圖片路徑` | 下一個問題附上這張圖（核心需有視覺模組）/ attach an image to the next question (needs a vision core) |
 | `/clear` | 清除對話與保存的歷史 / clear the conversation and saved history |
 
 複製會同時寫入終端機剪貼簿（OSC 52）與系統剪貼簿（WSL 用 Windows 的 `clip.exe`，Linux 桌面用 `wl-copy` / `xclip`），所以在 Herdr 內也能貼到 Windows。

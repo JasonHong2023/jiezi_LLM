@@ -49,7 +49,7 @@ class Settings:
     cloud_daily_max: int = 200
     trajectory: bool = True
     retention_days: int = 0
-    request_max_bytes: int = 1 << 20
+    request_max_bytes: int = 8 << 20   # 圖片以 base64 傳入，放寬到 8 MB（add-vision）/ images arrive as base64
     request_timeout_s: float = 600.0
     host: str = LOCAL_HOST
     consult: str = "off"            # off | claude-cli（design D9）

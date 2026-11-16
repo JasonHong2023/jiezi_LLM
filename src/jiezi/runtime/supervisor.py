@@ -40,8 +40,15 @@ def resolve_core(settings: Settings, name: str | None = None) -> dict:
         raise JieziError(f"core model file {path} is missing or incomplete; download it first "
                          "(scripts/bootstrap for the default, or scripts/eval e0 fetch)")
     quant = next((q for q in CPU_ONLY_MARKERS if q.lower() in m["file"].lower()), "other")
+    # 視覺模組（add-vision）：清單裡的 mmproj 欄位指向另一筆模型；檔案存在才啟用
+    # Vision projector (add-vision): the mmproj field names another manifest entry; enabled only when present
+    mmproj = None
+    if m.get("mmproj"):
+        mm = next((x for x in manifest.get("model") or [] if x.get("name") == m["mmproj"]), None)
+        if mm and (settings.models_dir / mm["file"]).is_file():
+            mmproj = settings.models_dir / mm["file"]
     return {"name": name, "file": m["file"], "path": path, "size": int(m["size"]), "sha256": m["sha256"],
-            "quant": quant}
+            "quant": quant, "mmproj_path": mmproj, "vision": mmproj is not None}
 
 
 def place_core(core: dict, budgets: dict) -> dict:
@@ -156,7 +163,10 @@ class Supervisor:
             p = place_core(core, facts.get("budgets") or {})
             if p.get("excluded"):
                 raise EngineUnavailable(f"core model does not fit: {p['reason']}")
-            eng = self.engine_factory(facts, core["path"], p["ngl"], self.s.engine_port, alias=core["name"])
+            kw = {"alias": core["name"]}
+            if core.get("mmproj_path"):  # 有視覺模組才傳 / only with a vision projector
+                kw["mmproj"] = core["mmproj_path"]
+            eng = self.engine_factory(facts, core["path"], p["ngl"], self.s.engine_port, **kw)
             log_path = self.s.var / "runtime" / "engine-chat.log"
             eng.start(log_path)
         except Exception as exc:

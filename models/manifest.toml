@@ -114,6 +114,7 @@ source = "OpenBMB 官方 repo；授權見 MiniCPM GitHub / official OpenBMB repo
 
 [[model]]
 name = "qwen3.5-0.8b-q8_0"
+mmproj = "qwen3.5-0.8b-mmproj-f16"  # 視覺模組（add-vision）/ vision projector
 file = "Qwen3.5-0.8B-Q8_0.gguf"
 url = "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/6ab461498e2023f6e3c1baea90a8f0fe38ab64d0/Qwen3.5-0.8B-Q8_0.gguf"
 sha256 = "0ad885ffd4bb022fc4f0d33a3308fa108ef8613159d3b3a67e23abca056b7a6c"
@@ -127,6 +128,7 @@ source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 
 
 [[model]]
 name = "qwen3.5-0.8b-q4_k_m"
+mmproj = "qwen3.5-0.8b-mmproj-f16"  # 視覺模組（add-vision）/ vision projector
 file = "Qwen3.5-0.8B-Q4_K_M.gguf"
 url = "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/6ab461498e2023f6e3c1baea90a8f0fe38ab64d0/Qwen3.5-0.8B-Q4_K_M.gguf"
 sha256 = "bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517"
@@ -140,6 +142,7 @@ source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 
 
 [[model]]
 name = "qwen3.5-2b-q8_0"
+mmproj = "qwen3.5-2b-mmproj-f16"  # 視覺模組（add-vision）/ vision projector
 file = "Qwen3.5-2B-Q8_0.gguf"
 url = "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/f6d5376be1edb4d416d56da11e5397a961aca8ae/Qwen3.5-2B-Q8_0.gguf"
 sha256 = "1b04acba824817554f4ce23639bc8495ff70453b8fcb047900c731521021f2c1"
@@ -153,6 +156,7 @@ source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 
 
 [[model]]
 name = "qwen3.5-2b-q4_k_m"
+mmproj = "qwen3.5-2b-mmproj-f16"  # 視覺模組（add-vision）/ vision projector
 file = "Qwen3.5-2B-Q4_K_M.gguf"
 url = "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/f6d5376be1edb4d416d56da11e5397a961aca8ae/Qwen3.5-2B-Q4_K_M.gguf"
 sha256 = "aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223"
@@ -166,6 +170,7 @@ source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 
 
 [[model]]
 name = "qwen3.5-4b-q8_0"
+mmproj = "qwen3.5-4b-mmproj-f16"  # 視覺模組（add-vision）/ vision projector
 file = "Qwen3.5-4B-Q8_0.gguf"
 url = "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/e87f176479d0855a907a41277aca2f8ee7a09523/Qwen3.5-4B-Q8_0.gguf"
 sha256 = "10cc391b403021dd11c614679d2fd92f611c3681d29e29651b717316965d61e1"
@@ -179,6 +184,7 @@ source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 
 
 [[model]]
 name = "qwen3.5-4b-q4_k_m"
+mmproj = "qwen3.5-4b-mmproj-f16"  # 視覺模組（add-vision）/ vision projector
 file = "Qwen3.5-4B-Q4_K_M.gguf"
 url = "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/e87f176479d0855a907a41277aca2f8ee7a09523/Qwen3.5-4B-Q4_K_M.gguf"
 sha256 = "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4"
@@ -192,6 +198,7 @@ source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 
 
 [[model]]
 name = "qwen3.5-4b-iq2_m"
+mmproj = "qwen3.5-4b-mmproj-f16"  # 視覺模組（add-vision）/ vision projector
 file = "Qwen3.5-4B-UD-IQ2_M.gguf"
 url = "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/e87f176479d0855a907a41277aca2f8ee7a09523/Qwen3.5-4B-UD-IQ2_M.gguf"
 sha256 = "cb4c45ca42c0d7777667e94e3963f8e59e939b3665098328ce601feb5be129c1"
@@ -243,3 +250,46 @@ training_use = true
 license_checked = "2026-11-16"  # ⚠️ repo 沒有 LICENSE 檔，依模型卡 metadata `license: apache-2.0` / no LICENSE file; model-card metadata
 source = "Qwen 官方 Hugging Face repo / official Qwen Hugging Face repo (Qwen/Qwen3-Embedding-0.6B-GGUF)"
 role = "embedding"  # 用 --embedding --pooling last 啟動 / served with --embedding --pooling last
+
+# ── 視覺模組（add-vision；Qwen3.5 原生多模態，unsloth 附的 mmproj，同一個鎖定 commit）/ vision projectors ──
+[[model]]
+name = "qwen3.5-0.8b-mmproj-f16"
+file = "Qwen3.5-0.8B-mmproj-F16.gguf"
+url = "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/6ab461498e2023f6e3c1baea90a8f0fe38ab64d0/mmproj-F16.gguf"
+sha256 = "56e4c6cfe73b0c82e3e82bc518d7591997e61d81f723fc41a586f4fa69ea2453"
+size = 204987232
+license = "Apache-2.0"
+license_url = "https://huggingface.co/Qwen/Qwen3.5-0.8B"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-16"  # 與同 repo 的 GGUF 相同（qwen3.5-gguf）/ same as the repo's GGUF entries
+source = "unsloth 轉檔的 Qwen3.5 視覺投影器 / unsloth's Qwen3.5 vision projector (unsloth/Qwen3.5-0.8B-GGUF)"
+role = "mmproj"
+
+[[model]]
+name = "qwen3.5-2b-mmproj-f16"
+file = "Qwen3.5-2B-mmproj-F16.gguf"
+url = "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/f6d5376be1edb4d416d56da11e5397a961aca8ae/mmproj-F16.gguf"
+sha256 = "7035e9cb8d7c6a9681d07eef9a364783e86ea4cd73faab2eabb4f43a101830c7"
+size = 668227264
+license = "Apache-2.0"
+license_url = "https://huggingface.co/Qwen/Qwen3.5-2B"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-16"  # 與同 repo 的 GGUF 相同（qwen3.5-gguf）/ same as the repo's GGUF entries
+source = "unsloth 轉檔的 Qwen3.5 視覺投影器 / unsloth's Qwen3.5 vision projector (unsloth/Qwen3.5-2B-GGUF)"
+role = "mmproj"
+
+[[model]]
+name = "qwen3.5-4b-mmproj-f16"
+file = "Qwen3.5-4B-mmproj-F16.gguf"
+url = "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/e87f176479d0855a907a41277aca2f8ee7a09523/mmproj-F16.gguf"
+sha256 = "cd88edcf8d031894960bb0c9c5b9b7e1fea6ebee02b9f7ce925a00d12891f864"
+size = 672423616
+license = "Apache-2.0"
+license_url = "https://huggingface.co/Qwen/Qwen3.5-4B"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-16"  # 與同 repo 的 GGUF 相同（qwen3.5-gguf）/ same as the repo's GGUF entries
+source = "unsloth 轉檔的 Qwen3.5 視覺投影器 / unsloth's Qwen3.5 vision projector (unsloth/Qwen3.5-4B-GGUF)"
+role = "mmproj"

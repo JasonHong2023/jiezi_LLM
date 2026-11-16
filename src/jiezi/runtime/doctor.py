@@ -55,6 +55,15 @@ def checks(root: Path, port: int) -> list[tuple[str, str, str, str]]:
     emb = models / "Qwen3-Embedding-0.6B-Q8_0.gguf"
     add("embedding 模型", OK if emb.exists() else WARN, emb.name if emb.exists() else "缺檔（向量檢索停用）",
         "見 models/manifest.toml 的 qwen3-embedding-0.6b-q8_0")
+    try:  # 視覺（add-vision）/ vision
+        from .settings import load_settings
+        from .supervisor import resolve_core
+        core = resolve_core(load_settings(root))
+        add("視覺（看圖）", OK if core["vision"] else WARN,
+            f"{core['name']} 有視覺模組" if core["vision"] else f"{core['name']} 沒有視覺模組（只能處理文字）",
+            "核心選有 mmproj 的模型（Qwen3.5），並下載清單中對應的 *-mmproj-f16")
+    except Exception as exc:  # noqa: BLE001
+        add("視覺（看圖）", WARN, f"無法判斷：{exc}")
     sandbox = root / "var" / "tools" / "bubblewrap" / "bin" / "bwrap"  # 與 verify/sandbox.py 相同 / same as the sandbox
     add("程式驗證沙盒", OK if sandbox.exists() or shutil.which("bwrap") else WARN,
         "bubblewrap 可用" if sandbox.exists() or shutil.which("bwrap") else "缺（程式題驗證停用）", "scripts/bootstrap")

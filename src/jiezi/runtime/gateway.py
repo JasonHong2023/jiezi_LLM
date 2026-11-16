@@ -40,6 +40,20 @@ from .settings import POLICIES, Settings
 LIVE = re.compile(r"https?://|網址|網頁|網站|新聞|天氣|氣溫|下雨|颱風動態|股價|匯率|油價|最新消息|即時|"
                   r"現在幾點|上網查|網路上(找|查|搜)|搜尋一下")
 CORRECTION_DIRECT = 0.5
+
+
+def message_text(m: dict) -> str:
+    """訊息的文字部分（多段內容只取文字）。 / The text of a message (text parts of multi-part content)."""
+    c = m.get("content")
+    if isinstance(c, list):
+        return "\n".join(p.get("text", "") for p in c if isinstance(p, dict) and p.get("type") == "text").strip()
+    return c if isinstance(c, str) else ""
+
+
+def has_images(body: dict) -> bool:
+    return any(isinstance(m.get("content"), list) and any(
+        isinstance(p, dict) and p.get("type") in ("image_url", "input_image") for p in m["content"])
+        for m in body.get("messages") or [])
 EMBED_MAX_INPUTS, EMBED_MAX_CHARS = 64, 8000  # 問題和更正過的問題相似到這個程度，就直接照更正回答 / serve a correction at this similarity
 from .supervisor import EngineUnavailable, Supervisor
 from .trajectory import TrajectoryWriter, elapsed, new_id, now_iso
@@ -89,6 +103,12 @@ class Gateway:
                 self.curriculum = Graph.load(settings.root)
             except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
                 self.curriculum_note = str(exc)
+        self.core_vision = False  # 核心是否有視覺模組（add-vision）/ whether the core has a vision projector
+        try:
+            from .supervisor import resolve_core
+            self.core_vision = bool(resolve_core(settings).get("vision"))
+        except Exception:  # noqa: BLE001 - 核心沒裝好時 supervisor 會另外報錯 / reported elsewhere
+            pass
         self.memory, self.memory_note = None, None
         if settings.memory:
             from ..memory import Memory, wiki_path
@@ -268,7 +288,14 @@ class Gateway:
                 self.memory, self.dictionary, self.curriculum, self.knowledge, self.writing, self.laws))):
             return
         last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
-        if not last or not isinstance(last.get("content"), str):
+        if not last:
+            return
+        if isinstance(last.get("content"), list):  # 圖片訊息：用文字部分查資料 / image messages: use the text parts
+            text = message_text(last)
+            if not text:
+                return
+            last = {"role": "user", "content": text, "_target": last}
+        elif not isinstance(last.get("content"), str):
             return
         found = []
         if self.memory is not None:  # 記憶最優先（使用者的更正）/ memory first (the user's corrections)
@@ -289,7 +316,7 @@ class Gateway:
         if self.knowledge is not None:
             from ..knowledge import grounding as knowledge_grounding
             found.append(knowledge_grounding(self.knowledge, last["content"], self.hybrid))
-        idx = body["messages"].index(last)
+        idx = body["messages"].index(last.get("_target", last))
         for g in found:
             if not g:
                 continue
@@ -497,6 +524,11 @@ class Gateway:
                 return early
 
         if policy == "jiezi-ask-claude":
+            if has_images(body):  # Claude Code CLI 只收文字，圖片會遺失 / the CLI takes text only
+                if self.s.cloud_ready and not self._can_escalate():
+                    return await self._respond_cloud(body, rec, t0, stream, reason="image_needs_vision")
+                return self._finish_error(rec, 400, "請教 Claude 的管道目前只能傳文字，無法附圖 / consulting Claude "
+                                          "cannot carry images", "vision_unavailable")
             return await self._respond_consult(body, rec, t0, stream)
 
         if policy == "jiezi-cloud":
@@ -505,6 +537,12 @@ class Gateway:
                 return self._finish_error(rec, 503, f"cloud is not available ({reason})", reason)
             return await self._respond_cloud(body, rec, t0, stream, reason="policy")
 
+        if has_images(body) and not self.core_vision:
+            # 核心不支援圖片：不讓本機對著看不到的圖亂答（add-vision）/ never let a text-only core guess at an image
+            if policy != "jiezi-local" and self.s.cloud_ready and not self._can_escalate():
+                return await self._respond_cloud(body, rec, t0, stream, reason="image_needs_vision")
+            return self._finish_error(rec, 400, "目前的核心模型不支援圖片（需要有視覺模組的核心，例如 Qwen3.5 加 mmproj）"
+                                      "；也沒有可用的雲端模型 / the core model cannot read images", "vision_unavailable")
         route = self._pre_route(body, rec) if policy == "jiezi" else None
         if route:
             # 路由器 v0（規則）：本機一定答不了的問題直接轉交，不先浪費一次本機生成
