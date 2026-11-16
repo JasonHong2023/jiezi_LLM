@@ -28,6 +28,25 @@ cat 會議記錄.txt | scripts/jiezi ask "列出待辦事項"     # 管線輸入
 `jiezi chat` 裡輸入 `/file 路徑`，再輸入問題。文件會一直附著（狀態列顯示檔名），可以對同一份文件連續追問，每一題都會依那一題重新挑段落，也會參考上一輪問答（所以可以問「那相關數據呢？」）；`/file clear` 取消，重開 chat 後要重新 `/file`。掃描版 PDF 會自動用繁中 OCR（每頁約 2 秒）。PowerPoint 讀每張投影片的文字與備忘稿（整張是圖片的簡報讀不到字，請先匯出成 PDF）；Excel 每個工作表讀成「欄 | 欄」的列，日期會轉成 2026-11-16 這種寫法，公式取上次計算的結果，上限 20 萬個儲存格。舊版 .doc／.ppt／.xls 不支援，請先另存成新格式。文件超過本機模型的上下文時，gateway 會先分段處理：要摘要就逐段整理重點再合併；問問題就挑最相關的段落，並標出段落編號。
 In chat use `/file path`. Long documents are condensed by the gateway before answering. The document stays attached for follow-up questions until `/file clear`.
 
+### 翻譯整份文件 / Translating a whole document
+
+```bash
+scripts/jiezi translate 報告.pdf --to en                    # 中文 → 英文；預設輸出「原文一段、譯文一段」對照
+scripts/jiezi translate report.docx --to zh-TW --plain --out 譯文.md   # 只要譯文，寫到檔案
+scripts/jiezi translate 合約.pdf --to en --glossary 詞彙.tsv   # 指定譯法：每行「原文<Tab>譯法」或「原文=譯法」
+scripts/jiezi translate 简体文件.txt --to zh-TW              # 簡體 → 繁體：直接用對照表轉換，不經模型、幾秒完成
+```
+
+在 `ask --file` 或 chat 裡附上文件後說「翻譯成英文」也走同一條路。目前只支援翻成**繁體中文**與**英文**。
+
+- **整份都翻**：文件切成小段，每段各自翻譯後依原文順序接回，不會用摘要代替。
+- **每段都檢查**：不能是空的、長度要合理、原文的數字都要在、譯文確實是目標語言、詞彙表指定的譯法要用上。沒過會重翻一次；再沒過就**保留那一段原文並標記「未能翻譯」**，不會把壞的譯文當成功（結束碼 5）。失敗的段不會送到雲端或 Claude。
+- **長文件先問**：預估超過 5 分鐘時先顯示預估時間並等你確認（`--yes` 略過）。可以隨時 Ctrl+C 中斷，重跑同一個指令會接著做（已翻好的段暫存在 `var/translate/`，只在本機）。
+- **限制**：檢查抓得到漏譯與數字錯，**抓不到意思翻錯**；翻譯品質取決於核心模型，小模型的譯文請務必自行核對。輸出只有文字，不保留原檔版面。簡轉繁依 OpenCC 對照表，專有名詞與少數用語（例如「質量」）可能要自己調整。
+- **隱私**：`jiezi` 策略在本機引擎不可用時，會照一般文件的處理方式把整個請求轉交 Claude；不想讓文件離開本機請加 `--local`。
+
+Whole documents are translated chunk by chunk (zh-TW and en targets only), every chunk is checked, failed chunks keep their source text and are marked (exit code 5), long jobs ask first and can resume. The checks catch omissions and wrong numbers, not wrong meaning. Use `--local` to keep the document on this machine.
+
 ### 只要 JSON（給腳本用）/ JSON answers for scripts
 
 ```bash
