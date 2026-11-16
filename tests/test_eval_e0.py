@@ -193,6 +193,21 @@ class TestPipeline(unittest.TestCase):
         self.assertEqual(e0.run_rows(rows, state, h, lambda: None), "complete")  # 不重跑 / no rerun
         self.assertEqual(len(self.calls), 2)
 
+    def test_defer_verify_and_separate_verifier(self):
+        state = {"matrix_hash": "h", "rows": {}}
+        h = self.hooks()
+        rows = self.rows()[:2]
+        self.assertEqual(e0.run_rows(rows, state, h, lambda: None, defer_verify=True), "complete")
+        self.assertEqual([s["state"] for s in state["rows"].values()], ["run_complete", "run_complete"])
+        self.assertNotIn(("verify", "e0-a"), self.calls)                    # 生成時不等評審 / no waiting
+        runs = self.mdir / "var" / "eval" / "runs"
+        (runs / "e0-a").mkdir(parents=True)
+        (runs / "e0-a" / "run_state.json").write_text('{"state": "complete"}')
+        res = e0.verify_generated(self.mdir, rows, h)                       # 另一個行程 / separate process
+        self.assertEqual((res["verified"], res["not_ready"]), (["a"], ["b"]))
+        e0.run_rows(rows, state, h, lambda: None)                           # 最後一次正常跑 / final pass
+        self.assertEqual(state["rows"]["a"]["state"], "verified")
+
     def test_budget_exclusion(self):
         state = {"matrix_hash": "h", "rows": {}}
         r = row("big", len(BLOB) / 2**20, placement="cpu")

@@ -561,9 +561,11 @@ class Hooks:
     extra: dict = field(default_factory=dict)
 
 
-def run_rows(rows: list[Row], state: dict, h: Hooks, save: Callable[[], None]) -> str:
+def run_rows(rows: list[Row], state: dict, h: Hooks, save: Callable[[], None], defer_verify: bool = False) -> str:
     """逐列：下載 → 擺放 → 冒煙 → 評測 → 驗證。回傳 complete | paused_window | stopped。
-    Per row: download → placement → smoke → run → verify. Return complete | paused_window | stopped."""
+    defer_verify：生成完就換下一列，驗證交給另一個行程（`e0 verify`），GPU 不必等評審（2026-11-16）。
+    Per row: download → placement → smoke → run → verify. Return complete | paused_window | stopped.
+    defer_verify: move on after generation and leave verification to a separate `e0 verify` process."""
     for r in rows:
         st = row_state(state, r.name)
         if st["state"] in DONE_STATES + EXCLUDED:
@@ -573,6 +575,8 @@ def run_rows(rows: list[Row], state: dict, h: Hooks, save: Callable[[], None]) -
             return "paused_window"
         h.log(f"== {r.name} ({st['state']})")
         if r.reference_run:
+            if defer_verify:
+                continue
             rc = h.verify(r.run_id, None)
             st.update(state="verified" if rc == 0 else "run_complete", placement="reference")
             save()
@@ -619,6 +623,8 @@ def run_rows(rows: list[Row], state: dict, h: Hooks, save: Callable[[], None]) -
                 return "paused_window" if not h.in_window() else "stopped"
             st["state"] = "run_complete"
             save()
+        if st["state"] == "run_complete" and defer_verify:
+            continue
         if st["state"] == "run_complete":
             rc = h.verify(r.run_id, None)
             if rc != 0:
@@ -630,6 +636,26 @@ def run_rows(rows: list[Row], state: dict, h: Hooks, save: Callable[[], None]) -
             st["state"] = "verified"
             save()
     return "complete"
+
+
+def verify_generated(root: Path, rows: list[Row], h: Hooks, state: dict | None = None) -> dict:
+    """驗證已經生成完的列；只讀 state.json（略過已排除的列），不寫（生成行程會寫）。
+    Verify generated rows; state.json is read (excluded rows are skipped) but never written."""
+    done, todo = [], []
+    for r in rows:
+        if (state or {}).get("rows", {}).get(r.name, {}).get("state") in EXCLUDED:
+            continue
+        rs = root / "var" / "eval" / "runs" / r.run_id / "run_state.json"
+        try:
+            complete = json.loads(rs.read_text(encoding="utf-8")).get("state") == "complete"
+        except (OSError, ValueError):
+            complete = False
+        if not complete:
+            todo.append(r.name)
+            continue
+        rc = h.verify(r.run_id, None)
+        (done if rc == 0 else todo).append(r.name)
+    return {"verified": done, "not_ready": todo}
 
 
 def top_rows(root: Path, rows: list[Row], state: dict, n: int = SAMPLE_TOP) -> list[Row]:

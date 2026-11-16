@@ -424,8 +424,12 @@ def cmd_e0(args, root: Path) -> int:
 
     hooks = e0.Hooks(fresh_facts=lambda: fresh_facts(root), models_dir=mdir, in_window=in_window,
                      run=run_hook, verify=verify_hook, smoke=smoke_hook)
+    if args.action == "verify":
+        res = e0.verify_generated(root, rows, hooks, state)  # 只讀 state / state is read, never saved
+        print(f"e0 verify: {len(res['verified'])} verified, {len(res['not_ready'])} not ready: {res['not_ready']}")
+        return 0 if not res["not_ready"] else 3
     if args.action == "run":
-        result = e0.run_rows(rows, state, hooks, save)
+        result = e0.run_rows(rows, state, hooks, save, defer_verify=args.defer_verify)
     else:
         _, items = load_items(root, "r0")
         sources = sorted({i["source"] for i in items if i["task"] in e0.SAMPLE_TASKS})
@@ -530,7 +534,9 @@ def parser() -> argparse.ArgumentParser:
     x.add_argument("--now", action="store_true", help="ignore the night window (only when the user asks)")
 
     e = sub.add_parser("e0", help="E0 multi-model comparison (add-e0-benchmark)")
-    e.add_argument("action", choices=["plan", "fetch", "run", "sample", "report"])
+    e.add_argument("action", choices=["plan", "fetch", "run", "sample", "report", "verify"])
+    e.add_argument("--defer-verify", action="store_true",
+                   help="run: generate only; verify with a separate `e0 verify` process (GPU never waits for judges)")
     e.add_argument("--judge-model", help="judge model for verification (e.g. nvidia-nemotron-3-ultra)")
     e.add_argument("--judge-match", help="expected substring of the judge's reported model")
     e.add_argument("--now", action="store_true", help="ignore the night window (only when the user asks)")
