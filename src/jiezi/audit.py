@@ -32,6 +32,16 @@ def pypi_packages(root: Path) -> list[tuple[str, str]]:
     return sorted((p["name"], p["version"]) for p in d.get("package", []) if (p.get("source") or {}).get("registry"))
 
 
+def npm_packages(root: Path) -> list[tuple[str, str]]:
+    """ui/package-lock.json 鎖定的所有 npm 套件（含間接相依）。 / Every npm package locked by the UI."""
+    lock = root / "ui" / "package-lock.json"
+    if not lock.exists():
+        return []
+    pk = json.loads(lock.read_text(encoding="utf-8")).get("packages") or {}
+    return sorted({(path.split("node_modules/")[-1], meta["version"]) for path, meta in pk.items()
+                   if path.startswith("node_modules/") and meta.get("version")})
+
+
 def git_pins(root: Path) -> dict[str, str]:
     """從 stack.md 讀鎖定的 commit。 / Pinned commits from stack.md."""
     text = (root / "openspec" / "specs" / "stack.md").read_text(encoding="utf-8")
@@ -76,10 +86,13 @@ def query(root: Path, post=_post) -> list[dict]:
     """回傳 [{component, version, ids}]，只列有漏洞的。 / Components with vulnerabilities."""
     pk = pypi_packages(root)
     queries = [{"package": {"name": n, "ecosystem": "PyPI"}, "version": v} for n, v in pk]
+    npm = npm_packages(root)
+    queries += [{"package": {"name": n, "ecosystem": "npm"}, "version": v} for n, v in npm]
     pins = git_pins(root)
     queries += [{"commit": c} for c in pins.values()]
     res = post(f"{OSV}/querybatch", {"queries": queries}).get("results", [])
-    labels = [f"{n}=={v}" for n, v in pk] + [f"{n}@{c[:12]}" for n, c in pins.items()]
+    labels = [f"{n}=={v}" for n, v in pk] + [f"npm:{n}@{v}" for n, v in npm] + \
+        [f"{n}@{c[:12]}" for n, c in pins.items()]
     out = []
     for label, r in zip(labels, res):
         ids = sorted(v["id"] for v in (r or {}).get("vulns") or [])
@@ -97,9 +110,9 @@ def run(root: Path, post=_post, get=_get) -> tuple[Path, dict]:
     ok = accepted(root)
     new = [{"component": f["component"], "ids": [i for i in f["ids"] if i not in ok]} for f in found]
     new = [f for f in new if f["ids"]]
-    checked = len(pypi_packages(root)) + len(git_pins(root))
+    checked = len(pypi_packages(root)) + len(npm_packages(root)) + len(git_pins(root))
     md = [f"# 相依套件安全稽核 / Dependency audit（{date.today().isoformat()}）", "",
-          f"- 檢查 {checked} 個元件（PyPI 鎖定版本＋llama.cpp、bubblewrap 的鎖定 commit），資料來源 OSV；"
+          f"- 檢查 {checked} 個元件（PyPI 與 npm 鎖定版本＋llama.cpp、bubblewrap 的鎖定 commit），資料來源 OSV；"
           "llama.cpp、bubblewrap 另查 GitHub 安全公告。",
           f"- 有漏洞紀錄的元件：{len(found)}；未接受（需處理）：{len(new)}", ""]
     if found:
