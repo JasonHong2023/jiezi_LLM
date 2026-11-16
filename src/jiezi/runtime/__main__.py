@@ -105,6 +105,35 @@ def _embedder(root, s, env, ngl: int = 0):
                     log_path=s.var / "runtime" / "engine-embed.log", idle_s=s.idle_unload_s)
 
 
+DATA_BUILDS = (("dict", "dictionary"), ("curriculum", "curriculum"), ("knowledge", "knowledge"), ("laws", "laws"),
+               ("writing-refs", "writing_refs"))
+
+
+def cmd_data_build(root, log=print) -> int:
+    """依序建置所有本機資料；某一項失敗不影響其他項（R21：搬到新電腦一次重建）。
+    Build every local data set in turn; one failure never stops the rest (R21: one command on a new machine)."""
+    import importlib
+    failed = []
+    for name, module in DATA_BUILDS:
+        log(f"== {name}")
+        if module == "writing_refs":
+            from ..writing_refs import index_path
+            if index_path(root).exists():  # 不重複抓對方網站 / never re-fetch the site needlessly
+                log("  ok: index present (skipped)")
+                continue
+        try:
+            mod = importlib.import_module(f"jiezi.{module}")
+            res = mod.build(root)
+            log(f"  ok: {res}")
+        except Exception as exc:  # noqa: BLE001 - 一項失敗不擋其他 / keep going
+            failed.append(name)
+            log(f"  failed: {type(exc).__name__}: {exc}")
+    log("restart the gateway (scripts/jiezi stop && scripts/jiezi start) to use new data")
+    if failed:
+        log(f"failed: {', '.join(failed)} (re-run `scripts/jiezi data build` later)")
+    return 1 if failed else 0
+
+
 def cmd_status(root) -> int:
     env = load_env(root)
     url = f"http://127.0.0.1:{port_base(env)}/health"
@@ -153,6 +182,8 @@ def main(argv: list[str] | None = None) -> int:
     mp = sub.add_parser("memory", help="memory wiki: consulted answers, notes, corrections (add-memory)")
     mp.add_argument("action", choices=["list", "search", "forget", "path"])
     mp.add_argument("query", nargs="?", help="search：問題；forget：主題名稱 / search: question; forget: topic title")
+    dap = sub.add_parser("data", help="build every local data set (dictionaries, curriculum, knowledge, laws, links)")
+    dap.add_argument("action", choices=["build"])
     dsp = sub.add_parser("dataset", help="export SFT training data (R20.3 verified only; no evaluation overlap)")
     dsp.add_argument("action", choices=["export"])
     dsp.add_argument("--limit", type=int, default=2000, help="template examples per source")
@@ -268,6 +299,8 @@ def main(argv: list[str] | None = None) -> int:
                 e, sim = found
                 print(f"[答案 answer {sim:.2f}] {e.title}｜{e.question}（{e.at[:10]}，{e.provider}）\n{e.text}")
             return 0 if found else 1
+        if args.cmd == "data":
+            return cmd_data_build(root)
         if args.cmd == "dataset":
             from .. import training_data
             out, m = training_data.export(root, args.limit)

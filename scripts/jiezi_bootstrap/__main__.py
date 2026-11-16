@@ -174,6 +174,18 @@ def step_model(ctx: Ctx) -> str:
     return f"{m.file} {state} (SHA-256 ok, license {m.license})"
 
 
+def step_data(ctx: Ctx) -> str:
+    """選用：建置本機資料（辭典、課綱、知識庫、法規、寫作連結）；失敗只記為注意事項。
+    Optional: build the local data sets; failures only become notes."""
+    import subprocess
+    p = subprocess.run([str(ctx.root / "scripts" / "jiezi"), "data", "build"], capture_output=True, text=True)
+    failed = [ln for ln in p.stdout.splitlines() if ln.startswith("failed:")]
+    if p.returncode != 0:
+        ctx.notes.append("部分本機資料沒有建好，之後執行 scripts/jiezi data build / some local data failed; "
+                         "run scripts/jiezi data build later")
+    return "local data built" if p.returncode == 0 else f"partial ({'; '.join(failed) or p.stderr.strip()[:120]})"
+
+
 def step_smoke(ctx: Ctx) -> str:
     r = smoke.run(ctx.root, ctx.model_path, ctx.facts)
     (ctx.root / "var" / "smoke.json").write_text(json.dumps({**r, "at": now()}, indent=2, ensure_ascii=False) + "\n",
@@ -185,7 +197,7 @@ def step_smoke(ctx: Ctx) -> str:
 STEPS = [
     ("prereqs", step_prereqs), ("env", step_env), ("python", step_python), ("llama.cpp", step_llama_cpp),
     ("hwprobe", step_hwprobe), ("cuda", step_cuda), ("build", step_build), ("sandbox", step_sandbox),
-    ("model", step_model),
+    ("model", step_model), ("data", step_data),
     ("smoke", step_smoke),
 ]
 

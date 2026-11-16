@@ -37,5 +37,30 @@ class TestSelftest(unittest.TestCase):
             self.assertTrue(out.exists() and out.with_suffix(".jsonl").exists())
 
 
+
+class TestDataBuild(unittest.TestCase):
+    def test_one_failure_does_not_stop_the_rest(self):
+        from unittest import mock
+        from jiezi.runtime import __main__ as M
+        built = []
+
+        class Ok:
+            @staticmethod
+            def build(root):
+                built.append(root)
+                return "ok"
+
+        class Bad:
+            @staticmethod
+            def build(root):
+                raise RuntimeError("no network")
+        mods = {"jiezi.dictionary": Bad, "jiezi.curriculum": Ok, "jiezi.knowledge": Ok, "jiezi.laws": Ok,
+                "jiezi.writing_refs": Ok}
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch("importlib.import_module", side_effect=lambda name: mods[name]):
+            rc = M.cmd_data_build(Path(d), log=lambda *_: None)
+        self.assertEqual((rc, len(built)), (1, 4))
+
+
 if __name__ == "__main__":
     unittest.main()
