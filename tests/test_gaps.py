@@ -48,5 +48,18 @@ class TestGaps(unittest.TestCase):
         self.assertNotIn("早安", md)
 
 
+class TestDashboard(unittest.TestCase):
+    def test_builds_without_results(self):
+        from jiezi.runtime import dashboard
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "var" / "trajectories").mkdir(parents=True)
+            (root / "var" / "trajectories" / f"{date.today().isoformat()}.jsonl").write_text(
+                json.dumps(rec("你好", tiers=[{"tier": 0, "tps": 50.0}]), ensure_ascii=False))
+            md = dashboard.build(root)
+        self.assertIn("請求 1；本機處理 1（100.0%", md)
+        self.assertIn("50.0 t/s", md)
+
+
 if __name__ == "__main__":
     unittest.main()

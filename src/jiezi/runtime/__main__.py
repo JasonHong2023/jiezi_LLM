@@ -153,6 +153,7 @@ def main(argv: list[str] | None = None) -> int:
     mp = sub.add_parser("memory", help="memory wiki: consulted answers, notes, corrections (add-memory)")
     mp.add_argument("action", choices=["list", "search", "forget", "path"])
     mp.add_argument("query", nargs="?", help="search：問題；forget：主題名稱 / search: question; forget: topic title")
+    sub.add_parser("dashboard", help="metrics dashboard: achievement rate, local handling, E0, self-test, gaps")
     sp = sub.add_parser("selftest", help="self-test generated from the bundled data (dictionary, curriculum, tools…)")
     sp.add_argument("--policy", default="jiezi-local", help="gateway policy (default jiezi-local)")
     sp.add_argument("--limit", type=int, help="at most N items per kind")
@@ -262,6 +263,10 @@ def main(argv: list[str] | None = None) -> int:
                 e, sim = found
                 print(f"[答案 answer {sim:.2f}] {e.title}｜{e.question}（{e.at[:10]}，{e.provider}）\n{e.text}")
             return 0 if found else 1
+        if args.cmd == "dashboard":
+            from . import dashboard
+            print(f"dashboard: {dashboard.write(root)}")
+            return 0
         if args.cmd == "selftest":
             from .. import selftest
             if args.list:
