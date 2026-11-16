@@ -115,15 +115,18 @@ class Sandbox:
 
     # ── 執行 / Execution ──
     def run_python(self, files: dict[str, str | bytes], argv: list[str], limits: Limits | None = None,
-                   stdin: bytes = b"", collect: list[str] | None = None) -> Result:
+                   stdin: bytes = b"", collect: list[str] | None = None, extra_ro: list[str] | None = None) -> Result:
         """在沙盒內執行；collect 列出結束後要取回的 /work 檔案（大小受 output_mib 限制，以位元組回傳）。
         Run in the sandbox; `collect` names /work files to return as bytes afterwards (bounded by output_mib)."""
         ok, reason = self.available()
         if not ok:
             raise SandboxUnavailable(reason)
-        return self._run(files, argv, limits or Limits(), stdin, collect or [])
+        # extra_ro：額外唯讀掛入的系統目錄（例如 /etc/libreoffice）；只接受 /etc 或 /usr 之下、實際存在的目錄
+        # extra_ro: more read-only system directories (e.g. /etc/libreoffice); only existing ones under /etc or /usr
+        ro = [d for d in extra_ro or [] if d.startswith(("/etc/", "/usr/")) and ".." not in d and Path(d).is_dir()]
+        return self._run(files, argv, limits or Limits(), stdin, collect or [], ro)
 
-    def _bwrap_args(self, work: Path) -> list[str]:
+    def _bwrap_args(self, work: Path, extra_ro: list[str] | None = None) -> list[str]:
         args = [str(self.bwrap), "--unshare-all", "--die-with-parent", "--new-session", "--clearenv",
                 "--ro-bind", "/usr", "/usr"]
         for name in ("lib", "lib64", "bin", "sbin"):
@@ -131,6 +134,8 @@ class Sandbox:
                 args += ["--symlink", os.readlink("/" + name), "/" + name]
             elif Path("/" + name).is_dir():
                 args += ["--ro-bind", "/" + name, "/" + name]
+        for d in extra_ro or []:
+            args += ["--ro-bind", d, d]
         py = self.python_prefix
         if not str(py).startswith("/usr/"):
             args += ["--ro-bind", str(py), PY_MOUNT]
@@ -145,7 +150,7 @@ class Sandbox:
         return args
 
     def _run(self, files: dict, argv: list[str], limits: Limits, stdin: bytes = b"",
-             collect: list[str] | None = None) -> Result:
+             collect: list[str] | None = None, extra_ro: list[str] | None = None) -> Result:
         tmp = Path(tempfile.mkdtemp(prefix="jiezi-sbx-"))
         work, io_dir = tmp / "work", tmp / "io"
         work.mkdir()
@@ -160,7 +165,7 @@ class Sandbox:
                 cmd += ["systemd-run", "--user", "--scope", "--quiet", "--collect",
                         "-p", f"MemoryMax={limits.memory_mib}M", "-p", "MemorySwapMax=0",
                         "-p", f"TasksMax={limits.tasks}"]
-            cmd += self._bwrap_args(work) + argv
+            cmd += self._bwrap_args(work, extra_ro) + argv
             out_p, err_p = io_dir / "stdout", io_dir / "stderr"
             t0 = time.monotonic()
             with out_p.open("wb") as out, err_p.open("wb") as err:
