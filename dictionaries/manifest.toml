@@ -15,3 +15,31 @@ license_url = "https://language.moe.gov.tw/001/Upload/Files/site_content/M0001/r
 training_use = false  # 禁止改作；要訓練請改走 TAIC 的 AI 訓練授權 / ND; for training use the TAIC AI-training license
 attribution = "資料來源：教育部《重編國語辭典修訂本》（CC BY-ND 3.0 TW）"
 license_checked = "2026-11-15"
+
+[[source]]
+key = "moedict-twblg"
+title = "臺灣閩南語常用詞辭典"
+publisher = "中華民國教育部（Ministry of Education, R.O.C.）"
+format = "moedict_json"
+url = "https://raw.githubusercontent.com/g0v/moedict-data-twblg/4626bfcfccd6087496d14aac702b5e8a6a82e974/dict-twblg.json"
+sha256 = "39a87f0d2639db8fb2c043973576211b33249b258cef307f6550b447b81e2803"
+size = 7719019
+license = "CC BY-ND 3.0 TW"
+license_url = "https://twblg.dict.edu.tw/holodict_new/compile1_6_1.jsp"
+training_use = false  # 禁止改作 / no derivatives
+attribution = "資料來源：教育部《臺灣閩南語常用詞辭典》（CC BY-ND 3.0 TW）"
+license_checked = "2026-11-16"
+
+[[source]]
+key = "moedict-hakka"
+title = "臺灣客家語常用詞辭典"
+publisher = "中華民國教育部（Ministry of Education, R.O.C.）"
+format = "moedict_json"
+url = "https://raw.githubusercontent.com/g0v/moedict-data-hakka/c1a28576be319d5e53190d8ba8e969158e86952c/dict-hakka.json"
+sha256 = "fd7486cebff8cbdf6708434b935716c0a8a8feee422113001c9ec4423d955baf"
+size = 9874779
+license = "CC BY-ND 3.0 TW"
+license_url = "https://hakkadict.moe.edu.tw/cgi-bin/gs32/gsweb.cgi/ccd=I4ki68/description?id=MSA00000021"
+training_use = false  # 禁止改作 / no derivatives
+attribution = "資料來源：教育部《臺灣客家語常用詞辭典》（CC BY-ND 3.0 TW）"
+license_checked = "2026-11-16"

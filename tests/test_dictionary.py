@@ -132,3 +132,32 @@ class TestTextConv(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLanguageDictionaries(unittest.TestCase):
+    """台語、客語辭典：純 JSON 格式、台羅讀音、例句標記轉換、依語言優先。 / Taigi and Hakka dictionaries."""
+
+    def test_formats_and_preference(self):
+        tw = [{"title": "歹勢", "heteronyms": [{"trs": "pháinn-sè", "definitions": [
+            {"type": "形", "def": "不好意思。", "example": ["￹誠歹勢。￺Tsiânn pháinn-sè.￻真不好意思。"]}]}]}]
+        zh = [{"title": "歹勢", "heteronyms": [{"bopomofo": "ㄉㄞˇ ㄕˋ", "definitions": [{"def": "國語的解釋。"}]}]}]
+        blobs = {"zh.json.xz": lzma.compress(json.dumps(zh, ensure_ascii=False).encode()),
+                 "tw.json": json.dumps(tw, ensure_ascii=False).encode()}
+        manifest = ""
+        for key, fmt, name in (("t", "moedict_json_xz", "zh.json.xz"), ("moedict-twblg", "moedict_json", "tw.json")):
+            manifest += (f'[[source]]\nkey = "{key}"\ntitle = "{key}"\npublisher = "教育部"\nformat = "{fmt}"\n'
+                         f'url = "https://example.invalid/{name}"\nsha256 = "{hashlib.sha256(blobs[name]).hexdigest()}"\n'
+                         f'size = {len(blobs[name])}\nlicense = "CC BY-ND 3.0 TW"\nlicense_url = "https://example.invalid/l"\n'
+                         f'training_use = false\nattribution = "出處 {key}"\nlicense_checked = "2026-11-16"\n\n')
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "dictionaries").mkdir()
+            (root / "dictionaries" / "manifest.toml").write_text(manifest, encoding="utf-8")
+            D.build(root, download=lambda url, dest: dest.write_bytes(blobs[url.rsplit("/", 1)[1]]), log=lambda *_: None)
+            dic = D.Dictionary(D.db_path(root))
+            _, sources, _, appendix = D.grounding(dic, "「歹勢」是什麼意思？")
+            self.assertEqual(sources[0]["source"], "t")                       # 預設國語 / Mandarin by default
+            _, sources, _, appendix = D.grounding(dic, "台語的「歹勢」是什麼意思？")
+            self.assertEqual(sources[0]["source"], "moedict-twblg")           # 問台語就先查台語 / Taigi first
+            self.assertIn("台羅 pháinn-sè", appendix)
+            self.assertIn("誠歹勢。（Tsiânn pháinn-sè.）：真不好意思。", appendix)  # 標記只做格式轉換 / format only

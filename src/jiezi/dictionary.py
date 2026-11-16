@@ -23,6 +23,7 @@ from .errors import JieziError
 REQUIRED = ("key", "title", "publisher", "format", "url", "sha256", "size", "license", "license_url",
             "training_use", "attribution", "license_checked")
 INTENT = re.compile(r"意思|意義|涵義|含義|解釋|定義|注音|拼音|讀音|怎麼念|怎麼唸|怎麼讀|成語|造句|同義|反義|近義|出處|典故|"
+                    r"台語|臺語|閩南語|台灣話|客語|客家話|台羅|"
                     r"這個詞|這個字|什麼詞|詞語")
 QUOTED = re.compile(r"[「『“\"']([^」』”\"']{1,12})[」』”\"']")
 MAX_TERMS, MAX_ENTRY_CHARS, MAX_QUOTES, SCAN_CHARS = 3, 600, 2, 300
@@ -93,10 +94,25 @@ def fetch(src: Source, cache: Path, download: Callable = _download) -> Path:
     return path
 
 
+# 問題提到哪種語言就先查哪本辭典（add-dictionary D6）/ prefer the dictionary of the language the question names
+PREFER = [(re.compile(r"台語|臺語|閩南語|台灣話|台羅"), "moedict-twblg"), (re.compile(r"客語|客家話"), "moedict-hakka")]
+# 台語、客語辭典例句的標記：￹原文￺讀音￻華語 → 只做格式轉換，不改內容 / interlinear markers, format only
+_ANNO = re.compile(r"￹([^￺￻]*)(?:￺([^￻]*))?￻([^￹]*)")
+
+
+def _anno(text: str) -> str:
+    return _ANNO.sub(lambda m: m.group(1) + (f"（{m.group(2)}）" if m.group(2) else "") +
+                     (f"：{m.group(3)}" if m.group(3).strip() else ""), text)
+
+
 def _entries(src: Source, path: Path):
-    if src.format != "moedict_json_xz":
+    if src.format == "moedict_json_xz":
+        data = json.loads(lzma.open(path).read())
+    elif src.format == "moedict_json":
+        data = json.loads(path.read_text(encoding="utf-8"))
+    else:
         raise JieziError(f"{src.key}: unknown format {src.format}")
-    for e in json.loads(lzma.open(path).read()):
+    for e in data:
         if e.get("title"):
             yield e["title"], json.dumps(e, ensure_ascii=False)
 
@@ -173,14 +189,15 @@ def render(entry: dict) -> str:
     """詞條原文（不改內容，只截短過長的部分）。 / The entry verbatim (only overly long parts are cut)."""
     lines = []
     for h in entry.get("heteronyms") or []:
-        pron = "，".join(x for x in (h.get("bopomofo"), h.get("pinyin")) if x)
+        trs = f"台羅 {h['trs']}" if h.get("trs") else None
+        pron = "，".join(x for x in (h.get("bopomofo"), h.get("pinyin"), trs) if x)
         lines.append(f"{entry['title']}（{pron}）" if pron else entry["title"])
         for i, d in enumerate(h.get("definitions") or [], 1):
             t = f"{i}. {'［' + d['type'] + '］' if d.get('type') else ''}{d.get('def', '')}"
             for k, label in (("example", "例"), ("synonyms", "同義"), ("antonyms", "反義")):
                 v = d.get(k)
                 if v:
-                    t += f" {label}：{'、'.join(v) if isinstance(v, list) else v}"
+                    t += f" {label}：{_anno('、'.join(v) if isinstance(v, list) else v)}"
             if d.get("quote"):
                 t += " 書證：" + " ".join(d["quote"][:MAX_QUOTES])
             lines.append(t)
@@ -195,7 +212,10 @@ def grounding(d: Dictionary, text: str) -> tuple[str, list[dict], bool, str] | N
     The gateway appends the verbatim text itself, so users see the correct entry even if the model errs."""
     blocks, sources, trainable = [], [], True
     for term in d.terms_in(text):
-        for src_key, entry in d.lookup(term)[:1]:
+        hits = d.lookup(term)
+        want = next((k for cue, k in PREFER if cue.search(text)), None)
+        hits.sort(key=lambda h: h[0] != want)  # 想要的辭典排前面 / the wanted dictionary first
+        for src_key, entry in hits[:1]:
             meta = d.meta.get(src_key, {})
             blocks.append(render(entry))
             sources.append({"source": src_key, "title": term})
