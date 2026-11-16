@@ -1,0 +1,34 @@
+/* 芥子前端樣式：淺色、系統字型、不載入外部字型（CSP 只允許本機）。
+   Jiezi styles: light, system fonts, no external fonts (CSP allows local resources only). */
+:root { --fg: #1d2330; --muted: #6b7280; --line: #e5e7eb; --accent: #2f6f4e; --bg: #fafaf7; --warn: #a15c00; --bad: #b42318; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, "Noto Sans TC", "Microsoft JhengHei", sans-serif; color: var(--fg); background: var(--bg); }
+.app { display: flex; flex-direction: column; height: 100vh; }
+header { display: flex; align-items: center; gap: 1rem; padding: .5rem 1rem; border-bottom: 1px solid var(--line); background: #fff; }
+header h1 { font-size: 1.1rem; margin: 0; color: var(--accent); }
+nav { display: flex; gap: .25rem; }
+main { flex: 1; overflow: auto; padding: 1rem; }
+footer { padding: .3rem 1rem; font-size: .8rem; border-top: 1px solid var(--line); }
+button { border: 1px solid var(--line); background: #fff; padding: .35rem .8rem; border-radius: 6px; cursor: pointer; font: inherit; }
+button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+button.stop { background: var(--bad); color: #fff; border-color: var(--bad); }
+.muted { color: var(--muted); }
+.error { color: var(--bad); margin: .5rem 0; }
+.card { max-width: 32rem; margin: 3rem auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 1.5rem; }
+.card input { width: 100%; padding: .5rem; margin: .5rem 0 1rem; font: inherit; }
+.chat { display: flex; flex-direction: column; height: 100%; }
+.toolbar { display: flex; gap: .75rem; align-items: center; margin-bottom: .5rem; }
+.log { flex: 1; overflow: auto; }
+.msg { margin: .6rem 0; max-width: 52rem; }
+.msg.user .body { background: #e8f2ec; display: inline-block; padding: .5rem .8rem; border-radius: 10px; }
+.msg.assistant .body { white-space: pre-wrap; line-height: 1.6; }
+.meta { font-size: .78rem; color: var(--muted); margin-top: .2rem; }
+.composer { display: flex; gap: .5rem; margin-top: .5rem; }
+.composer textarea { flex: 1; font: inherit; padding: .5rem; border: 1px solid var(--line); border-radius: 8px; resize: vertical; }
+table { border-collapse: collapse; width: 100%; background: #fff; font-size: .88rem; }
+th, td { border-bottom: 1px solid var(--line); padding: .35rem .5rem; text-align: left; vertical-align: top; }
+td.q { max-width: 28rem; }
+tr.warn td:first-child { color: var(--warn); }
+tr.fail td:first-child { color: var(--bad); }
+pre { background: #fff; border: 1px solid var(--line); padding: .5rem; overflow: auto; }

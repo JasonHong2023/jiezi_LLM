@@ -221,6 +221,8 @@ def main(argv: list[str] | None = None) -> int:
     trp.add_argument("--after", help="gate: 訓練後的評測目錄 / run dir after")
     trp.add_argument("--target", action="append", default=[], help="gate: 目標任務 tool|code|qa|summary")
     sub.add_parser("doctor", help="health check of every component, with fixes")
+    up = sub.add_parser("ui", help="desktop front end (Phase 8 prototype), served at /ui/")
+    up.add_argument("action", choices=["build"])
     sub.add_parser("audit", help="dependency security audit against OSV (R23); queries only")
     dap = sub.add_parser("data", help="build every local data set (dictionaries, curriculum, knowledge, laws, links)")
     dap.add_argument("action", choices=["build"])
@@ -341,6 +343,20 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if found else 1
         if args.cmd == "train":
             return cmd_train(root, args)
+        if args.cmd == "ui":
+            import shutil
+            import subprocess
+            npm = shutil.which("npm")
+            if not npm:
+                print("npm not found; install Node.js LTS first", file=sys.stderr)
+                return 1
+            ui = root / "ui"
+            for cmd in ([npm, "ci", "--no-fund"], [npm, "audit", "--audit-level=high"], [npm, "run", "build"]):
+                if subprocess.run(cmd, cwd=ui).returncode != 0:
+                    print(f"failed: {' '.join(cmd[1:])}", file=sys.stderr)
+                    return 1
+            print("built ui/dist; restart the gateway, then open http://127.0.0.1:36100/ui/")
+            return 0
         if args.cmd == "doctor":
             from . import doctor
             text, rc = doctor.report(root, port_base(load_env(root)))

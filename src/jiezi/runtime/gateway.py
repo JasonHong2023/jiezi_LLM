@@ -488,6 +488,33 @@ class Gateway:
             return _err(400, f"invalid JSON: {exc.msg}", "invalid_request")
         return data if isinstance(data, dict) else _err(400, "body must be a JSON object", "invalid_request")
 
+    async def admin_trajectories(self, request: Request) -> Response:
+        """桌面 App 的稽核紀錄（Phase 8.1）：最近的對話摘要，只讀、需要金鑰。
+        Audit log for the desktop app: recent conversation summaries, read-only, key required."""
+        if not self._authorized(request):
+            return _err(401, "invalid or missing gateway key", "unauthorized")
+        from .gaps import load
+        try:
+            limit = max(1, min(500, int(request.query_params.get("limit", "100"))))
+        except ValueError:
+            limit = 100
+        recs = load(self.s.root, 7)[-limit:]
+        out = []
+        for r in reversed(recs):
+            users = [m for m in (r.get("request") or {}).get("messages") or [] if m.get("role") == "user"]
+            out.append({"id": r.get("id"), "at": r.get("at"), "policy": r.get("policy"), "status": r.get("status"),
+                        "final_tier": r.get("final_tier"), "training_use": r.get("training_use"),
+                        "question": message_text(users[-1])[:200] if users else "",
+                        "sources": sorted({s.get("source") for s in r.get("sources") or [] if s.get("source")})})
+        return JSONResponse({"records": out})
+
+    async def admin_doctor(self, request: Request) -> Response:
+        if not self._authorized(request):
+            return _err(401, "invalid or missing gateway key", "unauthorized")
+        from .doctor import checks
+        rows = await anyio.to_thread.run_sync(checks, self.s.root, self.s.gateway_port)
+        return JSONResponse({"checks": rows})
+
     async def admin_unload(self, request: Request) -> Response:
         if not self._authorized(request):
             return _err(401, "invalid or missing gateway key", "unauthorized")
@@ -934,4 +961,31 @@ def create_app(gw: Gateway) -> Starlette:
         Route("/v1/embeddings", gw.embeddings, methods=["POST"]),
         Route("/health", gw.health, methods=["GET"]),
         Route("/admin/unload", gw.admin_unload, methods=["POST"]),
+        Route("/admin/trajectories", gw.admin_trajectories, methods=["GET"]),
+        Route("/admin/doctor", gw.admin_doctor, methods=["GET"]),
+        *ui_routes(gw.s.root),
     ], lifespan=lifespan)
+
+
+# 桌面 App 前端（Phase 8.4 雛形）：只提供本機建好的檔案，嚴格 CSP，不載入遠端內容（Phase 8.5）。
+# Desktop front end (Phase 8.4 prototype): local build only, strict CSP, no remote content (Phase 8.5).
+UI_CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; "
+          "connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; "
+          "form-action 'none'")
+
+
+def ui_routes(root):
+    from starlette.routing import Mount
+    from starlette.staticfiles import StaticFiles
+    dist = root / "ui" / "dist"
+    if not dist.is_dir():
+        return []
+
+    class SecureStatic(StaticFiles):
+        async def get_response(self, path, scope):
+            resp = await super().get_response(path, scope)
+            resp.headers["Content-Security-Policy"] = UI_CSP
+            resp.headers["X-Content-Type-Options"] = "nosniff"
+            resp.headers["Referrer-Policy"] = "no-referrer"
+            return resp
+    return [Mount("/ui", app=SecureStatic(directory=str(dist), html=True), name="ui")]

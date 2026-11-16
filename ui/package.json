@@ -1,0 +1,19 @@
+{
+  "name": "jiezi-ui",
+  "private": true,
+  "version": "0.1.0",
+  "description": "芥子桌面 App 的前端（Phase 8 唯讀雛形）/ Jiezi desktop front end (Phase 8 read-only prototype)",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --host 127.0.0.1"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.3.0",
+    "vite": "8.3.8"
+  }
+}
