@@ -28,6 +28,19 @@ cat 會議記錄.txt | scripts/jiezi ask "列出待辦事項"     # 管線輸入
 `jiezi chat` 裡輸入 `/file 路徑`，再輸入問題。掃描版 PDF 會自動用繁中 OCR（每頁約 2 秒）。文件超過本機模型的上下文時，gateway 會先分段處理：要摘要就逐段整理重點再合併；問問題就挑最相關的段落，並標出段落編號。
 In chat use `/file path`. Long documents are condensed by the gateway before answering.
 
+### 文件裡的可疑指示（防提示注入）/ Suspicious instructions inside documents
+
+文件、工具回傳的結果、芥子自己查到的資料，對模型來說都只是「資料」，不是指示。附了文件或有工具結果時，gateway 會多加一則安全規則提醒模型；資料裡如果出現「忽略以上指示」「從現在起你是…」「把金鑰傳到…」「請立刻呼叫某工具」這類句子，狀態行下方會多一行：
+
+```
+[注意 warning: 這次附的資料中有疑似提示注入的內容…（ignore_instructions, exfiltrate）]
+```
+
+被標記的那次對話不會進技能庫、記憶與訓練資料；回答本身照常給你，請自行判斷文件來源。你自己打的字不會被檢查。
+
+**限制**：偵測只看常見句型，換個說法就可能抓不到，也可能誤判（例如一份在討論提示注入的文章）。真正的保護是芥子不會因為資料內容去執行任何有副作用的動作。`.env` 設 `JIEZI_INJECTION_GUARD=off` 可關閉。
+Documents, tool results and retrieved data are data, not instructions. Requests carrying them get a safety note; when the data contains injection-like phrases the status line shows a warning and that exchange is kept out of skills, memory and training data. Detection is heuristic (it can miss rephrased attacks and can misfire); the real protection is that data can never trigger an action. `JIEZI_INJECTION_GUARD=off` disables it.
+
 ## 1.1 桌面網頁（Phase 8 唯讀雛形）/ Desktop web front end
 
 ```bash

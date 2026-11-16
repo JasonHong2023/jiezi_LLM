@@ -121,7 +121,12 @@ def status_line(meta: dict | None) -> str:
         parts.append(f"verify {meta['verification']}")
     if meta.get("escalation") and meta.get("escalation") != "policy":
         parts.append(f"why {meta['escalation']}")
-    return "[" + " | ".join(parts) + "]"
+    line = "[" + " | ".join(parts) + "]"
+    inj = meta.get("injection") or {}
+    if inj.get("suspected"):  # 疑似提示注入：另起一行提醒 / suspected prompt injection: a warning on its own line
+        line += ("\n[注意 warning: " + (inj.get("warning") or "資料中有疑似提示注入的內容") +
+                 " / possible prompt injection in the attached data (" + ", ".join(inj["suspected"]) + ")]")
+    return line
 
 
 def ensure_gateway(conn: Connection, log=lambda *_: None) -> str | None:

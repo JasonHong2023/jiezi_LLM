@@ -77,6 +77,10 @@ async def run_ask(question: str, policy: str, conn: Connection, as_json: bool, s
         stdout.write("\n")
         if tty and meta:
             stdout.write(f"{DIM}{status_line(meta)}{RESET}\n")
+        elif ((meta or {}).get("injection") or {}).get("suspected"):
+            # 管線輸出只有答案，警告寫到 stderr / pipes carry the answer only; the warning goes to stderr
+            stderr.write(f"jiezi: 注意 warning: {meta['injection'].get('warning')} / possible prompt injection in "
+                         f"the attached data ({', '.join(meta['injection']['suspected'])})\n")
         return 0
     except GatewayUnreachable as exc:
         stderr.write(f"jiezi: {exc}; gateway 未啟動，請執行 scripts/jiezi serve / the gateway is not running; "

@@ -38,11 +38,11 @@ PATTERNS = {
         r"^\s*(\[|<|【|\()?\s*(system|系統|SYSTEM|assistant)\s*(\]|>|】|\))?\s*[:：]\s*\S|<\|im_start\|>|<\|(system|assistant)\|>"
         r"|^\s*#{1,3}\s*(new\s+)?(system\s+)?instructions?\s*:?\s*$|^\s*新的?(系統)?指示\s*[:：]", re.I | re.M),
     "exfiltrate": re.compile(
-        r"(把|將)\S{0,20}(金鑰|密碼|api\s*key|token|權杖|憑證|\.env)\S{0,20}(傳|送|寄|貼|上傳|post)"
+        r"(把|將)[^\n。]{0,20}(金鑰|密碼|api\s*key|token|權杖|憑證|\.env)[^\n。]{0,20}(傳|送|寄|貼|上傳|post)"
         r"|(send|post|upload|exfiltrate)\s+\S{0,30}(api\s*key|password|token|credentials|\.env)"
         r"|!\[[^\]]*\]\(https?://[^)]*\?(q|data|d|key|token)=", re.I),
     "tool_command": re.compile(
-        r"(請|立刻|馬上|現在)\s*(呼叫|執行|調用|使用)\s*\S{0,10}(工具|函式|function|指令|命令)"
+        r"(請|立刻|馬上|現在)\s*(呼叫|執行|調用|使用)\s*[^\n。，,]{0,30}?(工具|函式|function|指令|命令)"
         r"|(call|invoke|execute|run)\s+the\s+\S+\s+(tool|function)\s+(now|immediately)", re.I),
 }
 
@@ -95,9 +95,10 @@ def guard(messages: list[dict], data_ids: set[int] | None = None) -> dict:
     Process messages in place: documents, tool results and gateway-attached data (system messages whose id is in
     data_ids). The client's own system prompts are not scanned.
 
-    回傳 / Returns {"untrusted": bool, "documents": bool, "suspected": [...], "where": [...], "cleaned": n}"""
+    回傳 / Returns {"untrusted": bool, "documents": bool, "tools": bool, "suspected": [...], "where": [...],
+    "cleaned": n}"""
     from .documents import DOC_RE
-    info = {"untrusted": False, "documents": False, "suspected": [], "where": [], "cleaned": 0}
+    info = {"untrusted": False, "documents": False, "tools": False, "suspected": [], "where": [], "cleaned": 0}
 
     def note(where: str, text: str) -> None:
         hits = scan(text)
@@ -108,7 +109,7 @@ def guard(messages: list[dict], data_ids: set[int] | None = None) -> dict:
     for i, m in enumerate(messages):
         role = m.get("role")
         if role == "tool":
-            info["untrusted"] = True
+            info["untrusted"] = info["tools"] = True
             note(f"tool:{i}", _text(m))
 
             def fix(s):

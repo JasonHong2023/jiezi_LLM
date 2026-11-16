@@ -15,6 +15,7 @@ button:disabled { opacity: .5; cursor: default; }
 button.stop { background: var(--bad); color: #fff; border-color: var(--bad); }
 .muted { color: var(--muted); }
 .error { color: var(--bad); margin: .5rem 0; }
+.warn { color: var(--bad); font-size: .85rem; margin-top: .25rem; }
 .card { max-width: 32rem; margin: 3rem auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 1.5rem; }
 .card input { width: 100%; padding: .5rem; margin: .5rem 0 1rem; font: inherit; }
 .chat { display: flex; flex-direction: column; height: 100%; }

@@ -80,6 +80,9 @@ def from_trajectories(root: Path, days: int = 3650) -> tuple[list[dict], Counter
         if rec.get("status") != "ok" or rec.get("policy") not in ("jiezi", "jiezi-local"):
             why["not_local_policy_or_error"] += 1
             continue
+        if (rec.get("injection") or {}).get("suspected"):  # 疑似提示注入（add-injection-guard）/ suspected injection
+            why["suspected_injection"] += 1
+            continue
         if rec.get("training_use") is False:
             why["marked_not_trainable"] += 1
             continue

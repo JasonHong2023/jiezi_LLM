@@ -285,7 +285,7 @@ class Gateway:
             return self._deliver(fake, meta, rec, stream)
         return self._finish_error(rec, 502, message, why)
 
-    def _ground(self, body: dict, rec: dict) -> None:
+    def _ground(self, body: dict, rec: dict, data: list | None = None) -> None:
         """詞語問題查本機辭典、課綱問題查知識圖譜，把原文附給模型（add-dictionary D2、D3；add-curriculum D2、D3）。
         Attach verbatim dictionary entries for word questions and curriculum-graph data for curriculum questions."""
         if body.get("tools") or (not self.s.tools and all(x is None for x in (
@@ -333,6 +333,8 @@ class Gateway:
                 continue
             content, sources, trainable, appendix = g
             body["messages"].insert(idx, {"role": "system", "content": content})
+            if data is not None:  # 給防提示注入檢查用 / for the injection guard
+                data.append(body["messages"][idx])
             idx += 1
             rec["grounding_text"] = (rec.get("grounding_text") or "") + "\n" + content
             rec["sources"] = (rec.get("sources") or []) + sources
@@ -345,10 +347,38 @@ class Gateway:
                 rec["sources"] = (rec.get("sources") or []) + w[1]
                 rec["dict_appendix"] = (rec.get("dict_appendix") or "") + w[0]
 
+    # ── 防提示注入（add-injection-guard）/ Prompt-injection guard ──
+    def _guard(self, body: dict, rec: dict, data: list[dict]) -> None:
+        """文件、工具結果、附加資料都只是資料：清理、加上安全規則、偵測到可疑指示就標記這次請求。
+        Documents, tool results and attached data are data only: clean, remind, and flag suspicious requests."""
+        from .. import injection
+        try:
+            info = injection.guard(body["messages"], {id(m) for m in data})
+        except Exception as exc:  # noqa: BLE001 - 檢查壞了不影響回答 / a broken check never blocks answers
+            self.log(f"injection guard: {type(exc).__name__}: {exc}")
+            return
+        external = info["documents"] or info["tools"]
+        if external or info["suspected"]:
+            # 使用者附的文件、工具結果：一律加安全規則；gateway 自己查到的資料只有可疑時才加
+            # User documents and tool results always get the rule; gateway data only when suspicious
+            injection.add_reminder(body["messages"])
+        if external or info["suspected"] or info["cleaned"]:
+            rec["injection"] = {k: info[k] for k in ("documents", "tools", "suspected", "where", "cleaned")}
+        if info["suspected"]:
+            rec["training_use"] = False
+            self.log(f"injection guard: suspected {info['suspected']} in {info['where']}")
+
+    @staticmethod
+    def _injected(rec: dict) -> bool:
+        return bool((rec.get("injection") or {}).get("suspected"))
+
     # ── 記憶 / Memory（add-memory）──
     def _remember(self, body: dict, rec: dict, msg: dict, provider: str, model: str | None) -> None:
         """把請教／雲端的答案存進記憶 wiki；存不了不影響回答。 / Save to the memory wiki; failures never block."""
         if self.memory is None or body.get("tools") or rec.get("eval"):
+            return
+        if self._injected(rec):  # 可疑資料影響過的答案不進記憶 / never remember an answer shaped by suspicious data
+            rec["memory"] = {"saved": False, "why": "suspected_injection"}
             return
         from ..memory import storable
         users = [m["content"] for m in body["messages"] if m.get("role") == "user" and isinstance(m.get("content"), str)]
@@ -558,8 +588,11 @@ class Gateway:
         if request.headers.get("x-jiezi-eval") == "1":
             rec["eval"] = True
         # 查資料可能要啟動 embedding 引擎，放到執行緒以免卡住其他請求 / may start the embedder; off the event loop
-        await anyio.to_thread.run_sync(self._ground, body, rec)
-        self._attach_skills(body, rec)
+        data: list[dict] = []  # gateway 自己附加的資料訊息 / data messages the gateway attached
+        await anyio.to_thread.run_sync(self._ground, body, rec, data)
+        self._attach_skills(body, rec, data)
+        if self.s.injection_guard:
+            self._guard(body, rec, data)
         t0 = time.monotonic()
         if self.memory is not None and not body.get("tools"):
             early = self._memory_early(body, rec, t0, stream, policy)
@@ -637,7 +670,7 @@ class Gateway:
         self.log(f"longdoc: {info['mode']}, {info['chars']} chars → {info['after_tokens']} tokens in {info['seconds']} s")
 
     # ── 技能庫 v0（開發計畫 5.2）/ Skill library v0 ──
-    def _attach_skills(self, body: dict, rec: dict) -> None:
+    def _attach_skills(self, body: dict, rec: dict, data: list | None = None) -> None:
         """工具呼叫請求：附上最相似的成功範例。 / Tool-call requests get the most similar verified examples."""
         if self.skills is None or not body.get("tools"):
             return
@@ -651,12 +684,15 @@ class Gateway:
         if text:
             idx = body["messages"].index(users[-1])
             body["messages"].insert(idx, {"role": "system", "content": text})
+            if data is not None:
+                data.append(body["messages"][idx])
             rec["sources"] = (rec.get("sources") or []) + [{"source": "skills", "question": e["question"][:60]}
                                                              for e in ex]
 
     def _learn_skill(self, body: dict, rec: dict, resp: dict, ver: dict) -> None:
         """通過 schema 驗證、信心夠的本機工具呼叫加入技能庫。 / Verified, confident local calls join the library."""
-        if self.skills is None or not body.get("tools") or ver.get("status") != "pass" or rec.get("eval"):
+        if self.skills is None or not body.get("tools") or ver.get("status") != "pass" or rec.get("eval") \
+                or self._injected(rec):
             return
         if rec.get("confidence") is not None and rec["confidence"] < 0.75:
             return
@@ -835,7 +871,11 @@ class Gateway:
     def _meta(self, rec: dict, tier: int, resp: dict, ver: dict | None, t0: float, escalation: str | None = None,
               cloud: dict | None = None) -> dict:
         usage = (cloud or {}).get("usage") or {}
-        return {"tier": tier, "policy": rec["policy"], "model": resp.get("model"),
+        inj = rec.get("injection") or {}
+        from ..injection import WARNING
+        return {"injection": {"suspected": inj["suspected"], "where": inj["where"], "warning": WARNING}
+                if inj.get("suspected") else None,
+                "tier": tier, "policy": rec["policy"], "model": resp.get("model"),
                 "verification": (ver or {}).get("status", "not_applicable" if tier != 3 else "cloud"),
                 "verification_error": (ver or {}).get("error"), "escalation": escalation,
                 "latency_s": elapsed(t0), "tps": _tps(resp),

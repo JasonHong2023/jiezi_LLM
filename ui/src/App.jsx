@@ -92,6 +92,8 @@ function Chat() {
           <div key={i} className={`msg ${m.role}`}>
             <div className="body">{m.content || (busy && i === msgs.length - 1 ? "…" : "")}</div>
             {m.meta && <div className="meta">{statusLine(m.meta)}</div>}
+            {m.meta?.injection?.suspected?.length > 0 &&
+              <div className="warn">注意：{m.meta.injection.warning}（{m.meta.injection.suspected.join("、")}）</div>}
           </div>
         ))}
         <div ref={end} />
