@@ -175,7 +175,12 @@ class Gateway:
     def _local_body(self, body: dict, messages: list | None = None, stream: bool = False) -> dict:
         out = {k: v for k, v in body.items() if k not in ("model", "stream", "stream_options")}
         out["model"] = self.sup.core["name"] if self.sup.core else self.s.core_model
-        out["messages"] = messages if messages is not None else body["messages"]
+        msgs = messages if messages is not None else body["messages"]
+        # 每個槽位 4096 token：超出就裁（最舊對話 → 最長資料 → 問題）/ fit the 4096-token slot
+        from .context import fit
+        out["messages"], trim = fit(msgs, body.get("tools"), body.get("max_tokens") or body.get("max_completion_tokens"))
+        if trim["dropped_turns"] or trim["shortened_data"] or trim["shortened_question"]:
+            self.log(f"context: trimmed {trim}")
         out["stream"] = stream
         out.setdefault("chat_template_kwargs", {"enable_thinking": False})  # 預設關閉思考 / thinking off by default
         return out

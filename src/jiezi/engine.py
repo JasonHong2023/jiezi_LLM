@@ -108,8 +108,8 @@ class LocalEngine:
         self.cmd = [*prefix, str(self.binary), "-m", str(model), "--host", HOST, "--port", str(self.port),
                     "-t", str(self.threads), "-ngl", str(ngl), "-c", str(ctx), "-np", str(parallel),
                     "--cache-ram", str(CACHE_RAM_MIB)]
-        if parallel > 1:  # 平行取樣：各槽位共用一塊 KV 快取（add-sampling）/ parallel sampling shares one KV pool
-            self.cmd.append("-kvu")
+        # 平行取樣時每個槽位各自固定 ctx/parallel（不用共用 KV：4 個長提示加起來會塞爆共用區，2026-11-16）
+        # With parallel slots each gets a fixed ctx/parallel (no unified KV: four long prompts overflowed the pool)
         self.cmd += list(extra)  # 例如 embedding 模式 / e.g. embedding mode (add-rag)
         self.parallel = parallel
         if alias:  # 回應中的模型名稱用別名，不洩漏本機路徑 / report an alias, not the local file path

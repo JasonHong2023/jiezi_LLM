@@ -28,7 +28,7 @@ def cmd_serve(root) -> int:
     env = load_env(root)
     slots = s.samples if s.samples > 1 else 1  # 平行取樣需要多個槽位 / parallel sampling needs several slots
     factory = lambda facts, path, ngl, port, alias=None: LocalEngine(  # noqa: E731
-        root, facts, path, port_base(env), ngl=ngl, ctx=4096 * (2 if slots > 1 else 1), parallel=slots, port=port,
+        root, facts, path, port_base(env), ngl=ngl, ctx=4096 * slots, parallel=slots, port=port,
         alias=alias)
     sup = Supervisor(s, lambda: fresh_facts(root), factory)
     gw = Gateway(s, sup, TrajectoryWriter(s.var / "trajectories", s.trajectory, s.retention_days),

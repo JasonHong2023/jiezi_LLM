@@ -30,3 +30,7 @@ Phase 4.1: sample several answers, keep the verified majority, and report agreem
 ## Impact
 
 - 0.6B 的 KV 快取約多 0.9 GB VRAM（在預算內）；可驗證問題的延遲約為單次的 1–2 倍（槽位平行）。
+
+## 更正（2026-11-16，R19.4）/ Correction
+原設計「N 個槽位共用 KV（`-kvu`，上下文 8192）」有問題：4 個長提示（例如帶工具 schema 的 3000 token）加起來會塞爆共用區。改為每個槽位固定 4096（`-np N -c 4096×N`，不用 `-kvu`；0.6B 的 KV 約 1.8 GB，在預算內），並由 gateway 的上下文把關（`runtime/context.py`）把每個請求裁到 4096 以內：先丟最舊的對話、再截最長的附加資料、最後才截問題，身分提示與最新問題保留。
+The shared KV pool could overflow with four long prompts; each slot now has a fixed 4096 tokens and the gateway fits every local request into it.
