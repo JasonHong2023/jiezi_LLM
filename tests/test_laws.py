@@ -65,8 +65,9 @@ class TestLaws(unittest.TestCase):
         for q in ("勞動基準法第32條", "勞基法第三十二條規定什麼？", "勞基法 第 32 條"):
             content, sources, trainable, appendix = L.grounding(self.lw, q)
             self.assertEqual(sources, [{"source": "moj-laws", "law": "勞動基準法", "article": "第 32 條"}], q)
-        _, sources, _, appendix = L.grounding(self.lw, "勞基法第32條之1")
-        self.assertEqual(sources[0]["article"], "第 32-1 條")
+        for q in ("勞基法第32條之1", "勞基法第32-1條"):
+            _, sources, _, appendix = L.grounding(self.lw, q)
+            self.assertEqual(sources[0]["article"], "第 32-1 條", q)
         self.assertIn("不構成法律意見", appendix)
         self.assertTrue(trainable)
 

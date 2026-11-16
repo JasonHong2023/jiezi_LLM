@@ -120,10 +120,31 @@ def _knowledge(rng: random.Random, root: Path) -> list[Item]:
             for i, n in enumerate(rng.sample(names, min(PER_KIND, len(names))))]
 
 
+def _laws(rng: random.Random, root: Path) -> list[Item]:
+    """「勞動基準法第 32 條規定什麼？」→ 回答要提到條文中的關鍵詞。 / Answers must mention a key phrase of the article."""
+    from .laws import Laws, db_path
+    try:
+        lw = Laws(db_path(root))
+    except Exception:  # noqa: BLE001
+        return []
+    famous = ["民法", "中華民國刑法", "勞動基準法", "個人資料保護法", "消費者保護法", "道路交通管理處罰條例",
+              "著作權法", "公司法", "全民健康保險法", "中華民國憲法"]
+    out = []
+    for i in range(PER_KIND):
+        name = rng.choice([n for n in famous if n in lw.by_name])
+        rows = lw.con.execute("SELECT no, text FROM articles WHERE law = ? AND length(text) > 20 ORDER BY id",
+                              (lw.by_name[name],)).fetchall()
+        no, text = rng.choice(rows)
+        words = [w for w in re.findall(r"[\u4e00-\u9fff]{4,}", text) if not w.startswith(("前項", "本法", "第"))]
+        if words:
+            out.append(Item(f"law-{i}", "laws", f"{name}{no.replace(' ', '')}規定什麼？", expect=words[:3]))
+    return out
+
+
 def build(root: Path) -> list[Item]:
     rng = random.Random(SEED)
     return (_calc(rng) + _units(rng) + _dates(rng) + _dictionary(rng, root) + _curriculum(rng, root)
-            + _knowledge(rng, root))
+            + _knowledge(rng, root) + _laws(rng, root))
 
 
 # ── 判分 / Scoring ──
@@ -221,6 +242,12 @@ def coverage(root: Path) -> dict:
         from .knowledge import Knowledge, db_path as kdb, grounding as kg
         k = Knowledge(kdb(root))
         parts.append(lambda q: kg(k, q))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from .laws import Laws, db_path as ldb, grounding as lg
+        lw = Laws(ldb(root))
+        parts.append(lambda q: lg(lw, q))
     except Exception:  # noqa: BLE001
         pass
     by, misses = {}, []

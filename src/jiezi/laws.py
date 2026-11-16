@@ -31,7 +31,8 @@ ALIASES = {"刑法": "中華民國刑法", "憲法": "中華民國憲法", "勞�
            "就服法": "就業服務法", "勞保條例": "勞工保險條例", "勞退條例": "勞工退休金條例", "國賠法": "國家賠償法",
            "行程法": "行政程序法", "政採法": "政府採購法", "公寓大廈條例": "公寓大廈管理條例", "租賃條例": "租賃住宅市場發展及管理條例"}
 CN = {c: i for i, c in enumerate("零一二三四五六七八九")} | {"兩": 2, "〇": 0}
-ARTICLE = re.compile(r"第\s*([0-9０-９零〇一二兩三四五六七八九十百千]+)\s*條(?:\s*之\s*([0-9０-９一二三四五六七八九十]+))?")
+ARTICLE = re.compile(r"第\s*([0-9０-９零〇一二兩三四五六七八九十百千]+)(?:\s*-\s*([0-9０-９]+))?\s*條"
+                     r"(?:\s*之\s*([0-9０-９一二三四五六七八九十]+))?")
 LAW_CUE = re.compile(r"法律|法規|條文|違法|合法|犯法|罰則|罰鍰|罰金|處罰|刑責|判刑|規定|權利|義務|告人|提告|訴訟")
 MAX_ARTICLES, MAX_ARTICLE_CHARS, CANDIDATES = 3, 900, 50
 DISCLAIMER = "本資料僅供參考，不構成法律意見；條文以全國法規資料庫最新公告為準。"
@@ -185,7 +186,8 @@ def grounding(lw: Laws, text: str) -> tuple[str, list[dict], bool, str] | None:
     if named:
         lid, name = named
         for m in ARTICLE.finditer(text):
-            a = lw.article(lid, _cn_int(m.group(1)), _cn_int(m.group(2)) if m.group(2) else 0)
+            sub = m.group(2) or m.group(3)  # 「第 51-1 條」或「第 51 條之 1」/ either form
+            a = lw.article(lid, _cn_int(m.group(1)), _cn_int(sub) if sub else 0)
             if a:
                 hits.append(a)
             else:
