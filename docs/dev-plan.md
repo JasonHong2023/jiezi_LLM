@@ -145,6 +145,15 @@
 
 ## 5. 開發階段
 
+> **進度註記（2026-11-16，R19.4：補記，不改原文）/ Progress note**
+> - Phase 0：完成，剩 8.2／8.3 乾淨環境重建（使用者進行）。`scripts/jiezi data build` 與 bootstrap 的 data 步驟讓新電腦一次重建本機資料（R21）。
+> - Phase 1：完成並歸檔（add-eval-harness、add-verifiers）；雲端基準知識題 72.3%、工具 76%、程式 87.8%（摘要評審待雲端評審恢復）。
+> - Phase 2（E0 → G1）：進行中，生成與評審分開並行；完成後由儀表板（`scripts/jiezi dashboard`）提供 G1 判斷依據。
+> - Phase 4（提前）：4.2 分層轉交、4.3 軌跡、4.6 gateway／supervisor、4.8 CLI／TUI 完成；4.1 平行取樣完成（待實測）；4.5 路由器為規則版 v0；4.4 calibrator 待 E0 後。
+> - Phase 5（提前）：5.1 RAG 完成（全文＋向量全掃描，知識庫與法規；完整向量待 E0 後以 GPU 建）；另有辭典（國／台／客）、課綱與課本、法規、記憶 wiki、工具層、答案查核。5.2 技能庫、5.3 ADAS 未開始（需工具呼叫軌跡）。
+> - Phase 6 前置：訓練資料匯出（R20.3 強驗證、排除不可訓練與評測重疊）完成；訓練本身需 G1、PyTorch 與使用者同意。6.1 是否需要訓練驗證器，待 `scripts/jiezi toolcheck` 結果。
+> - R23：`scripts/jiezi audit` 可重複稽核，2026-11-16 補記 bubblewrap 三則公告（皆不受影響）。
+
 ### Phase 0：基礎整備（約 1 週）
 | 任務 | 內容 | 驗收 |
 | --- | --- | --- |
