@@ -134,6 +134,35 @@ def cmd_data_build(root, log=print) -> int:
     return 1 if failed else 0
 
 
+def cmd_train(root, args) -> int:
+    """Phase 6 訓練指令；sft、export 需要使用者同意後安裝的套件。 / Training commands."""
+    from pathlib import Path as P
+    if args.action == "plan":
+        from ..facts import fresh_facts
+        from ..train.config import fits
+        vram = ((fresh_facts(root).get("budgets") or {}).get("vram") or {})
+        budget = int(vram.get("total_mib", 0) - vram.get("floor_mib", 1024)) if vram else 0
+        for b in ([args.params] if args.params else [0.8, 2, 4, 9]):
+            print(f"{b}B: {fits(b, budget)}  [估 / est.]")
+        return 0
+    if args.action == "gate":
+        from ..train.gate import check, snapshot_from_run
+        r = check(snapshot_from_run(P(args.before)), snapshot_from_run(P(args.after)), args.target)
+        print(json.dumps(r, ensure_ascii=False, indent=1))
+        return 0 if r["pass"] else 1
+    if args.action == "sft":
+        from ..train.config import TrainConfig
+        from ..train.sft import train
+        cfg = TrainConfig(**json.loads(P(args.config).read_text(encoding="utf-8")))
+        print(f"adapter: {train(cfg, root)}")
+        return 0
+    from ..train.export import merge, to_gguf
+    run_dir = root / "var" / "train" / args.run
+    merge(run_dir)
+    print(json.dumps(to_gguf(root, run_dir, args.quant), ensure_ascii=False))
+    return 0
+
+
 def cmd_status(root) -> int:
     env = load_env(root)
     url = f"http://127.0.0.1:{port_base(env)}/health"
@@ -182,6 +211,15 @@ def main(argv: list[str] | None = None) -> int:
     mp = sub.add_parser("memory", help="memory wiki: consulted answers, notes, corrections (add-memory)")
     mp.add_argument("action", choices=["list", "search", "forget", "path"])
     mp.add_argument("query", nargs="?", help="search：問題；forget：主題名稱 / search: question; forget: topic title")
+    trp = sub.add_parser("train", help="Phase 6 LoRA training (R20): plan, sft, export, gate")
+    trp.add_argument("action", choices=["plan", "sft", "export", "gate"])
+    trp.add_argument("--params", type=float, help="plan: 模型參數量（十億）/ model size in billions")
+    trp.add_argument("--config", help="sft: 設定檔 JSON / TrainConfig JSON")
+    trp.add_argument("--run", help="export: var/train/<run>")
+    trp.add_argument("--quant", default="Q8_0")
+    trp.add_argument("--before", help="gate: 訓練前的評測目錄 / run dir before")
+    trp.add_argument("--after", help="gate: 訓練後的評測目錄 / run dir after")
+    trp.add_argument("--target", action="append", default=[], help="gate: 目標任務 tool|code|qa|summary")
     sub.add_parser("audit", help="dependency security audit against OSV (R23); queries only")
     dap = sub.add_parser("data", help="build every local data set (dictionaries, curriculum, knowledge, laws, links)")
     dap.add_argument("action", choices=["build"])
@@ -300,6 +338,8 @@ def main(argv: list[str] | None = None) -> int:
                 e, sim = found
                 print(f"[答案 answer {sim:.2f}] {e.title}｜{e.question}（{e.at[:10]}，{e.provider}）\n{e.text}")
             return 0 if found else 1
+        if args.cmd == "train":
+            return cmd_train(root, args)
         if args.cmd == "audit":
             from .. import audit
             out, r = audit.run(root)
