@@ -299,13 +299,109 @@ def grounding(text: str, now: datetime | None = None) -> tuple[str, list[dict], 
     """回傳 (system 訊息, 來源, 可訓練, 附錄)；沒有可算的就回傳 None。 / Computed facts for the chat, or None."""
     text = (text or "")[:2000]
     calc, conv, dates = calculations(text), conversions(text), date_facts(text, now)
-    lines = [*calc, *conv, *dates]
+    lunar = lunar_facts(text, now)
+    lines = [*calc, *conv, *dates, *lunar]
     if not lines:
         return None
     sources = ([{"source": "tools", "tool": "calculator"}] if calc else []) + \
               ([{"source": "tools", "tool": "units"}] if conv else []) + \
-              ([{"source": "tools", "tool": "dates"}] if dates else [])
+              ([{"source": "tools", "tool": "dates"}] if dates else []) + \
+              ([{"source": "tools", "tool": "lunar"}] if lunar else [])
     body = "\n".join(f"- {x}" for x in lines)
     content = ("以下是程式計算的結果，是正確的。回答時直接採用這些數字，不要自己重算或改動；"
                "不必另外說明計算方式，系統會在回答後附上計算過程。\n\n" + body)
     return content, sources, True, "\n\n---\n【計算】\n" + body
+
+
+# ── 農曆（lunar-python，MIT；使用者 2026-11-16 同意，自行安裝；沒裝時略過）──
+# Lunar calendar via lunar-python (MIT; installed by the user); skipped when absent.
+LUNAR_CUE = re.compile(r"農曆|陰曆|舊曆|農民曆|生肖|干支|節氣|春節|過年|元宵|端午|七夕|中元|中秋|重陽|除夕|清明|冬至|"
+                       r"立春|夏至|驚蟄|穀雨|立秋|秋分|春分|大寒|小寒")
+FESTIVALS = {"春節": (1, 1), "過年": (1, 1), "元宵": (1, 15), "端午": (5, 5), "七夕": (7, 7), "中元": (7, 15),
+             "中秋": (8, 15), "重陽": (9, 9)}
+JIEQI = ("立春", "雨水", "驚蟄", "春分", "清明", "穀雨", "立夏", "小滿", "芒種", "夏至", "小暑", "大暑", "立秋", "處暑",
+         "白露", "秋分", "寒露", "霜降", "立冬", "小雪", "大雪", "冬至", "小寒", "大寒")
+LMONTH = {"正": 1, "一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10,
+          "十一": 11, "冬": 11, "十二": 12, "臘": 12}
+LUNAR_DATE = re.compile(r"農曆\s*(?:(\d{4})\s*年)?\s*(閏)?\s*(正|十一|十二|冬|臘|[一二三四五六七八九十]|\d{1,2})\s*月\s*"
+                        r"(初[一二三四五六七八九十]|[二三]十[一二三四五六七八九]?|十[一二三四五六七八九]?|廿[一二三四五六七八九]?|\d{1,2})\s*(?:日|號)?")
+YEAR_RE = re.compile(r"(?:西元\s*)?(\d{4})\s*年|民國\s*(\d{1,3})\s*年")
+
+
+def _lunar():
+    try:
+        import lunar_python  # noqa: PLC0415 - 選用相依 / optional dependency
+        return lunar_python
+    except ImportError:
+        return None
+
+
+def _lday(s: str) -> int:
+    if s.isdigit():
+        return int(s)
+    s = s.replace("初", "").replace("廿", "二十")
+    return _cn_small(s)
+
+
+def _cn_small(s: str) -> int:
+    d = {c: i for i, c in enumerate("零一二三四五六七八九")}
+    if s == "十":
+        return 10
+    if "十" in s:
+        a, _, b = s.partition("十")
+        return (d.get(a, 1) if a else 1) * 10 + (d.get(b, 0) if b else 0)
+    return d.get(s, 0)
+
+
+def _ldesc(lunar) -> str:
+    from .textconv import to_traditional
+    return to_traditional(f"農曆{lunar.getYearInGanZhi()}年（{lunar.getYearShengXiao()}年）"
+                          f"{lunar.getMonthInChinese()}月{lunar.getDayInChinese()}")
+
+
+def lunar_facts(text: str, now: datetime | None = None, lib=None) -> list[str]:
+    t = _norm(text)
+    if not LUNAR_CUE.search(t):
+        return []
+    lib = lib or _lunar()
+    if lib is None:
+        return ["（農曆換算需要 lunar-python，尚未安裝：uv add lunar-python==1.4.9）"]
+    now = now or datetime.now()
+    today = now.date()
+    ym = YEAR_RE.search(t)
+    year = (int(ym.group(1)) if ym.group(1) else int(ym.group(2)) + 1911) if ym else today.year
+    out = []
+    # 國曆日期 → 農曆 / solar → lunar
+    solar_dates = [d for d in (_date(m) for m in DATE_RE.finditer(t)) if d]
+    if TODAY.search(t) or re.search(r"今天.{0,4}農曆|農曆.{0,4}今天", t):
+        solar_dates.append(today)
+    for d in solar_dates:
+        out.append(f"國曆 {d.isoformat()} 是{_ldesc(lib.Solar.fromYmd(d.year, d.month, d.day).getLunar())}")
+    # 農曆日期 → 國曆 / lunar → solar
+    for m in LUNAR_DATE.finditer(t):
+        y = int(m.group(1)) if m.group(1) else year
+        mo = int(m.group(3)) if m.group(3).isdigit() else LMONTH[m.group(3)]
+        day = _lday(m.group(4))
+        s = lib.Lunar.fromYmd(y, -mo if m.group(2) else mo, day).getSolar()
+        out.append(f"農曆 {y} 年{'閏' if m.group(2) else ''}{mo} 月 {day} 日是國曆 {s.toYmd()}")
+    # 節日 / festivals
+    for name, (mo, day) in FESTIVALS.items():
+        if name in t:
+            s = lib.Lunar.fromYmd(year, mo, day).getSolar()
+            out.append(f"{year} 年{name}（農曆 {mo} 月 {day} 日）是國曆 {s.toYmd()}")
+    if "除夕" in t:
+        s = lib.Lunar.fromYmd(year + 1, 1, 1).getSolar().next(-1)
+        out.append(f"{year} 年農曆除夕是國曆 {s.toYmd()}")
+    # 節氣 / solar terms
+    from .textconv import to_traditional
+    for name in JIEQI:
+        if name in t:
+            table = lib.Lunar.fromYmd(year, 6, 1).getJieQiTable()
+            hit = next((v for k, v in table.items() if to_traditional(k) == name and v.getYear() == year), None)
+            if hit:
+                out.append(f"{year} 年{name}是國曆 {hit.toYmd()}")
+    # 生肖 / zodiac
+    if "生肖" in t and not solar_dates:
+        lunar = lib.Lunar.fromYmd(year, 6, 1)
+        out.append(to_traditional(f"{year} 年（農曆{lunar.getYearInGanZhi()}年）的生肖是{lunar.getYearShengXiao()}"))
+    return list(dict.fromkeys(out))[:5]

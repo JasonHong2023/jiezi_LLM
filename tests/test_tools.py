@@ -80,5 +80,76 @@ class TestGatewayTools(unittest.TestCase):
             self.assertIn("【計算】", r["choices"][0]["message"]["content"])
 
 
+
+class FakeSolar:
+    def __init__(self, y, m, d):
+        self.y, self.m, self.d = y, m, d
+
+    @classmethod
+    def fromYmd(cls, y, m, d):
+        return cls(y, m, d)
+
+    def toYmd(self):
+        return f"{self.y:04d}-{self.m:02d}-{self.d:02d}"
+
+    def getYear(self):
+        return self.y
+
+    def next(self, n):
+        from datetime import date, timedelta
+        x = date(self.y, self.m, self.d) + timedelta(days=n)
+        return FakeSolar(x.year, x.month, x.day)
+
+    def getLunar(self):
+        return FakeLunar(self.y, 9, 27)
+
+
+class FakeLunar:
+    def __init__(self, y, m, d):
+        self.y, self.m, self.d = y, m, d
+
+    @classmethod
+    def fromYmd(cls, y, m, d):
+        return cls(y, m, d)
+
+    def getSolar(self):  # 假的對應：農曆 m/d → 國曆 m+1/d / fake mapping
+        return FakeSolar(self.y, min(abs(self.m) + 1, 12), self.d)
+
+    def getYearInGanZhi(self):
+        return "丙午"
+
+    def getYearShengXiao(self):
+        return "马"  # 簡體，應轉成正體 / Simplified on purpose
+
+    def getMonthInChinese(self):
+        return "九"
+
+    def getDayInChinese(self):
+        return "廿七"
+
+    def getJieQiTable(self):
+        return {"冬至": FakeSolar(self.y, 12, 22), "清明": FakeSolar(self.y, 4, 5)}
+
+
+class FakeLib:
+    Solar, Lunar = FakeSolar, FakeLunar
+
+
+class TestLunar(unittest.TestCase):
+    def test_conversions_with_fake_library(self):
+        f = lambda q: T.lunar_facts(q, NOW, lib=FakeLib)  # noqa: E731
+        self.assertEqual(f("今天農曆幾號？"), ["國曆 2026-11-16 是農曆丙午年（馬年）九月廿七"])  # 簡轉繁 / converted
+        self.assertIn("農曆 2026 年8 月 15 日是國曆 2026-09-15", f("農曆八月十五是國曆幾號"))
+        self.assertIn("2027 年中秋（農曆 8 月 15 日）是國曆 2027-09-15", f("2027年中秋節是哪天"))
+        self.assertIn("2026 年冬至是國曆 2026-12-22", f("今年冬至是哪一天"))
+        self.assertIn("2026 年農曆除夕是國曆 2027-01-31", f("除夕是哪天"))  # 隔年春節前一天 / day before next 春節
+        self.assertEqual(f("我今天好累"), [])
+
+    def test_missing_library_is_explained(self):
+        from unittest import mock
+        with mock.patch.object(T, "_lunar", return_value=None):
+            self.assertIn("lunar-python", T.lunar_facts("中秋節是哪天", NOW)[0])
+
+
 if __name__ == "__main__":
     unittest.main()
