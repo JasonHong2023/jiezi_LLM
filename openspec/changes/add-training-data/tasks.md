@@ -1,0 +1,3 @@
+- [x] 1.1 `src/jiezi/training_data.py`、`scripts/jiezi dataset export` / Module and command
+- [x] 1.2 單元測試（強驗證、Claude 輸出、ND 來源、未通過、附錄、評測重疊）；`openspec validate add-training-data --strict`
+- [x] 1.3 實際匯出 3,500 筆並檢查樣本 / Real export checked

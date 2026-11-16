@@ -153,6 +153,9 @@ def main(argv: list[str] | None = None) -> int:
     mp = sub.add_parser("memory", help="memory wiki: consulted answers, notes, corrections (add-memory)")
     mp.add_argument("action", choices=["list", "search", "forget", "path"])
     mp.add_argument("query", nargs="?", help="search：問題；forget：主題名稱 / search: question; forget: topic title")
+    dsp = sub.add_parser("dataset", help="export SFT training data (R20.3 verified only; no evaluation overlap)")
+    dsp.add_argument("action", choices=["export"])
+    dsp.add_argument("--limit", type=int, default=2000, help="template examples per source")
     tc = sub.add_parser("toolcheck", help="ACEBench through the gateway as OpenAI tools (system-level tool-call score)")
     tc.add_argument("--policy", default="jiezi-local")
     sub.add_parser("dashboard", help="metrics dashboard: achievement rate, local handling, E0, self-test, gaps")
@@ -265,6 +268,11 @@ def main(argv: list[str] | None = None) -> int:
                 e, sim = found
                 print(f"[答案 answer {sim:.2f}] {e.title}｜{e.question}（{e.at[:10]}，{e.provider}）\n{e.text}")
             return 0 if found else 1
+        if args.cmd == "dataset":
+            from .. import training_data
+            out, m = training_data.export(root, args.limit)
+            print(f"{m['examples']} examples {m['by_source']}; excluded {m['excluded']}; file: {out}")
+            return 0
         if args.cmd == "toolcheck":
             from .. import toolcheck
             env = load_env(root)

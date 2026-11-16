@@ -144,6 +144,16 @@ scripts/jiezi gaps              # 最近 7 天；--days 30 看更久 / last 7 da
 統計本機答不好的問題，分成：資料缺口（本機沒資料）、觸發缺口（有資料但沒查到）、有附資料仍答不好、問芥子自己、需要上網、系統錯誤；另列你直接指定請教 Claude 的問題。報告寫到 `var/reports/gaps-日期.md`（只在本機）。
 Lists questions the local model could not handle, grouped by gap type; written to `var/reports/`.
 
+### 評測與資料 / Evaluation and data
+
+```bash
+scripts/jiezi selftest [--dry]          # 從資料出題的自我評測 / self-test generated from the data
+scripts/jiezi toolcheck                 # ACEBench 經 gateway 的工具呼叫分數 / tool calls through the gateway
+scripts/jiezi dashboard                 # 成功指標儀表板 / metrics dashboard
+scripts/jiezi gaps                      # 缺口報告 / gap report
+scripts/jiezi dataset export            # 匯出可訓練、已驗證、不與評測重疊的 SFT 資料 / gated SFT export
+```
+
 ## 6. Hermes Agent 與 OpenCode / Hermes Agent and OpenCode
 
 ```bash
