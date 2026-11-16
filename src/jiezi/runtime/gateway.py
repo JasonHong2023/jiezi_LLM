@@ -223,8 +223,8 @@ class Gateway:
     def _ground(self, body: dict, rec: dict) -> None:
         """詞語問題查本機辭典、課綱問題查知識圖譜，把原文附給模型（add-dictionary D2、D3；add-curriculum D2、D3）。
         Attach verbatim dictionary entries for word questions and curriculum-graph data for curriculum questions."""
-        if body.get("tools") or all(x is None for x in (self.memory, self.dictionary, self.curriculum,
-                                                         self.knowledge, self.writing)):
+        if body.get("tools") or (not self.s.tools and all(x is None for x in (
+                self.memory, self.dictionary, self.curriculum, self.knowledge, self.writing))):
             return
         last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
         if not last or not isinstance(last.get("content"), str):
@@ -233,6 +233,9 @@ class Gateway:
         if self.memory is not None:  # 記憶最優先（使用者的更正）/ memory first (the user's corrections)
             from ..memory import recall_block
             found.append(recall_block(last["content"], self.memory))
+        if self.s.tools:  # 程式算好的數字 / numbers computed by code
+            from ..tools import grounding as tool_grounding
+            found.append(tool_grounding(last["content"]))
         if self.dictionary is not None:
             from ..dictionary import grounding
             found.append(grounding(self.dictionary, last["content"]))
@@ -369,6 +372,7 @@ class Gateway:
                              "writing_refs": "on" if self.writing else (self.writing_note or "off"),
                              "knowledge": "on" if self.knowledge else (self.knowledge_note or "off"),
                              "memory": "on" if self.memory else (self.memory_note or "off"),
+                             "tools": "on" if self.s.tools else "off",
                              "cloud_escalation": self.s.cloud_ready, "cloud_used_today": self.cap.used(),
                              "cloud_daily_max": self.s.cloud_daily_max,
                              "trajectory": {"enabled": self.traj.enabled, "error": self.traj.last_error}})

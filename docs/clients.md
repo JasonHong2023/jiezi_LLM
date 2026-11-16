@@ -107,6 +107,11 @@ Writing questions get up to three related article links after the answer, and Cl
 化學問題（化學名詞或含數字的化學式，如 H2SO4）請教 Claude 時，會提示它可以上網搜尋閱讀 HackMD 化學主題的社群筆記，並交叉查證；芥子本身不抓取、不收錄這些筆記（`src/jiezi/consult_hints.py`）。
 Chemistry consultations tell Claude it may read HackMD chemistry notes online; jiezi never fetches or ingests them.
 
+### 計算、單位、日期 / Computed facts
+
+算式（`1+3=2 多少?`、`3 乘以 7 加 2`、`根號2`）、單位換算（公里↔英里、台斤↔公斤、坪↔平方公尺、攝氏↔華氏）、日期（今天星期幾、民國↔西元、某天星期幾、相差幾天、100 天後）由程式算好再交給模型，回答後附【計算】。`JIEZI_TOOLS=off` 可關閉。
+Arithmetic, conversions and dates are computed by code and appended after the answer.
+
 ### 記憶 / Memory
 
 芥子會記住（Markdown wiki，Hermes llm-wiki 格式，在 `var/memory/wiki/`，可用 Obsidian 開）：
