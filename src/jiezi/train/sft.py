@@ -101,7 +101,11 @@ def _stop_time(stop_at: str | None, now=None):
     return t if t > now else t + dt.timedelta(days=1)
 
 
-def train(cfg: TrainConfig, root: Path, log=print) -> tuple[Path, str]:
+def _say(msg: str) -> None:
+    print(msg, flush=True)      # 夜間腳本把輸出導到檔案時也要即時寫出 / visible immediately when redirected to a file
+
+
+def train(cfg: TrainConfig, root: Path, log=_say) -> tuple[Path, str]:
     """回傳 (輸出目錄, "done" 或 "paused")。可以分好幾晚跑完：每次到 `extra.stop_at`（例如 "06:30"）或跑滿
     `extra.session_examples` 筆就在累積步的邊界存檢查點後結束，下次用同一個設定執行就從檢查點接著跑
     （使用者 2026-11-17：6 GB 顯卡一輪約 13.5 小時，拆成多晚）。
