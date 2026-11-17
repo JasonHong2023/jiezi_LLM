@@ -41,16 +41,52 @@ def load_examples(path: Path) -> list[dict]:
     return rows
 
 
+def _template_ready(m: dict) -> dict:
+    """OpenAI 格式的工具呼叫參數是 JSON 字串；Qwen3.5 的範本要物件（2026-11-17 冒煙測試）。
+    OpenAI tool-call arguments are JSON strings; the Qwen3.5 template iterates them as a mapping."""
+    if not m.get("tool_calls"):
+        return m
+    calls = []
+    for tc in m["tool_calls"]:
+        fn = dict(tc.get("function") or {})
+        if isinstance(fn.get("arguments"), str):
+            try:
+                fn["arguments"] = json.loads(fn["arguments"] or "{}")
+            except ValueError:
+                fn["arguments"] = {}
+        calls.append({**tc, "function": fn})
+    return {**m, "tool_calls": calls}
+
+
 def encode(example: dict, tokenizer, max_len: int) -> dict | None:
     """chat template 編碼；只有最後一則助手回答算損失。 / Chat-template encoding; loss on the final answer only."""
-    msgs = example["messages"]
-    prompt_ids = tokenizer.apply_chat_template(msgs[:-1], tokenize=True, add_generation_prompt=True,
-                                               enable_thinking=False)
-    full_ids = tokenizer.apply_chat_template(msgs, tokenize=True, add_generation_prompt=False, enable_thinking=False)
+    msgs = [_template_ready(m) for m in example["messages"]]
+
+    def ids(x):  # transformers 5 預設回傳 dict / transformers 5 returns a dict by default
+        x = x.get("input_ids", x) if hasattr(x, "get") else x
+        return list(x[0]) if x and isinstance(x[0], (list, tuple)) else list(x)
+    prompt_ids = ids(tokenizer.apply_chat_template(msgs[:-1], tokenize=True, add_generation_prompt=True,
+                                                   enable_thinking=False))
+    full_ids = ids(tokenizer.apply_chat_template(msgs, tokenize=True, add_generation_prompt=False,
+                                                 enable_thinking=False))
     if len(full_ids) > max_len or full_ids[:len(prompt_ids)] != prompt_ids:
         return None  # 太長或模板不一致就略過 / too long or template mismatch
     labels = [IGNORE] * len(prompt_ids) + full_ids[len(prompt_ids):]
     return {"input_ids": full_ids, "labels": labels}
+
+
+def answer_loss(model, ids, ex: dict):
+    """只算回答部分的損失，而且只產生回答位置的 logits。Qwen3.5 的詞表有 24.8 萬個，整段 logits 會吃掉 1 GB 以上的
+    顯示記憶體，6 GB 顯卡放不下（2026-11-17 冒煙測試：峰值 6.5 GB，溢出到系統記憶體、每筆 13 秒）。
+    Loss on the answer only, computing logits for answer positions only: full-sequence logits over Qwen3.5's 248k-token
+    vocabulary overflowed a 6 GB card in the smoke test."""
+    import torch
+    labels = ex["labels"]
+    first = next(i for i, x in enumerate(labels) if x != IGNORE)   # 回答開始的位置 / where the answer starts
+    keep = len(labels) - first + 1                                  # 預測回答需要的最後幾個位置 / positions needed
+    logits = model(input_ids=ids, logits_to_keep=keep).logits[0, :-1].float()
+    target = torch.tensor(labels[first:], device=logits.device)
+    return torch.nn.functional.cross_entropy(logits, target, ignore_index=IGNORE)
 
 
 def train(cfg: TrainConfig, root: Path, log=print) -> Path:
@@ -71,25 +107,37 @@ def train(cfg: TrainConfig, root: Path, log=print) -> Path:
         from transformers import BitsAndBytesConfig
         kw["quantization_config"] = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
                                                        bnb_4bit_compute_dtype=torch.bfloat16)
-    model = AutoModelForCausalLM.from_pretrained(cfg.base_model, **kw).to("cuda")
-    if cfg.gradient_checkpointing:
-        model.gradient_checkpointing_enable()
-        model.enable_input_require_grads()
+    if cfg.load_in_4bit:
+        # 4-bit 模型不能 .to()，要在載入時指定裝置（2026-11-17 實裝 transformers 5.23 後修正）
+        # A 4-bit model cannot be moved with .to(); place it at load time
+        from peft import prepare_model_for_kbit_training
+        model = AutoModelForCausalLM.from_pretrained(cfg.base_model, device_map={"": 0}, **kw)
+        model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=cfg.gradient_checkpointing)
+    else:
+        model = AutoModelForCausalLM.from_pretrained(cfg.base_model, **kw).to("cuda")
+        if cfg.gradient_checkpointing:
+            model.gradient_checkpointing_enable()
+            model.enable_input_require_grads()
     model = get_peft_model(model, LoraConfig(r=cfg.lora_r, lora_alpha=cfg.lora_alpha, lora_dropout=cfg.lora_dropout,
                                              target_modules=list(cfg.target_modules), task_type="CAUSAL_LM"))
     data = [e for e in (encode(x, tok, cfg.max_len) for x in load_examples(root / cfg.dataset)) if e]
     log(f"examples: {len(data)}; trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+    load_peak = torch.cuda.max_memory_allocated() / 2**20
+    torch.cuda.reset_peak_memory_stats()  # 載入時的峰值和訓練時分開記 / loading and training peaks recorded apart
     opt = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=cfg.learning_rate)
     steps = math.ceil(len(data) * cfg.epochs / (cfg.batch_size * cfg.grad_accum))
+    # 冒煙測試用：只跑幾步就停、不存 adapter 以外的東西（extra.max_steps）/ smoke runs stop after a few steps
+    max_steps = int((cfg.extra or {}).get("max_steps") or 0) or steps
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: min(1.0, (s + 1) / 20) * max(0.0, 1 - s / steps))
     model.train()
     step, t0, history = 0, time.monotonic(), []
     for epoch in range(cfg.epochs):
+        if step >= max_steps:
+            break
         random.shuffle(data)
         for i, ex in enumerate(data, 1):
             ids = torch.tensor([ex["input_ids"]], device="cuda")
-            labels = torch.tensor([ex["labels"]], device="cuda")
-            loss = model(input_ids=ids, labels=labels).loss / cfg.grad_accum
+            loss = answer_loss(model, ids, ex) / cfg.grad_accum
             loss.backward()
             if i % cfg.grad_accum == 0:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -98,11 +146,14 @@ def train(cfg: TrainConfig, root: Path, log=print) -> Path:
                 opt.zero_grad()
                 step += 1
                 history.append({"step": step, "loss": round(loss.item() * cfg.grad_accum, 4)})
-                if step % 10 == 0:
+                if step >= max_steps:
+                    break
+                if step % 10 == 0 or step <= 3:
                     log(f"  epoch {epoch + 1} step {step}/{steps} loss {history[-1]['loss']} "
                         f"({time.monotonic() - t0:.0f}s, peak {torch.cuda.max_memory_allocated() / 2**20:.0f} MiB)")
     model.save_pretrained(out / "adapter")
     (out / "history.json").write_text(json.dumps({"steps": history, "seconds": round(time.monotonic() - t0),
-                                                  "peak_vram_mib": round(torch.cuda.max_memory_allocated() / 2**20)},
+                                                  "peak_vram_mib": round(torch.cuda.max_memory_allocated() / 2**20),
+                                                  "load_peak_vram_mib": round(load_peak), "examples_seen": step * cfg.grad_accum},
                                                  indent=1), encoding="utf-8")
     return out

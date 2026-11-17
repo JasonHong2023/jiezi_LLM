@@ -47,6 +47,7 @@
 | `train-nvidia-libs` | NVIDIA CUDA 執行期函式庫（nvidia-cublas、cuda-runtime、cudnn 等，PyTorch 的相依）/ CUDA runtime wheels | https://pypi.org/project/nvidia-cublas/ | NVIDIA 專有授權（可隨應用程式散布的執行期元件）⚠️ 不得放進本 repo，只由使用者自行安裝 / NVIDIA proprietary; never vendored | 是（依 NVIDIA EULA）/ yes, per EULA | 不適用 / n/a | 2026-11-17 | 套件 metadata `LicenseRef-NVIDIA-Proprietary` |
 | `train-hf` | transformers 5.23.0、peft 0.21.3、accelerate 1.16.0、safetensors 0.8.0、tokenizers 0.23.3、huggingface-hub 2.4.0 | https://pypi.org/project/transformers/ 等 | Apache-2.0 | 是 / yes | 不適用 / n/a | 2026-11-17 | 已安裝套件的 metadata / installed metadata |
 | `train-bitsandbytes` | bitsandbytes 0.50.2（4-bit QLoRA）| https://pypi.org/project/bitsandbytes/ | MIT | 是 / yes | 不適用 / n/a | 2026-11-17 | 已安裝套件的 metadata / installed metadata |
+| `train-fla` | flash-linear-attention 0.6.0、fla-core 0.6.0（Qwen3.5 線性注意力的 Triton 核心）、einops 0.8.2 | https://pypi.org/project/flash-linear-attention/ | MIT | 是 / yes | 不適用 / n/a | 2026-11-17 | PyPI metadata；OSV 查詢無公告 / no OSV advisories |
 
 ## 已排除 / Excluded
 

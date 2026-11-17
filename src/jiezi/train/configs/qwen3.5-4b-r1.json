@@ -1,0 +1,18 @@
+{
+ "base_model": "Qwen/Qwen3.5-4B",
+ "base_revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+ "dataset": "var/training/sft-2026-11-16.jsonl",
+ "run_name": "qwen3.5-4b-r1",
+ "lora_r": 16,
+ "lora_alpha": 32,
+ "lora_dropout": 0.05,
+ "learning_rate": 0.0002,
+ "epochs": 1,
+ "max_len": 1024,
+ "batch_size": 1,
+ "grad_accum": 16,
+ "load_in_4bit": true,
+ "gradient_checkpointing": true,
+ "seed": 20261117,
+ "extra": {"note": "G1 核心 qwen3.5-4b-q4_k_m 的 HF 基底（與 models/manifest.toml 授權登記同一個 commit）；6 GB 顯卡需 4-bit（scripts/jiezi train plan）/ base of the G1 core, pinned to the licensed commit"}
+}

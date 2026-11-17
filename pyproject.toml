@@ -29,6 +29,7 @@ dev = [
 # 安裝：uv sync --group train
 train = [
     "bitsandbytes==0.50.2",
+    "flash-linear-attention==0.6.0",
     "peft==0.21.3",
     "torch==2.15.0",
     "transformers==5.23.0",
