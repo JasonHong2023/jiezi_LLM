@@ -84,3 +84,23 @@ def fit(messages: list[dict], tools: list | None = None, max_tokens: int | None 
         info["shortened_question"] = True
     info["after"] = total(msgs, tools)
     return msgs, info
+
+
+def merge_system(messages: list[dict]) -> list[dict]:
+    """把所有 system 訊息依序合併成開頭的一則。Qwen3.5 等模型的對話範本只接受開頭的 system 訊息，
+    中間再出現就整個請求失敗（2026-11-17 實測：附加資料與安全提醒插在對話中間 → 引擎回 500）。
+    Merge every system message, in order, into one leading message: chat templates such as Qwen3.5's reject
+    a system message anywhere but first (a live HTTP 500 once data and reminders were inserted mid-conversation)."""
+    parts, rest = [], []
+    for m in messages:
+        if m.get("role") == "system":
+            c = m.get("content")
+            if isinstance(c, list):
+                c = "".join(p.get("text", "") for p in c if isinstance(p, dict) and p.get("type") == "text")
+            if isinstance(c, str) and c.strip():
+                parts.append(c.strip())
+        else:
+            rest.append(m)
+    if not parts:
+        return rest
+    return [{"role": "system", "content": "\n\n".join(parts)}, *rest]

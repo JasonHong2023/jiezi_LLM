@@ -214,8 +214,9 @@ class Gateway:
         out["model"] = self.sup.core["name"] if self.sup.core else self.s.core_model
         msgs = messages if messages is not None else body["messages"]
         # 每個槽位 4096 token：超出就裁（最舊對話 → 最長資料 → 問題）/ fit the 4096-token slot
-        from .context import fit
+        from .context import fit, merge_system
         out["messages"], trim = fit(msgs, body.get("tools"), body.get("max_tokens") or body.get("max_completion_tokens"))
+        out["messages"] = merge_system(out["messages"])  # 範本只接受開頭的 system 訊息 / templates want one leading system message
         if trim["dropped_turns"] or trim["shortened_data"] or trim["shortened_question"]:
             self.log(f"context: trimmed {trim}")
         out["stream"] = stream

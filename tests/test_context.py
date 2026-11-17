@@ -46,6 +46,15 @@ class TestContext(unittest.TestCase):
             self.assertTrue(info["shortened_question"])
             self.assertLessEqual(len(out[1]["content"]), C.MIN_DATA_CHARS + 12)
 
+    def test_system_messages_merge_to_the_front(self):
+        msgs = [{"role": "system", "content": "身分"}, {"role": "user", "content": "問一"},
+                {"role": "assistant", "content": "答一"}, {"role": "system", "content": "資料"},
+                {"role": "system", "content": [{"type": "text", "text": "提醒"}]}, {"role": "user", "content": "問二"}]
+        out = C.merge_system(msgs)
+        self.assertEqual([m["role"] for m in out], ["system", "user", "assistant", "user"])
+        self.assertEqual(out[0]["content"], "身分\n\n資料\n\n提醒")
+        self.assertEqual(C.merge_system(msgs[1:3]), msgs[1:3])               # 沒有 system 就不動 / untouched
+
     def test_estimate(self):
         self.assertEqual(C.est_tokens("中文字"), 4)
         self.assertLess(C.est_tokens("hello world " * 10), 40)
