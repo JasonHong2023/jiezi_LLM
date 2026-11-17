@@ -170,8 +170,9 @@ def cmd_train(root, args) -> int:
         from ..train.config import TrainConfig
         from ..train.sft import train
         cfg = TrainConfig(**json.loads(P(args.config).read_text(encoding="utf-8")))
-        print(f"adapter: {train(cfg, root)}")
-        return 0
+        out, status = train(cfg, root)
+        print(f"{status}: {out}")
+        return 0 if status == "done" else 3  # 3 = 暫停，下次接著跑 / paused, resume next time
     from ..train.export import merge, to_gguf
     run_dir = root / "var" / "train" / args.run
     merge(run_dir)

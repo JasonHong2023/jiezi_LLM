@@ -11,6 +11,7 @@ import json
 import math
 import random
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 from ..errors import JieziError
@@ -89,17 +90,47 @@ def answer_loss(model, ids, ex: dict):
     return torch.nn.functional.cross_entropy(logits, target, ignore_index=IGNORE)
 
 
-def train(cfg: TrainConfig, root: Path, log=print) -> Path:
+def _stop_time(stop_at: str | None, now=None):
+    """「06:30」→ 下一個 06:30 的時間點；沒給就 None。 / Next occurrence of HH:MM, or None."""
+    import datetime as dt
+    if not stop_at:
+        return None
+    now = now or dt.datetime.now()
+    h, m = (int(x) for x in stop_at.split(":"))
+    t = now.replace(hour=h, minute=m, second=0, microsecond=0)
+    return t if t > now else t + dt.timedelta(days=1)
+
+
+def train(cfg: TrainConfig, root: Path, log=print) -> tuple[Path, str]:
+    """回傳 (輸出目錄, "done" 或 "paused")。可以分好幾晚跑完：每次到 `extra.stop_at`（例如 "06:30"）或跑滿
+    `extra.session_examples` 筆就在累積步的邊界存檢查點後結束，下次用同一個設定執行就從檢查點接著跑
+    （使用者 2026-11-17：6 GB 顯卡一輪約 13.5 小時，拆成多晚）。
+    Return (run dir, "done" or "paused"). A round can span several nights: at `extra.stop_at` or after
+    `extra.session_examples` examples it checkpoints on an accumulation boundary; running the same config resumes."""
     require_stack()
+    import datetime as dt
     import torch
-    from peft import LoraConfig, get_peft_model
+    from peft import LoraConfig, PeftModel, get_peft_model
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     out = root / "var" / "train" / cfg.run_name
-    if out.exists():
-        raise JieziError(f"{out} exists; every round needs a new run name (R20.2)")
-    cfg.save(out / "config.json")
-    random.seed(cfg.seed)
+    ckpt = out / "checkpoint"
+    resume = (ckpt / "state.json").exists()
+    if (out / "adapter").exists():
+        raise JieziError(f"{out} is finished; every round needs a new run name (R20.2)")
+    if out.exists() and not resume:
+        raise JieziError(f"{out} exists without a checkpoint; every round needs a new run name (R20.2)")
+    if resume:
+        saved = json.loads((out / "config.json").read_text(encoding="utf-8"))
+        now = json.loads(json.dumps(asdict(cfg)))  # tuple → list，和存檔的格式一致 / same shape as the saved file
+        same = {k: v for k, v in saved.items() if k != "extra"} == {k: v for k, v in now.items() if k != "extra"}
+        if not same:
+            raise JieziError(f"{out}: the config changed since the checkpoint; resume needs the same settings")
+    else:
+        cfg.save(out / "config.json")
+    extra = cfg.extra or {}
+    stop = _stop_time(extra.get("stop_at"))
+    session_cap = int(extra.get("session_examples") or 0)
     torch.manual_seed(cfg.seed)
     tok = AutoTokenizer.from_pretrained(cfg.base_model, revision=cfg.base_revision)
     kw = {"revision": cfg.base_revision, "torch_dtype": torch.bfloat16}
@@ -118,42 +149,77 @@ def train(cfg: TrainConfig, root: Path, log=print) -> Path:
         if cfg.gradient_checkpointing:
             model.gradient_checkpointing_enable()
             model.enable_input_require_grads()
-    model = get_peft_model(model, LoraConfig(r=cfg.lora_r, lora_alpha=cfg.lora_alpha, lora_dropout=cfg.lora_dropout,
-                                             target_modules=list(cfg.target_modules), task_type="CAUSAL_LM"))
+    if resume:
+        model = PeftModel.from_pretrained(model, ckpt / "adapter", is_trainable=True)
+    else:
+        model = get_peft_model(model, LoraConfig(r=cfg.lora_r, lora_alpha=cfg.lora_alpha,
+                                                 lora_dropout=cfg.lora_dropout,
+                                                 target_modules=list(cfg.target_modules), task_type="CAUSAL_LM"))
     data = [e for e in (encode(x, tok, cfg.max_len) for x in load_examples(root / cfg.dataset)) if e]
     log(f"examples: {len(data)}; trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
     load_peak = torch.cuda.max_memory_allocated() / 2**20
     torch.cuda.reset_peak_memory_stats()  # 載入時的峰值和訓練時分開記 / loading and training peaks recorded apart
     opt = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=cfg.learning_rate)
-    steps = math.ceil(len(data) * cfg.epochs / (cfg.batch_size * cfg.grad_accum))
-    # 冒煙測試用：只跑幾步就停、不存 adapter 以外的東西（extra.max_steps）/ smoke runs stop after a few steps
-    max_steps = int((cfg.extra or {}).get("max_steps") or 0) or steps
+    per_epoch = len(data) // cfg.grad_accum * cfg.grad_accum   # 只用完整的累積步 / whole accumulation steps only
+    steps = math.ceil(per_epoch * cfg.epochs / (cfg.batch_size * cfg.grad_accum))
+    # 冒煙測試用：只跑幾步就停（extra.max_steps）/ smoke runs stop after a few steps
+    max_steps = int(extra.get("max_steps") or 0) or steps
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: min(1.0, (s + 1) / 20) * max(0.0, 1 - s / steps))
+    state = {"epoch": 0, "index": 0, "step": 0, "history": [], "seconds": 0, "sessions": 0}
+    if resume:
+        state = json.loads((ckpt / "state.json").read_text(encoding="utf-8"))
+        opt.load_state_dict(torch.load(ckpt / "optimizer.pt", weights_only=True))
+        sched.load_state_dict(torch.load(ckpt / "scheduler.pt", weights_only=True))
+        log(f"resuming at epoch {state['epoch'] + 1}, example {state['index']}, step {state['step']}/{steps}")
+    state["sessions"] += 1
     model.train()
-    step, t0, history = 0, time.monotonic(), []
-    for epoch in range(cfg.epochs):
-        if step >= max_steps:
-            break
-        random.shuffle(data)
-        for i, ex in enumerate(data, 1):
+    t0, seen = time.monotonic(), 0
+    paused = False
+    for epoch in range(state["epoch"], cfg.epochs):
+        order = list(range(len(data)))
+        random.Random(cfg.seed + epoch).shuffle(order)          # 每輪順序固定，接續時才對得上 / reproducible order
+        start = state["index"] if epoch == state["epoch"] else 0
+        for i in range(start, per_epoch):
+            ex = data[order[i]]
             ids = torch.tensor([ex["input_ids"]], device="cuda")
             loss = answer_loss(model, ids, ex) / cfg.grad_accum
             loss.backward()
-            if i % cfg.grad_accum == 0:
+            seen += 1
+            if (i + 1) % cfg.grad_accum == 0:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 opt.step()
                 sched.step()
                 opt.zero_grad()
-                step += 1
-                history.append({"step": step, "loss": round(loss.item() * cfg.grad_accum, 4)})
-                if step >= max_steps:
-                    break
-                if step % 10 == 0 or step <= 3:
-                    log(f"  epoch {epoch + 1} step {step}/{steps} loss {history[-1]['loss']} "
+                state["step"] += 1
+                state["history"].append({"step": state["step"], "loss": round(loss.item() * cfg.grad_accum, 4)})
+                state["epoch"], state["index"] = epoch, i + 1
+                if state["step"] % 10 == 0 or state["step"] <= 3:
+                    log(f"  epoch {epoch + 1} step {state['step']}/{steps} loss {state['history'][-1]['loss']} "
                         f"({time.monotonic() - t0:.0f}s, peak {torch.cuda.max_memory_allocated() / 2**20:.0f} MiB)")
+                if state["step"] >= max_steps:
+                    break
+                if (stop and dt.datetime.now() >= stop) or (session_cap and seen >= session_cap):
+                    paused = True
+                    break
+        if paused or state["step"] >= max_steps:
+            break
+        state["epoch"], state["index"] = epoch + 1, 0
+    state["seconds"] += round(time.monotonic() - t0)
+    record = {"steps": state["history"], "seconds": state["seconds"], "sessions": state["sessions"],
+              "peak_vram_mib": round(torch.cuda.max_memory_allocated() / 2**20), "load_peak_vram_mib": round(load_peak),
+              "examples_seen": state["step"] * cfg.grad_accum, "total_steps": steps}
+    if paused:
+        ckpt.mkdir(parents=True, exist_ok=True)
+        model.save_pretrained(ckpt / "adapter")
+        torch.save(opt.state_dict(), ckpt / "optimizer.pt")
+        torch.save(sched.state_dict(), ckpt / "scheduler.pt")
+        (ckpt / "state.json").write_text(json.dumps(state, indent=1), encoding="utf-8")
+        (out / "progress.json").write_text(json.dumps(record, indent=1), encoding="utf-8")
+        log(f"paused at step {state['step']}/{steps}; run the same config again to resume")
+        return out, "paused"
     model.save_pretrained(out / "adapter")
-    (out / "history.json").write_text(json.dumps({"steps": history, "seconds": round(time.monotonic() - t0),
-                                                  "peak_vram_mib": round(torch.cuda.max_memory_allocated() / 2**20),
-                                                  "load_peak_vram_mib": round(load_peak), "examples_seen": step * cfg.grad_accum},
-                                                 indent=1), encoding="utf-8")
-    return out
+    (out / "history.json").write_text(json.dumps(record, indent=1), encoding="utf-8")
+    if ckpt.exists():
+        import shutil
+        shutil.rmtree(ckpt)
+    return out, "done"

@@ -14,5 +14,8 @@
  "load_in_4bit": true,
  "gradient_checkpointing": true,
  "seed": 20261117,
- "extra": {"note": "G1 核心 qwen3.5-4b-q4_k_m 的 HF 基底（與 models/manifest.toml 授權登記同一個 commit）；6 GB 顯卡需 4-bit（scripts/jiezi train plan）/ base of the G1 core, pinned to the licensed commit"}
+ "extra": {
+  "stop_at": "06:30",
+  "note": "G1 核心 qwen3.5-4b-q4_k_m 的 HF 基底（與 models/manifest.toml 授權登記同一個 commit）。6 GB 顯卡一輪約 13.5 小時，每晚 00:05 開始、06:30 存檢查點暫停，下一晚接續（使用者 2026-11-17 選「拆成多晚」）/ resumes nightly until done"
+ }
 }
