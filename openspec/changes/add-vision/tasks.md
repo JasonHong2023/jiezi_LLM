@@ -2,4 +2,4 @@
 - [x] 1.2 gateway 圖片路由、文字部分查資料、請求上限 8 MB；上下文估算
 - [x] 1.3 `jiezi chat` 的 `/image`；doctor 顯示視覺狀態
 - [x] 1.4 單元測試；`openspec validate add-vision --strict`
-- [ ] 2.1 G1 選定 Qwen3.5 核心後下載對應 mmproj，以真實圖片實測（本機中文看圖說明）
+- [x] 2.1（2026-11-17：下載 Qwen3.5-4B mmproj、SHA-256 吻合；合成測試圖 8.4 秒，形狀、顏色、文字、長條數正確；真實照片待使用者自行試） G1 選定 Qwen3.5 核心後下載對應 mmproj，以真實圖片實測（本機中文看圖說明）

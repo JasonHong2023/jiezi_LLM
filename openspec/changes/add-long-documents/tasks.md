@@ -2,4 +2,4 @@
 - [x] 1.2 `longdoc.py`：分段、map-reduce 摘要、問答挑段落；gateway 接入、`JIEZI_LONGDOC`
 - [x] 1.3 `jiezi ask --file`、chat `/file`、管線輸入包成文件、chat 歷史縮短
 - [x] 1.4 單元測試；真實 PDF、.docx、圖片 PDF 讀取實測；授權登記；`openspec validate add-long-documents --strict`
-- [ ] 2.1 E0 結束後以本機模型實測長文件摘要與問答（品質、耗時）
+- [x] 2.1（2026-11-17：勞基法全文 15,252 字，70 秒，摘要大致正確、一處說反；見討論記錄 2026-11-17 #23） E0 結束後以本機模型實測長文件摘要與問答（品質、耗時）

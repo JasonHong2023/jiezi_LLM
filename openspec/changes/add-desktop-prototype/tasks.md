@@ -1,5 +1,5 @@
 - [x] 1.1 `ui/` 前端（對話、稽核紀錄、狀態、一鍵中止）、鎖定版本、npm audit 0
 - [x] 1.2 gateway `/ui/`（CSP）、`/admin/trajectories`、`/admin/doctor`；`scripts/jiezi ui build`
 - [x] 1.3 單元測試；實際提供頁面並檢查標頭；`openspec validate add-desktop-prototype --strict`
-- [ ] 2.1 E0 結束後在 Windows 瀏覽器實測對話與一鍵中止（目標 ≤ 1 秒，G5）
+- [x] 2.1（2026-11-17：以 API 串流實測一鍵中止，引擎 0.01 秒內釋放、1 秒後 GPU 閒置；瀏覽器畫面的操作仍待使用者看一眼） E0 結束後在 Windows 瀏覽器實測對話與一鍵中止（目標 ≤ 1 秒，G5）
 - [ ] 2.2 Tauri 2 外殼（Rust、Linux WebKit 套件；Windows 版需在 Windows 安裝 Rust）

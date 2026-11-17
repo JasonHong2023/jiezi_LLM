@@ -1,3 +1,3 @@
 - [x] 1.1 `runtime/calibrate.py`、`scripts/jiezi calibrate`、supervisor 採用實測值
 - [x] 1.2 單元測試；`openspec validate add-calibrator --strict`
-- [ ] 2.1 E0 後實測 qwen3.5-4b-q8_0、qwen3.5-9b-q4_k_m 與 G1 選定的核心
+- [x] 2.1（2026-11-17：核心 qwen3.5-4b-q4_k_m 實測 ngl 99 最快 50.1 t/s、CPU 9.8 t/s；另兩個模型未選為核心，不再量） E0 後實測 qwen3.5-4b-q8_0、qwen3.5-9b-q4_k_m 與 G1 選定的核心
