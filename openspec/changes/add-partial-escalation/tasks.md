@@ -1,4 +1,4 @@
 - [x] 1.1 `escalation.py`：回饋請求的提示（只要指出錯誤與改法、上限 300 token）與帶回饋重答的訊息組裝 / feedback prompt and retry messages
 - [x] 1.2 gateway：第 1 層失敗後的第 2 層（協助者順序、每日上限、`jiezi.tier=2`、軌跡、`training_use=false`、`JIEZI_TIER2`）；R12 流程圖確認 / gateway tier 2
 - [x] 1.3 單元測試（假協助者：回饋後通過、仍失敗轉第 3 層、協助者失敗、關閉時不變）；文件；`openspec validate add-partial-escalation --strict` / tests and docs
-- [ ] 2.1 量測（與實作分開）：G1 選定核心後，以 toolcheck 50 題與 JSON 題量第 2 層的進入數、通過率與多花的時間；依 OQ2 決定預設值 / measurement deciding the default
+- [x] 2.1（2026-11-17，核心 qwen3.5-4b-q4_k_m：toolcheck 50 題開第 2 層 32/50、不開 33/50；**第 2 層進入 0 次**——50 題都通過執行期的格式檢查而停在第 0 層，錯的 17 題是參數語意錯，執行期檢查看不出來；JSON 題 4/4 也都一次通過。沒有進入就量不到通過率，未達 OQ2 的 40% 門檻 → 預設維持 off） 量測（與實作分開）：G1 選定核心後，以 toolcheck 50 題與 JSON 題量第 2 層的進入數、通過率與多花的時間；依 OQ2 決定預設值 / measurement deciding the default
