@@ -1,0 +1,4 @@
+- [ ] 1.1 `longdoc.py`：語意名次、RRF 合併、段落向量進記憶體快取（不落地、失敗不快取）、逾時與退回 / semantic rank, fusion, in-memory vectors, timeout and fallback
+- [ ] 1.2 gateway 接入 embedding 引擎、`JIEZI_DOC_SEMANTIC`、`JIEZI_DOC_EMBED_TIMEOUT`、回應的 `longdoc` 欄位註明這一題用了哪種排序；依 OQ3 決定是否在附檔時預先建向量 / wiring, switches, metadata
+- [ ] 1.3 單元測試（假 embedding：字面挑不到而語意挑得到、逾時退回、引擎失敗退回、快取不落地）；`docs/clients.md`、`.env.example`；`openspec validate add-semantic-chunks --strict` / tests and docs
+- [ ] 2.1 量測（與實作分開，R8、R17）：勞動基準法全文加另一份非法條文件，各 8 題口語問題（事先寫好正確段落與答案要點），比較開與關的「正確段落進入上下文的比例」與回答正確數、每題耗時；依結果決定預設值，記入討論記錄 / A/B measurement deciding the default
