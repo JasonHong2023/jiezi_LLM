@@ -286,6 +286,22 @@ class TestGateway(unittest.TestCase):
         t = self.traj()[0]
         self.assertEqual((t["final_tier"], t["policy"], t["id"]), (0, "jiezi", r["jiezi"]["trajectory_id"]))
 
+    def test_oversized_tool_list_gets_a_clear_error_or_escalates(self):
+        # 2026-11-17 實測：OpenCode 一次送 58,000 token 的工具清單，本機引擎只會回 400
+        tools = [{"type": "function", "function": {"name": f"tool_{i}", "description": "說明" * 200,
+                                                    "parameters": {"type": "object", "properties": {}}}} for i in range(60)]
+        body = {"model": "jiezi-local", "messages": [{"role": "user", "content": "hi"}], "tools": tools}
+        with self.client([{"role": "assistant", "content": "不該送到本機"}]) as c:
+            r = self.post(c, body)
+            self.assertEqual(r.status_code, 413)
+            self.assertEqual(r.json()["error"]["code"], "context_too_large")
+            self.assertEqual(self.local_seen, [])                               # 沒有送到引擎 / never reached the engine
+        with self.client([{"role": "assistant", "content": "不該送到本機"}], cloud_on=True) as c:
+            r = self.post(c, {**body, "model": "jiezi"})
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.json()["jiezi"]["escalation"], "context_too_large")
+            self.assertEqual(self.local_seen, [])
+
     def test_parallel_sampling_picks_verified_majority(self):
         bad = {"role": "assistant", "content": "[get_weather()]"}
         good = {"role": "assistant", "content": "[get_weather(city='台北')]"}

@@ -244,3 +244,13 @@ scripts/jiezi check-clients    # 只檢查並列出建議設定，不修改任�
 > - OpenCode：`opencode.jsonc` 的 `provider.jiezi`，金鑰以 `{file:~/.config/opencode/jiezi.key}`（權限 600）讀取；`opencode models jiezi` 列出 jiezi、jiezi-local、jiezi-ask-claude。
 > - 兩者修改前都已備份（`*.bak-20261116-113127-jiezi`）。換新的 gateway 金鑰時，兩個地方也要更新。
 Whether to point Hermes Agent or OpenCode at the gateway is your call (it changes your everyday tools); `check-clients` never changes them.
+
+> **2026-11-17 實測（核心 qwen3.5-4b-q4_k_m）**：這兩個代理程式每次請求都帶很長的系統提示與工具清單——
+> OpenCode（含 oh-my-openagent）約 58,000 token、Hermes 預設 55 個工具約 11 萬字，就算只開一個工具集，
+> Hermes 的系統提示也有約 3 萬字。本機模型每個槽位的上下文是 4,096 token，**放不下**。
+> 所以代理程式請選 `jiezi`（放不下會直接轉交 Claude 或雲端，不先浪費一次本機生成）或 `jiezi-ask-claude`；
+> 選 `jiezi-local` 會收到 HTTP 413 `context_too_large` 的清楚錯誤。一般對話、文件、翻譯、看圖不受影響。
+>
+> Live test: both agents send very long system prompts and tool lists (about 58,000 tokens from OpenCode; 55 tools
+> from Hermes). They do not fit the 4,096-token local slot, so use `jiezi` (escalates straight away) or
+> `jiezi-ask-claude`; `jiezi-local` answers HTTP 413 `context_too_large`.

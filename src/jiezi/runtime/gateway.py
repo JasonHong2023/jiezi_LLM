@@ -59,6 +59,7 @@ EMBED_MAX_INPUTS, EMBED_MAX_CHARS = 64, 8000  # 問題和更正過的問題相�
 from .supervisor import EngineUnavailable, Supervisor
 from .trajectory import TrajectoryWriter, elapsed, new_id, now_iso
 
+TOO_LARGE_ROOM = 128            # 至少要留這麼多 token 給回答 / tokens that must remain for an answer
 TICK_S = 5.0
 COST_HEADER = "x-litellm-response-cost"
 
@@ -718,6 +719,21 @@ class Gateway:
                 return await self._respond_cloud(body, rec, t0, stream, reason="image_needs_vision")
             return self._finish_error(rec, 400, "目前的核心模型不支援圖片（需要有視覺模組的核心，例如 Qwen3.5 加 mmproj）"
                                       "；也沒有可用的雲端模型 / the core model cannot read images", "vision_unavailable")
+        big = self._too_large(body)
+        if big:
+            # 工具清單與系統提示本身就超過本機的上下文（例如帶幾十個工具的代理程式）：裁不掉，送了引擎只會回 400。
+            # 2026-11-17 實測 OpenCode 一次送 58,000 token。能轉交就轉交，不能就回清楚的錯誤。
+            # Tools and system prompts alone exceed the local context (agent clients with dozens of tools): nothing
+            # can be trimmed and the engine would answer 400. Escalate when possible, else a clear error.
+            rec["too_large"] = big
+            if policy == "jiezi" and self._auto_route():
+                return await self._escalate(body, rec, t0, stream, reason="context_too_large")
+            return self._finish_error(
+                rec, 413, f"這個請求裁短後仍約 {big['after']} token，超過本機模型的上下文（{big['ctx']} token）；"
+                          "通常是工具清單或系統提示太長。請改用 jiezi 或 jiezi-ask-claude，或減少工具 / "
+                          f"the request still needs about {big['after']} tokens after trimming but the local model's "
+                          f"context is {big['ctx']}; use the jiezi or jiezi-ask-claude policy, or send fewer tools",
+                "context_too_large")
         route = self._pre_route(body, rec) if policy == "jiezi" else None
         if route:
             # 路由器 v0（規則）：本機一定答不了的問題直接轉交，不先浪費一次本機生成
@@ -926,6 +942,16 @@ class Gateway:
             self.log(f"skills: could not save: {exc}")
 
     # ── 路由器 v0（add-router；開發計畫 4.5 的規則版）/ Router v0 ──
+    def _too_large(self, body: dict) -> dict | None:
+        """裁到不能再裁還是放不進一個槽位就回傳 {"after", "ctx"}。 / Set when even full trimming cannot fit one slot."""
+        from .context import SLOT_CTX, fit
+        try:
+            _, info = fit(body["messages"], body.get("tools"),
+                          body.get("max_tokens") or body.get("max_completion_tokens"))
+        except Exception:  # noqa: BLE001 - 估不出來就照舊送 / unknown shapes go through as before
+            return None
+        return {"after": info["after"], "ctx": SLOT_CTX} if info["after"] > SLOT_CTX - TOO_LARGE_ROOM else None
+
     def _pre_route(self, body: dict, rec: dict) -> str | None:
         """需要上網或即時資料、且沒有程式算好的答案時，直接轉交。 / Web/live questions without computed facts."""
         if body.get("tools") or not self._auto_route():
