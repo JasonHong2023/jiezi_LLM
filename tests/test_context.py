@@ -36,6 +36,16 @@ class TestContext(unittest.TestCase):
         self.assertTrue(info["shortened_question"])
         self.assertTrue(out[0]["content"].startswith("開頭") and out[0]["content"].endswith("結尾"))
 
+    def test_data_at_the_floor_never_loops(self):
+        # 2026-11-17 實測的卡死：附加資料剛好比下限長一點、問題又超長時，截短後加上標記並沒有變短
+        # The live hang: data just above the floor plus an over-long question never got shorter
+        for extra in range(0, 12):
+            msgs = [{"role": "system", "content": "身分"}, {"role": "system", "content": "規" * (C.MIN_DATA_CHARS + extra)},
+                    {"role": "user", "content": "長" * 20000}]
+            out, info = C.fit(msgs, ctx=4096)
+            self.assertTrue(info["shortened_question"])
+            self.assertLessEqual(len(out[1]["content"]), C.MIN_DATA_CHARS + 12)
+
     def test_estimate(self):
         self.assertEqual(C.est_tokens("中文字"), 4)
         self.assertLess(C.est_tokens("hello world " * 10), 40)

@@ -68,7 +68,12 @@ def fit(messages: list[dict], tools: list | None = None, max_tokens: int | None 
         if not data:
             break
         _, j = max(data)
-        msgs[j]["content"] = msgs[j]["content"][:max(MIN_DATA_CHARS, len(msgs[j]["content"]) // 2)] + "……（已截短）"
+        short = msgs[j]["content"][:max(MIN_DATA_CHARS, len(msgs[j]["content"]) // 2)] + "……（已截短）"
+        if len(short) >= len(msgs[j]["content"]):
+            # 已經截到下限：再截也不會變短，改截問題（2026-11-17 實測：長文件加防注入提醒時在這裡空轉，gateway 卡死）
+            # Already at the floor: no further shrinking is possible, so move on to the question (a live hang)
+            break
+        msgs[j]["content"] = short
         info["shortened_data"] += 1
     # 3. 問題本身（留頭尾）/ the question itself, keeping head and tail
     over = total(msgs, tools) - budget
