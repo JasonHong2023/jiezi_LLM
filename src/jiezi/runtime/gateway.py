@@ -328,8 +328,13 @@ class Gateway:
                 _, q = split_message(last["content"])
                 if not q:
                     return
-                last = {"role": "user", "content": q, "_target": last}
+                last = {"role": "user", "content": q, "_target": last, "_doc": True}
         found = []
+        # 附了長文件：問題是在問文件，不用語意向量去知識庫／法規撈「看起來相關」的段落（2026-11-17 實測會蓋過文件、
+        # 佔掉上下文）；問題裡直接點名的文章或法條照樣附。
+        # With a long document attached the question is about the document: no fuzzy vector hits from the knowledge base
+        # or statutes (they crowded out the document in a live test); explicitly named articles still attach.
+        doc = bool(last.get("_doc"))
         if self.memory is not None:  # 記憶最優先（使用者的更正）/ memory first (the user's corrections)
             from ..memory import recall_block
             found.append(recall_block(last["content"], self.memory))
@@ -344,10 +349,12 @@ class Gateway:
             found.append(curriculum_grounding(self.curriculum, last["content"]))
         if self.laws is not None:
             from ..laws import grounding as laws_grounding
-            found.append(laws_grounding(self.laws, last["content"], self.laws_hybrid))
+            if not doc or self.laws.law_in(last["content"][:2000]):
+                found.append(laws_grounding(self.laws, last["content"], None if doc else self.laws_hybrid))
         if self.knowledge is not None:
             from ..knowledge import grounding as knowledge_grounding
-            found.append(knowledge_grounding(self.knowledge, last["content"], self.hybrid))
+            if not doc or self.knowledge.articles_named(last["content"]):
+                found.append(knowledge_grounding(self.knowledge, last["content"], None if doc else self.hybrid))
         idx = body["messages"].index(last.get("_target", last))
         for g in found:
             if not g:

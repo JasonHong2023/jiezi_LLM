@@ -251,10 +251,23 @@ def needs_help(message: dict, finish_reason: str | None) -> str | None:
     return None
 
 
+RETRY_INLINE_CHARS, RETRY_PREV_CHARS = 2000, 1200
+
+
 def retry_messages(messages: list[dict], answer: dict, error: str) -> list[dict]:
     prev = {"role": "assistant", "content": answer.get("content") or ""}
     if answer.get("tool_calls"):
         prev["content"] = prev["content"] or json.dumps(answer["tool_calls"], ensure_ascii=False)
+    last = messages[-1] if messages else None
+    if last and last.get("role") == "user" and isinstance(last.get("content"), str) \
+            and len(last["content"]) > RETRY_INLINE_CHARS:
+        # 問題很長（附了文件）：分成三則的話，上下文把關會先丟掉最舊的——也就是問題和文件本身——只剩「上一個回答沒過」，
+        # 模型不知道在講什麼（2026-11-17 實測）。改成一則：問題在前、上一個回答與錯誤在後，超出時裁的是文件中段。
+        # A long question (with a document): as three turns the context guard drops the oldest first, i.e. the question
+        # and the document, leaving only "the previous answer failed". One message instead; overflow trims the middle.
+        return [*messages[:-1], {"role": "user", "content": (
+            f"{last['content']}\n\n[上一個回答 / previous answer]\n{prev['content'][:RETRY_PREV_CHARS]}\n\n"
+            f"{RETRY_PROMPT.format(error=error)}")}]
     return [*messages, prev, {"role": "user", "content": RETRY_PROMPT.format(error=error)}]
 
 
