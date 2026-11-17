@@ -14,14 +14,24 @@ pipeline (sampling, verification, escalation) then runs as usual.
 同一份文件再次要摘要時不必重跑。
 Follow-ups: the client re-attaches the document with every question, so chunks are re-selected per question; the
 previous exchange is a half-weight hint for ranking, some room is reserved for it, and per-chunk notes are cached in
-memory so a second summary of the same document does not redo the map step."""
+memory so a second summary of the same document does not redo the map step.
+
+語意挑段落（add-semantic-chunks）：問答時另用 embedding 排一次段落，和字面排序以倒數名次合併；口語問法（「加班費」）
+對得到用字不同的條文（「延長工作時間之工資」）。段落向量只放記憶體，附檔時就在背景開始建；第一題最多等一下，
+沒建好就先用字面排序。任何錯誤都退回字面排序。
+Semantic selection: chunks are also ranked by embedding similarity and fused with the lexical rank (reciprocal
+rank fusion), so colloquial questions reach differently worded passages. Chunk vectors stay in memory, start
+building when a document is attached, and the first question waits briefly; any failure falls back to lexical."""
 
 from __future__ import annotations
 
 import hashlib
 import math
 import re
+import threading
 from collections import Counter, OrderedDict
+from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from typing import Awaitable, Callable
 
 from .runtime.context import DEFAULT_ANSWER, SLOT_CTX, est_tokens
@@ -38,6 +48,15 @@ PARALLEL = 4                                 # 引擎的平行槽位數 / engine
 HINT_WEIGHT = 0.5                            # 上一輪問答在挑段落時的權重 / weight of the previous exchange in ranking
 FOLLOWUP_RESERVE = 600                       # 追問時最多留給上一輪對話的 token / room kept for the previous exchange
 MIN_BUDGET = 1200
+RRF_K = 10                                   # 倒數名次合併的平滑常數（小一點，前幾名才拉得開）/ fusion constant
+# 語意名次的權重：2026-11-17 用 2 份文件 9 題試 K∈{5,10,20,60}×權重∈{1,1.5,2}，權重 1 時 7–8 題、1.5 起 9 題挑對
+# （只用字面 5 題）。這 9 題拿來調參數，正式量測（2.1）要用另外寫的題目。
+# Semantic weight: on 9 tuning questions weight 1 kept the right chunk 7–8 times, 1.5 and up 9 (lexical alone 5);
+# the A/B measurement must use different questions.
+SEMANTIC_WEIGHT = 1.5
+EMBED_BATCH = 8                              # 每批建幾段的向量（約 5,000 token，引擎上限 8,192）/ chunks per request
+DOC_QUERY_INSTRUCT = ("Instruct: Given a question about a document, retrieve the passage of the document that "
+                      "answers it\nQuery: ")
 
 
 class NotesCache:
@@ -64,6 +83,95 @@ class NotesCache:
             self.rows.popitem(last=False)
 
 Complete = Callable[[list[dict], int], Awaitable[str]]
+# (問題, 文件全文, 段落) → (語意排序或 None, 狀態) / (question, text, chunks) → (semantic order or None, status)
+Semantic = Callable[[str, str, list[str]], Awaitable[tuple[list[int] | None, str]]]
+
+
+class ChunkVectors:
+    """文件段落向量：記憶體快取（最近幾份；不寫入磁碟）與背景建置（一次一份）。失敗不快取。
+    Chunk vectors of attached documents: an in-memory cache (never on disk) and one background builder.
+    Failures are never cached."""
+
+    def __init__(self, embed: Callable[[list[str]], list], size: int = 8):
+        self.embed, self.size = embed, size
+        self.rows: OrderedDict[str, list] = OrderedDict()
+        self.building: dict[str, Future] = {}
+        self.lock = threading.Lock()
+        self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="doc-embed")
+
+    @staticmethod
+    def key(text: str) -> str:
+        return hashlib.sha256(text.strip().encode("utf-8")).hexdigest()
+
+    def get(self, text: str) -> list | None:
+        k = self.key(text)
+        with self.lock:
+            if k in self.rows:
+                self.rows.move_to_end(k)
+                return self.rows[k]
+        return None
+
+    def start(self, text: str) -> Future | None:
+        """開始（或接上已在進行的）建置；已有向量或段落太少就回傳 None。 / Start or join a build."""
+        parts = chunks(text, QA_CHUNK_TOKENS)
+        if len(parts) < 2:
+            return None
+        k = self.key(text)
+        with self.lock:
+            if k in self.rows:
+                return None
+            fut = self.building.get(k)
+            if fut is None:
+                fut = self.pool.submit(self._build, k, parts)
+                self.building[k] = fut
+            return fut
+
+    def _build(self, k: str, parts: list[str]) -> list:
+        try:
+            vecs: list = []
+            for n in range(0, len(parts), EMBED_BATCH):
+                vecs += self.embed(parts[n:n + EMBED_BATCH])
+            if len(vecs) != len(parts):
+                raise ValueError(f"got {len(vecs)} vectors for {len(parts)} chunks")
+            with self.lock:
+                self.rows[k] = vecs
+                self.rows.move_to_end(k)
+                while len(self.rows) > self.size:
+                    self.rows.popitem(last=False)
+            return vecs
+        finally:
+            with self.lock:
+                self.building.pop(k, None)
+
+    def order(self, question: str, text: str, parts: list[str], wait_s: float) -> tuple[list[int] | None, str]:
+        """語意排序（段落編號，最相關在前）。沒準備好或出錯回傳 (None, 原因)。
+        The semantic order of chunks, or (None, reason) when not ready or failing."""
+        vecs = self.get(text)
+        if vecs is None:
+            fut = self.start(text)
+            if fut is None:
+                vecs = self.get(text)
+                if vecs is None:
+                    return None, "too_few_chunks"
+            else:
+                try:
+                    vecs = fut.result(timeout=max(0.0, wait_s))
+                except FutureTimeout:
+                    return None, "timeout"
+                except Exception as exc:  # noqa: BLE001 - 退回字面排序 / fall back to lexical
+                    return None, f"error: {type(exc).__name__}: {str(exc)[:120]}"
+        if len(vecs) != len(parts):
+            return None, "chunk_mismatch"
+        try:
+            q = self.embed([DOC_QUERY_INSTRUCT + question[:500]])[0]
+        except Exception as exc:  # noqa: BLE001
+            return None, f"error: {type(exc).__name__}: {str(exc)[:120]}"
+        sims = [sum(a * b for a, b in zip(q, v)) for v in vecs]  # 都已正規化 / normalized
+        return sorted(range(len(vecs)), key=lambda i: -sims[i]), "semantic"
+
+    def close(self) -> None:
+        self.pool.shutdown(wait=False, cancel_futures=True)
+
 
 MAP_PROMPT = ("你在整理一份長文件。以下是《{name}》的第 {i}/{n} 段。請用繁體中文條列這一段的重點，"
               "保留關鍵的數字、日期、人名、地名與結論，不要加入原文沒有的內容，最多 8 點。")
@@ -148,9 +256,24 @@ def rank(question: str, parts: list[str], hint: str = "") -> list[tuple[float, i
     return sorted(((sc, i) for i, sc in enumerate(score)), key=lambda x: -x[0])
 
 
-def select(question: str, parts: list[str], budget: int = LIMIT, hint: str = "") -> list[int]:
+def fuse(lexical: list[int], semantic: list[int] | None) -> list[int]:
+    """倒數名次合併（RRF）：兩種排序各給 1/(K+名次)，相加後排序；沒有語意排序就照字面。
+    Reciprocal rank fusion of the lexical and semantic orders; lexical alone when there is no semantic order."""
+    if not semantic:
+        return list(lexical)
+    score = Counter()
+    for order, w in ((lexical, 1.0), (semantic, SEMANTIC_WEIGHT)):
+        for r, i in enumerate(order, 1):
+            score[i] += w / (RRF_K + r)
+    return sorted(score, key=lambda i: (-score[i], lexical.index(i) if i in lexical else len(lexical)))
+
+
+def select(question: str, parts: list[str], budget: int = LIMIT, hint: str = "",
+           semantic: list[int] | None = None) -> list[int]:
     picked, used = [], est_tokens(question) + 200
-    for score, i in rank(question, parts, hint):
+    for i in fuse([i for _, i in rank(question, parts, hint)], semantic):
+        if not 0 <= i < len(parts):
+            continue
         t = est_tokens(parts[i]) + 20
         if used + t > budget:
             continue
@@ -206,7 +329,7 @@ async def summarize(name: str, text: str, complete: Complete, budget: int = LIMI
 
 # ── 入口 / Entry ──
 async def condense(content: str, complete: Complete, hint: str = "", budget: int = LIMIT,
-                   cache: NotesCache | None = None) -> tuple[str, dict]:
+                   cache: NotesCache | None = None, semantic: Semantic | None = None) -> tuple[str, dict]:
     """把含長文件的訊息改寫成放得進本機上下文的版本。hint：上一輪問答（追問時幫忙挑段落）。
     Rewrite a long-document message to fit the local context. hint: the previous exchange, for follow-ups."""
     budget = max(MIN_BUDGET, budget)
@@ -226,8 +349,15 @@ async def condense(content: str, complete: Complete, hint: str = "", budget: int
     else:
         for name, text in docs:
             parts = chunks(text, QA_CHUNK_TOKENS)
-            keep = select(question, parts, budget // max(1, len(docs)), hint)
-            info.setdefault("selected", []).append({"document": name, "chunks": len(parts), "kept": keep})
+            order, how = (None, "off")
+            if semantic is not None and len(parts) > 1:
+                try:
+                    order, how = await semantic(question, text, parts)
+                except Exception as exc:  # noqa: BLE001 - 語意排序不可擋住回答 / never block the answer
+                    order, how = None, f"error: {type(exc).__name__}"
+            keep = select(question, parts, budget // max(1, len(docs)), hint, order)
+            info.setdefault("selected", []).append({"document": name, "chunks": len(parts), "kept": keep,
+                                                    "ranking": "semantic+lexical" if order else f"lexical ({how})"})
             body = "\n\n".join(f"〔第 {i + 1}/{len(parts)} 段〕\n{parts[i]}" for i in keep)
             blocks.append(f"以下是《{name}》（原文 {len(text)} 字）中和問題最相關的段落：\n{body}")
         instruction = (question + "\n（只根據上面的段落回答；段落裡找不到答案就說文件中沒有提到，並指出依據的段落編號。）")

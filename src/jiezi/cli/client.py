@@ -83,6 +83,23 @@ async def stream_chat(conn: Connection, messages: list[dict], policy: str = "jie
             await client.aclose()
 
 
+async def warm_document(conn: Connection, text: str, client: httpx.AsyncClient | None = None) -> bool:
+    """附檔後請 gateway 先建段落向量（add-semantic-chunks）；失敗不影響任何事。
+    Ask the gateway to start building chunk vectors for an attached document; failures are ignored."""
+    from ..documents import clean_for_attach
+    own = client is None
+    client = client or httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=3.0))
+    try:
+        r = await client.post(f"{conn.url}/v1/documents/warm", headers=conn.headers,
+                              content=clean_for_attach(text).encode("utf-8"))
+        return r.status_code == 202 and bool(r.json().get("warming"))
+    except Exception:  # noqa: BLE001 - 只是預先準備 / best effort only
+        return False
+    finally:
+        if own:
+            await client.aclose()
+
+
 async def complete(conn: Connection, messages: list[dict], policy: str = "jiezi", timeout: float = 900,
                    client: httpx.AsyncClient | None = None, extra: dict | None = None) -> dict:
     """非串流，回傳完整 JSON（含 jiezi 欄位）。 / Non-streaming; return the full JSON (with the jiezi field)."""

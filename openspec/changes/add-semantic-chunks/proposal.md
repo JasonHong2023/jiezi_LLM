@@ -1,4 +1,7 @@
-> **狀態 / Status**：提案，**尚未實作**，待使用者審閱（R4）。Proposal only, not implemented; awaiting review.
+> **狀態 / Status**：使用者 2026-11-17 同意，OQ1–OQ3 照建議（預設開、最多等 20 秒、附檔就先建）；已實作，量測 2.1 待做。
+> Approved 2026-11-17 with the recommended answers; implemented, measurement pending.
+>
+> **實作補記（R19.4）**：合併時語意名次的權重定為 1.5、K=10。依據是 2 份文件 9 題的試算（權重 1 時 7–8 題挑對，1.5 起 9 題；只用字面 5 題）。這 9 題用來調參數，2.1 的量測必須另外出題。另新增 `POST /v1/documents/warm` 讓 chat 的 `/file` 也能附檔即建（提案原只寫了行為，沒寫端點）。
 
 ## Why
 

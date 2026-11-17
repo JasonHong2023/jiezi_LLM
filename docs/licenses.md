@@ -43,6 +43,10 @@
 | `pillow` | Pillow 13.0.0（從 PDF 取出掃描頁圖片以 OCR）/ image extraction for OCR | https://pypi.org/project/pillow/ | MIT-CMU | 是 / yes | 不適用 / n/a | 2026-11-16 | PyPI 套件 metadata；OSV 至 2026-11-12 的漏洞皆在 13.0.0 修正 / PyPI metadata; advisories up to 2026-11-12 fixed in 13.0.0 |
 | `tesseract-chi-tra` | tesseract-ocr 5.3.4 與繁體中文語言檔 `chi_tra`（Ubuntu 套件 tesseract-ocr-chi-tra 1:4.1.0-2；OCR）| Ubuntu 套件庫 / Ubuntu archive | Apache-2.0 | 是 / yes | 不適用 / n/a | 2026-11-16 | `/usr/share/doc/tesseract-ocr-chi-tra/copyright` |
 | `libreoffice` | LibreOffice 24.2.7 無介面版（Ubuntu 套件 libreoffice-{writer,calc,impress}-nogui；選用，沙盒內轉換舊版 Office 檔，add-legacy-office）| Ubuntu 套件庫 / Ubuntu archive | MPL-2.0（部分元件 LGPL-3+、Apache-2.0 等；2026-11-17 已對照套件 copyright）| 是 / yes | 不適用 / n/a | 2026-11-17 | 上游 https://www.libreoffice.org/about-us/licenses/ ；`/usr/share/doc/libreoffice-core/copyright` |
+| `train-torch` | PyTorch 2.15.0（CUDA 13.2 wheel，含 triton 3.9.0；Phase 6 訓練，`uv sync --group train` 才安裝）/ training only | https://pypi.org/project/torch/ | Apache-2.0 與 BSD 類授權（套件 metadata：Apache-2.0 AND Apache-2.0 WITH LLVM-exception AND BSD-2-Clause…）；triton MIT | 是 / yes | 不適用 / n/a | 2026-11-17 | 已安裝套件的 metadata；`scripts/jiezi audit` 檢查 143 項、未接受漏洞 0 / installed metadata; audit clean |
+| `train-nvidia-libs` | NVIDIA CUDA 執行期函式庫（nvidia-cublas、cuda-runtime、cudnn 等，PyTorch 的相依）/ CUDA runtime wheels | https://pypi.org/project/nvidia-cublas/ | NVIDIA 專有授權（可隨應用程式散布的執行期元件）⚠️ 不得放進本 repo，只由使用者自行安裝 / NVIDIA proprietary; never vendored | 是（依 NVIDIA EULA）/ yes, per EULA | 不適用 / n/a | 2026-11-17 | 套件 metadata `LicenseRef-NVIDIA-Proprietary` |
+| `train-hf` | transformers 5.23.0、peft 0.21.3、accelerate 1.16.0、safetensors 0.8.0、tokenizers 0.23.3、huggingface-hub 2.4.0 | https://pypi.org/project/transformers/ 等 | Apache-2.0 | 是 / yes | 不適用 / n/a | 2026-11-17 | 已安裝套件的 metadata / installed metadata |
+| `train-bitsandbytes` | bitsandbytes 0.50.2（4-bit QLoRA）| https://pypi.org/project/bitsandbytes/ | MIT | 是 / yes | 不適用 / n/a | 2026-11-17 | 已安裝套件的 metadata / installed metadata |
 
 ## 已排除 / Excluded
 

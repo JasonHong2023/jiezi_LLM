@@ -331,6 +331,8 @@ class ChatApp(App):
             self._update_bar(f"附加的文件合計超過 {MAX_DOC_CHARS} 字，請先 /file clear / attached documents too large")
             return
         self.docs = [x for x in self.docs if x["name"] != d["name"]] + [d]  # 同名視為更新 / same name replaces
+        from .client import warm_document  # 先建段落向量，第一題就用得到語意挑段落 / warm chunk vectors
+        self.run_worker(warm_document(self.conn, d["text"]), group="warm", exclusive=False)
         extra = f"，OCR {len(d['ocr_pages'])} 頁" if d.get("ocr_pages") else ""
         self._update_bar(f"已附文件 attached: {d['name']}（{d['chars']} 字{extra}）；可以一直追問，/file clear 取消 / "
                          "stays attached for follow-up questions")

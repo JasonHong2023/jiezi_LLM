@@ -324,10 +324,10 @@ scripts/jiezi train plan      # 這台電腦的顯示記憶體能訓練哪些大
 依使用者 2026-11-16 的決定，**E0 結束後**才安裝。版本以安裝當時的最新穩定版為準，安裝後一定要稽核（R23）：
 
 ```bash
-# CUDA 版 PyTorch（版本與 CUDA 對應以 https://pytorch.org 當時的說明為準）
-uv add torch --index https://download.pytorch.org/whl/cu128
-uv add transformers peft
-uv add bitsandbytes          # 只有 4-bit 訓練（2B 以上）才需要
+# 訓練套件已登記在 pyproject.toml 的 `train` 群組（2026-11-17：torch 2.15.0 CUDA 13.2 版、transformers、peft、
+# bitsandbytes，版本鎖定在 uv.lock）。一般使用不會安裝；要訓練時：
+# Training packages live in the `train` dependency group (pinned in uv.lock); install them only to train:
+uv sync --group train
 
 scripts/jiezi audit          # 有「需處理」的漏洞就先停下來評估
 ```

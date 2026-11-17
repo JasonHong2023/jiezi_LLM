@@ -553,3 +553,141 @@ class TestAskFile(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSemanticChunks(unittest.TestCase):
+    """add-semantic-chunks：語意挑段落、記憶體快取、逾時與失敗退回。 / Semantic selection, cache, fallbacks."""
+
+    @staticmethod
+    def doc():
+        # 30 段左右的文件；只有一段講「延長工作時間之工資」，字面上和「加班費」沒有共同的雙字詞
+        filler = [f"第 {i} 條\n" + f"本條規定事項第{i}款之一般行政程序與文件格式。" * 25 for i in range(1, 30)]
+        target = "第 24 條\n雇主延長勞工工作時間者，其延長工作時間之工資，依下列標準加給。" * 8
+        return "\n\n".join(filler[:12] + [target] + filler[12:])
+
+    @staticmethod
+    def fake_embed(texts):
+        # 「加班」和「延長工作時間之工資」在假的向量空間裡相近 / a toy space where the two are close
+        out = []
+        for t in texts:
+            v = [1.0 if ("延長工作時間" in t or "加班" in t) else 0.0, 0.1, (len(t) % 7) / 70]
+            n = sum(x * x for x in v) ** 0.5
+            out.append([x / n for x in v])
+        return out
+
+    def test_fusion_pulls_in_a_differently_worded_chunk(self):
+        text = self.doc()
+        parts = L.chunks(text, L.QA_CHUNK_TOKENS)
+        target = next(i for i, p in enumerate(parts) if "延長工作時間" in p)
+        lexical = L.select("加班費怎麼算？", parts, L.LIMIT)
+        self.assertNotIn(target, lexical)                                  # 字面挑不到 / lexical misses it
+        cv = L.ChunkVectors(self.fake_embed)
+        order, how = cv.order("加班費怎麼算？", text, parts, 5)
+        self.assertEqual((how, order[0] in [i for i, p in enumerate(parts) if "延長工作時間" in p]), ("semantic", True))
+        self.assertIn(target, L.select("加班費怎麼算？", parts, L.LIMIT, "", order))
+        self.assertEqual(L.fuse([2, 0, 1], None), [2, 0, 1])                # 沒有語意就照字面 / lexical alone
+        cv.close()
+
+    def test_cache_failures_and_timeout(self):
+        import threading
+        text = self.doc()
+        parts = L.chunks(text, L.QA_CHUNK_TOKENS)
+        calls = []
+
+        def broken(texts):
+            calls.append(len(texts))
+            raise OSError("engine down")
+        cv = L.ChunkVectors(broken)
+        order, how = cv.order("加班費", text, parts, 5)
+        self.assertIsNone(order)
+        self.assertTrue(how.startswith("error: OSError"))
+        self.assertIsNone(cv.get(text))                                    # 失敗不快取 / failures not cached
+        cv.close()
+
+        gate = threading.Event()
+
+        def slow(texts):
+            gate.wait(5)
+            return self.fake_embed(texts)
+        cv = L.ChunkVectors(slow)
+        self.assertIsNotNone(cv.start(text))                               # 附檔時就開始 / warm on attach
+        order, how = cv.order("加班費", text, parts, 0.05)
+        self.assertEqual((order, how), (None, "timeout"))                  # 逾時先用字面 / lexical meanwhile
+        gate.set()
+        for _ in range(100):
+            if cv.get(text) is not None:
+                break
+            import time
+            time.sleep(0.05)
+        order, how = cv.order("加班費", text, parts, 0.05)
+        self.assertEqual(how, "semantic")                                  # 下一題就用得到 / ready next time
+        self.assertIsNone(cv.start(text))                                  # 已有就不重建 / no rebuild
+        self.assertIsNone(cv.start("太短的文件"))                            # 短文件不用 / short ones skipped
+        cv.close()
+
+    def test_cache_is_bounded_and_memory_only(self):
+        cv = L.ChunkVectors(self.fake_embed, size=2)
+        docs = [self.doc() + f"\n\n附錄 {i}" for i in range(3)]
+        for t in docs:
+            cv.start(t).result(5)
+        self.assertEqual(len(cv.rows), 2)
+        self.assertIsNone(cv.get(docs[0]))                                 # 最舊的被淘汰 / oldest evicted
+        self.assertFalse(any(isinstance(v, (str, bytes, Path)) for v in cv.rows.values()))
+        cv.close()
+
+    def test_condense_reports_the_ranking_used(self):
+        text = self.doc()
+        content = D.attach({"name": "勞基法.txt", "text": text}, "加班費怎麼算？")
+
+        async def complete(msgs, n):
+            return "x"
+
+        async def ok(q, t, parts):
+            return list(reversed(range(len(parts)))), "semantic"
+
+        async def boom(q, t, parts):
+            raise RuntimeError("x")
+        _, info = anyio.run(L.condense, content, complete, "", L.LIMIT, None, ok)
+        self.assertEqual(info["selected"][0]["ranking"], "semantic+lexical")
+        _, info = anyio.run(L.condense, content, complete, "", L.LIMIT, None, boom)
+        self.assertEqual(info["selected"][0]["ranking"], "lexical (error: RuntimeError)")
+        _, info = anyio.run(L.condense, content, complete, "", L.LIMIT, None, None)
+        self.assertEqual(info["selected"][0]["ranking"], "lexical (off)")
+
+    def test_warm_endpoint(self):
+        import httpx
+        from starlette.testclient import TestClient
+        from test_runtime_gateway import KEY, local_handler, make_supervisor
+        from jiezi.runtime.gateway import Gateway, create_app
+        from jiezi.runtime.trajectory import TrajectoryWriter
+
+        class Emb:
+            def embed(self, texts):
+                return TestSemanticChunks.fake_embed(texts)
+
+            def tick(self):
+                pass
+
+            def stop(self):
+                pass
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            sup, _, patch = make_supervisor(tmp, samples=1)
+            lh, _ = local_handler([{"role": "assistant", "content": "x"}])
+            gw = Gateway(sup.s, sup, TrajectoryWriter(tmp / "traj", log=lambda *_: None),
+                         local_http=httpx.AsyncClient(transport=httpx.MockTransport(lh)), log=lambda *_: None,
+                         embedder=Emb())
+            text = self.doc()
+            with patch, TestClient(create_app(gw)) as c:
+                self.assertEqual(c.post("/v1/documents/warm", content=text.encode()).status_code, 401)
+                r = c.post("/v1/documents/warm", headers={"Authorization": f"Bearer {KEY}"},
+                           content=D.clean_for_attach(text).encode())
+                self.assertEqual((r.status_code, r.json()["warming"]), (202, True))
+                r = c.post("/v1/documents/warm", headers={"Authorization": f"Bearer {KEY}"}, content="短".encode())
+                self.assertEqual(r.json()["warming"], False)
+                for _ in range(100):
+                    if gw.doc_vectors.get(D.clean_for_attach(text)) is not None:
+                        break
+                    import time
+                    time.sleep(0.05)
+                self.assertIsNotNone(gw.doc_vectors.get(D.clean_for_attach(text)))

@@ -59,6 +59,7 @@ EMBED_MAX_INPUTS, EMBED_MAX_CHARS = 64, 8000  # 問題和更正過的問題相�
 from .supervisor import EngineUnavailable, Supervisor
 from .trajectory import TrajectoryWriter, elapsed, new_id, now_iso
 
+MAX_WARM_BYTES = 8 * 1024 * 1024  # 預先建向量的文字上限 / text limit for warming
 TOO_LARGE_ROOM = 128            # 至少要留這麼多 token 給回答 / tokens that must remain for an answer
 TICK_S = 5.0
 COST_HEADER = "x-litellm-response-cost"
@@ -139,6 +140,10 @@ class Gateway:
                 self.laws_note = str(exc)
         self.embedder, self.hybrid, self.rag_note, self.laws_hybrid = embedder, None, "off", None
         self.reranker = reranker if settings.rerank else None  # add-reranker：預設關 / off by default
+        self.doc_vectors = None  # 長文件段落向量（add-semantic-chunks）/ chunk vectors of attached documents
+        if settings.doc_semantic and embedder is not None:
+            from ..longdoc import ChunkVectors
+            self.doc_vectors = ChunkVectors(embedder.embed)
         if settings.rag and self.knowledge is not None and embedder is not None:
             from ..rag import HybridRetriever, VectorStore, vectors_path
             try:
@@ -606,6 +611,7 @@ class Gateway:
         text, _ = clean(d["text"])  # 偽造的文件標記與零寬字元 / forged markers and invisible characters
         if not text.strip():
             return _err(422, "讀不到文字（可能是掃描檔且 OCR 失敗）/ no text found", "document_unreadable")
+        self._warm(text)
         return JSONResponse({"name": name, "kind": d.get("kind"), "chars": len(text), "pages": d.get("pages"),
                              "ocr_pages": len(d.get("ocr_pages") or []), "warnings": d.get("warnings") or [],
                              "text": text})
@@ -870,6 +876,29 @@ class Gateway:
 
     # ── 分層 / Tiers ──
     # ── 長文件（add-long-documents）/ Long documents ──
+    def _warm(self, text: str) -> bool:
+        """附檔當下就在背景建段落向量（add-semantic-chunks OQ3）；短文件不用。
+        Start building chunk vectors as soon as a document is attached; short documents need none."""
+        from ..longdoc import needed
+        if self.doc_vectors is None or not needed(text):
+            return False
+        try:
+            return self.doc_vectors.start(text) is not None
+        except Exception:  # noqa: BLE001 - 預先建置失敗不影響任何事 / best effort
+            return False
+
+    async def documents_warm(self, request: Request) -> Response:
+        """`POST /v1/documents/warm`：本文（UTF-8 文字）是已讀好的文件，先建段落向量（jiezi chat 的 /file 用）。
+        Body: an already extracted document as UTF-8 text; starts building its chunk vectors (used by chat's /file)."""
+        from ..injection import clean
+        if not self._authorized(request):
+            return _err(401, "invalid or missing gateway key", "unauthorized")
+        raw = await request.body()
+        if len(raw) > MAX_WARM_BYTES:
+            return _err(413, "document too large", "document_too_large")
+        text, _ = clean(raw.decode("utf-8", errors="replace"))
+        return JSONResponse({"warming": self._warm(text)}, status_code=202)
+
     async def _condense(self, base: str, body: dict, rec: dict) -> None:
         """最後一個問題放不進本機上下文時，先用本機模型分段濃縮。 / Condense with the local model when it does not fit."""
         from ..documents import DOC_RE
@@ -891,8 +920,15 @@ class Gateway:
             r = await self._local_once(base, {"messages": msgs, "max_tokens": max_tokens, "temperature": 0.3}, msgs)
             return ((r.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
 
+        semantic = None
+        if self.doc_vectors is not None:
+            vectors, wait_s = self.doc_vectors, self.s.doc_embed_timeout_s
+
+            async def semantic(question: str, text: str, parts: list[str]):
+                return await anyio.to_thread.run_sync(vectors.order, question, text, parts, wait_s)
+
         t = time.monotonic()
-        new, info = await condense(msgs[idx]["content"], complete, hint, budget, self.doc_notes)
+        new, info = await condense(msgs[idx]["content"], complete, hint, budget, self.doc_notes, semantic)
         msgs[idx] = {**msgs[idx], "content": new}
         info["seconds"] = round(time.monotonic() - t, 1)
         info["followup"] = bool(prev)
@@ -1383,6 +1419,8 @@ def create_app(gw: Gateway) -> Starlette:
                     gw.embedder.stop()
                 if gw.reranker is not None:
                     gw.reranker.stop()
+                if gw.doc_vectors is not None:
+                    gw.doc_vectors.close()
                 await gw.aclose()
 
     return Starlette(routes=[
@@ -1390,6 +1428,7 @@ def create_app(gw: Gateway) -> Starlette:
         Route("/v1/models", gw.models, methods=["GET"]),
         Route("/v1/embeddings", gw.embeddings, methods=["POST"]),
         Route("/v1/documents", gw.documents, methods=["POST"]),
+        Route("/v1/documents/warm", gw.documents_warm, methods=["POST"]),
         Route("/health", gw.health, methods=["GET"]),
         Route("/admin/unload", gw.admin_unload, methods=["POST"]),
         Route("/admin/trajectories", gw.admin_trajectories, methods=["GET"]),

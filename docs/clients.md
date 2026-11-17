@@ -25,8 +25,8 @@ scripts/jiezi ask --file 報告.pdf "請摘要重點"          # PDF、.docx、.
 cat 會議記錄.txt | scripts/jiezi ask "列出待辦事項"     # 管線輸入也當成文件
 ```
 
-`jiezi chat` 裡輸入 `/file 路徑`，再輸入問題。文件會一直附著（狀態列顯示檔名），可以對同一份文件連續追問，每一題都會依那一題重新挑段落，也會參考上一輪問答（所以可以問「那相關數據呢？」）；`/file clear` 取消，重開 chat 後要重新 `/file`。掃描版 PDF 會自動用繁中 OCR（每頁約 2 秒）。PowerPoint 讀每張投影片的文字與備忘稿（整張是圖片的簡報讀不到字，請先匯出成 PDF）；Excel 每個工作表讀成「欄 | 欄」的列，日期會轉成 2026-11-16 這種寫法，公式取上次計算的結果，上限 20 萬個儲存格。舊版 .doc／.ppt／.xls 以及 .rtf、OpenDocument（.odt／.odp／.ods）會先用 LibreOffice 轉成新格式再讀（每份多花幾秒到十幾秒）；轉檔只在沒有網路的沙盒裡做，含巨集的檔案只取文字、巨集不會執行。沒裝 LibreOffice 時會提示安裝指令（`scripts/setup/common/install_office`），其他格式不受影響。（更正 2026-11-17：原本寫「不支援」，已由 add-legacy-office 補上。）文件超過本機模型的上下文時，gateway 會先分段處理：要摘要就逐段整理重點再合併；問問題就挑最相關的段落，並標出段落編號。
-In chat use `/file path`. Long documents are condensed by the gateway before answering. The document stays attached for follow-up questions until `/file clear`.
+`jiezi chat` 裡輸入 `/file 路徑`，再輸入問題。文件會一直附著（狀態列顯示檔名），可以對同一份文件連續追問，每一題都會依那一題重新挑段落，也會參考上一輪問答（所以可以問「那相關數據呢？」）；`/file clear` 取消，重開 chat 後要重新 `/file`。掃描版 PDF 會自動用繁中 OCR（每頁約 2 秒）。PowerPoint 讀每張投影片的文字與備忘稿（整張是圖片的簡報讀不到字，請先匯出成 PDF）；Excel 每個工作表讀成「欄 | 欄」的列，日期會轉成 2026-11-16 這種寫法，公式取上次計算的結果，上限 20 萬個儲存格。舊版 .doc／.ppt／.xls 以及 .rtf、OpenDocument（.odt／.odp／.ods）會先用 LibreOffice 轉成新格式再讀（每份多花幾秒到十幾秒）；轉檔只在沒有網路的沙盒裡做，含巨集的檔案只取文字、巨集不會執行。沒裝 LibreOffice 時會提示安裝指令（`scripts/setup/common/install_office`），其他格式不受影響。（更正 2026-11-17：原本寫「不支援」，已由 add-legacy-office 補上。）文件超過本機模型的上下文時，gateway 會先分段處理：要摘要就逐段整理重點再合併；問問題就挑最相關的段落，並標出段落編號。挑段落同時看字面和語意（2026-11-17 起，add-semantic-chunks）：問「加班費怎麼算」也找得到寫著「延長工作時間之工資」的條文。語意比對要先替文件建段落向量（30 段約 1 分鐘，在 CPU 上、只放記憶體），附上文件的當下就在背景開始；第一題最多等 20 秒，還沒建好就先只用字面挑，下一題起就用得到。`JIEZI_DOC_SEMANTIC=off` 可關閉。
+In chat use `/file path`. Long documents are condensed by the gateway before answering. The document stays attached for follow-up questions until `/file clear`. Chunks are chosen by wording and by meaning (embeddings, built in the background when the document is attached; the first question waits up to 20 s).
 
 ### 第 2 層：只請 Claude 指出錯誤（預設關閉）/ Tier 2: feedback only (off by default)
 

@@ -25,6 +25,14 @@ dev = [
     "meson==1.12.1",
     "ninja==1.13.2",
 ]
+# Phase 6 訓練用（使用者 2026-11-17 同意安裝）；不在預設群組，一般使用不會下載 / training only, not installed by default
+# 安裝：uv sync --group train
+train = [
+    "bitsandbytes==0.50.2",
+    "peft==0.21.3",
+    "torch==2.15.0",
+    "transformers==5.23.0",
+]
 
 [tool.uv]
 default-groups = ["dev"]

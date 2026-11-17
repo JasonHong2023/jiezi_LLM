@@ -477,10 +477,16 @@ DOC_OPEN, DOC_CLOSE = "【文件：{name}】", "【文件結束】"
 DOC_RE = re.compile(r"【文件：(?P<name>[^】\n]{1,200})】\n(?P<text>.*?)\n【文件結束】", re.S)
 
 
+def clean_for_attach(text: str) -> str:
+    """包進問題前的清理（和 attach 相同），預先建向量時用同一份文字，快取才對得上。
+    The same cleaning attach() applies, so warmed vectors match the text the gateway later sees."""
+    from .injection import clean
+    return clean(text)[0]
+
+
 def attach(doc: dict, question: str) -> str:
     """把文件包進問題，gateway 會辨認標記並在太長時分段處理。 / Wrap the document so the gateway can find it."""
-    from .injection import clean
-    text, _ = clean(doc["text"])                  # 中和偽造的結束標記，文件才不會提早「結束」/ forged markers
+    text = clean_for_attach(doc["text"])          # 中和偽造的結束標記，文件才不會提早「結束」/ forged markers
     name = re.sub(r"[】\n]", "", str(doc["name"]))[:200] or "文件"
     return f"{DOC_OPEN.format(name=name)}\n{text}\n{DOC_CLOSE}\n\n{question.strip()}"
 
