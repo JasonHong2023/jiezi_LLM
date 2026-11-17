@@ -251,7 +251,8 @@ def needs_help(message: dict, finish_reason: str | None) -> str | None:
     return None
 
 
-RETRY_INLINE_CHARS, RETRY_PREV_CHARS = 2000, 1200
+RETRY_INLINE_CHARS, RETRY_PREV_CHARS = 2000, 800
+RETRY_CUT = "\n……（文件後段已略過）……"
 
 
 def retry_messages(messages: list[dict], answer: dict, error: str) -> list[dict]:
@@ -265,9 +266,15 @@ def retry_messages(messages: list[dict], answer: dict, error: str) -> list[dict]
         # 模型不知道在講什麼（2026-11-17 實測）。改成一則：問題在前、上一個回答與錯誤在後，超出時裁的是文件中段。
         # A long question (with a document): as three turns the context guard drops the oldest first, i.e. the question
         # and the document, leaving only "the previous answer failed". One message instead; overflow trims the middle.
-        return [*messages[:-1], {"role": "user", "content": (
-            f"{last['content']}\n\n[上一個回答 / previous answer]\n{prev['content'][:RETRY_PREV_CHARS]}\n\n"
-            f"{RETRY_PROMPT.format(error=error)}")}]
+        tail = f"[上一個回答 / previous answer]\n{prev['content'][:RETRY_PREV_CHARS]}\n\n{RETRY_PROMPT.format(error=error)}"
+        parts = last["content"].rstrip().rsplit("\n\n", 1)
+        body, question = (parts[0], parts[1].strip()) if len(parts) == 2 and len(parts[1]) <= 300 else (last["content"], "")
+        # 原本剛好放得下：後面多加幾個字，就從文件尾端讓出幾個字，問題與上一個回答都留著
+        # The original just fit: give up as many characters at the end of the document as are appended
+        cut = len(tail) + len(RETRY_CUT) + 4
+        if len(body) - cut >= 500:
+            body = body[:len(body) - cut] + RETRY_CUT
+        return [*messages[:-1], {"role": "user", "content": "\n\n".join(x for x in (body, question, tail) if x)}]
     return [*messages, prev, {"role": "user", "content": RETRY_PROMPT.format(error=error)}]
 
 

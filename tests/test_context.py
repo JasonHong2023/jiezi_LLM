@@ -55,6 +55,24 @@ class TestContext(unittest.TestCase):
         self.assertEqual(out[0]["content"], "身分\n\n資料\n\n提醒")
         self.assertEqual(C.merge_system(msgs[1:3]), msgs[1:3])               # 沒有 system 就不動 / untouched
 
+    def test_retry_keeps_a_long_question_with_its_document(self):
+        from jiezi.runtime import escalation as E
+        doc = "【文件：a.txt】\n" + "條文內容。" * 560 + "\n\n每天最多工作幾小時？"
+        self.assertEqual(C.fit([{"role": "system", "content": "身分"}, {"role": "user", "content": doc}])[1]["dropped_turns"], 0)
+        msgs = [{"role": "system", "content": "身分"}, {"role": "user", "content": doc}]
+        retry = E.retry_messages(msgs, {"content": "答錯的內容" * 300}, "數字找不到")
+        self.assertEqual([m["role"] for m in retry], ["system", "user"])          # 一則，不是三則 / one message
+        out, info = C.fit(retry, ctx=4096)
+        self.assertEqual(info["dropped_turns"], 0)
+        last = out[-1]["content"]
+        self.assertTrue(last.startswith("【文件：a.txt】"))                        # 文件還在 / the document survives
+        self.assertFalse(info["shortened_question"])                              # 自己讓出空間，不靠把關亂裁 / makes its own room
+        self.assertIn("每天最多工作幾小時？", last)                                # 問題還在 / the question survives
+        self.assertIn("答錯的內容", last)
+        self.assertIn("數字找不到", last)
+        short = E.retry_messages([{"role": "user", "content": "1+1？"}], {"content": "3"}, "算錯")
+        self.assertEqual([m["role"] for m in short], ["user", "assistant", "user"])  # 短問題照舊 / short ones unchanged
+
     def test_estimate(self):
         self.assertEqual(C.est_tokens("中文字"), 4)
         self.assertLess(C.est_tokens("hello world " * 10), 40)

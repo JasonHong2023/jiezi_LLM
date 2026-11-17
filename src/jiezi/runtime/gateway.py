@@ -319,7 +319,11 @@ class Gateway:
             text = message_text(last)
             if not text:
                 return
-            last = {"role": "user", "content": text, "_target": last}
+            # 有圖片時問題是在問圖，同樣不撈模糊命中（2026-11-17 實測：看圖題被附上不相干的知識庫文章，驗證判失敗）
+            # With an image the question is about the image: no fuzzy hits either (a live false failure)
+            last = {"role": "user", "content": text, "_target": last,
+                    "_doc": any(isinstance(p, dict) and p.get("type") in ("image_url", "input_image")
+                                for p in last["content"])}
         elif not isinstance(last.get("content"), str):
             return
         else:
