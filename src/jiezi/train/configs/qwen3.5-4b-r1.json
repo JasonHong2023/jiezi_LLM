@@ -16,6 +16,6 @@
  "seed": 20261117,
  "extra": {
   "stop_at": "06:30",
-  "note": "G1 核心 qwen3.5-4b-q4_k_m 的 HF 基底（與 models/manifest.toml 授權登記同一個 commit）。6 GB 顯卡一輪約 13.5 小時，每晚 00:05 開始、06:30 存檢查點暫停，下一晚接續（使用者 2026-11-17 選「拆成多晚」）/ resumes nightly until done"
+  "note": "G1 核心 qwen3.5-4b-q4_k_m 的 HF 基底（與 models/manifest.toml 授權登記同一個 commit）。每晚 00:05 開始、06:30 存檢查點暫停，下一晚接續（使用者 2026-11-17 選「拆成多晚」）；去掉 fp32 上轉後實測每筆約 1.5 秒，預估一晚可完成 / resumes nightly; about 1.5 s per example after the fp32 fix"
  }
 }

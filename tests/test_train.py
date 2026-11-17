@@ -37,7 +37,11 @@ class TestTraining(unittest.TestCase):
         f = C.fits(0.8, 4900)
         self.assertTrue(f["bf16"])
         self.assertFalse(C.fits(4, 4900)["bf16"])
-        self.assertTrue(C.fits(4, 4900)["4bit"])
+        # 2026-11-17 實測：4B 4-bit、max_len 1024 峰值 5,125 MiB；估計要在 ±15% 內，而且有算詞嵌入
+        e = C.estimate_vram_mib(4, True, max_len=1024)
+        self.assertGreater(e["embedding_mib"], 1100)
+        self.assertLess(abs(e["total_mib"] - 5125) / 5125, 0.15)
+        self.assertFalse(C.fits(9, 5117)["4bit"])
 
     def test_dataset_must_be_trainable(self):
         with tempfile.TemporaryDirectory() as d:

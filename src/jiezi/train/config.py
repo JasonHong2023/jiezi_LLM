@@ -35,17 +35,30 @@ class TrainConfig:
         path.write_text(json.dumps(asdict(self), ensure_ascii=False, indent=1), encoding="utf-8")
 
 
-def estimate_vram_mib(params_b: float, load_in_4bit: bool, max_len: int = 2048, layers: int = 28,
-                      hidden: int = 1024, lora_r: int = 16) -> dict:
-    """粗估 LoRA 訓練的顯示記憶體（不含框架雜項的上限值）[估]。
-    A rough LoRA-training VRAM estimate [est.]: weights + LoRA optimizer state + activations with checkpointing."""
-    weights = params_b * 1e9 * (0.55 if load_in_4bit else 2) / 2**20          # 4-bit 約 0.55 byte/參數 / about
+# Qwen3.5 的形狀：詞表 248,320；隱藏層寬度 4B 是 2,560、32 層（讀自官方 config.json）；其他大小為 [估]
+# Qwen3.5 shapes: 4B read from the official config.json; the other sizes are estimates
+QWEN35_VOCAB = 248_320
+QWEN35_SHAPE = {0.8: (1024, 28), 2: (2048, 28), 4: (2560, 32), 9: (4096, 32)}   # 參數量 → (hidden, layers)
+
+
+def estimate_vram_mib(params_b: float, load_in_4bit: bool, max_len: int = 2048, layers: int | None = None,
+                      hidden: int | None = None, lora_r: int = 16, vocab: int = QWEN35_VOCAB) -> dict:
+    """粗估 LoRA 訓練的顯示記憶體 [估]。詞嵌入不能 4-bit，以 bf16 另外計算（2026-11-17 更正：原本漏算，4B 估 3.2 GB，
+    實測峰值 5.1 GB）。 / A rough estimate [est.]. The embedding cannot be 4-bit and is counted in bf16 (corrected
+    2026-11-17: it was missing; 4B was estimated at 3.2 GB but peaked at 5.1 GB)."""
+    near = min(QWEN35_SHAPE, key=lambda k: abs(k - params_b))
+    hidden = hidden or QWEN35_SHAPE[near][0]
+    layers = layers or QWEN35_SHAPE[near][1]
+    embed_params = vocab * hidden
+    body = max(0.0, params_b * 1e9 - embed_params)
+    weights = body * (0.55 if load_in_4bit else 2) / 2**20                     # 4-bit 約 0.55 byte/參數 / about
+    embedding = embed_params * 2 / 2**20                                        # bf16，共用給輸出層 / tied, bf16
     lora_params = layers * 7 * 2 * hidden * lora_r                             # 每層 7 個投影、A 與 B / per layer
     lora = lora_params * (2 + 4 + 8) / 2**20                                    # 權重 bf16 + 梯度 fp32 + Adam fp32
     activations = layers * max_len * hidden * 2 * 4 / 2**20                    # 梯度檢查點下的粗估 / with checkpointing
-    total = weights + lora + activations + 600                                 # CUDA context 等 / context etc.
-    return {"weights_mib": round(weights), "lora_mib": round(lora), "activations_mib": round(activations),
-            "total_mib": round(total)}
+    total = weights + embedding + lora + activations + 600                     # CUDA context 等 / context etc.
+    return {"weights_mib": round(weights), "embedding_mib": round(embedding), "lora_mib": round(lora),
+            "activations_mib": round(activations), "total_mib": round(total)}
 
 
 def fits(params_b: float, budget_mib: int, **kw) -> dict:

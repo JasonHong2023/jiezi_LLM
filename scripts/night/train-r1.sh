@@ -21,3 +21,10 @@ HF_HUB_OFFLINE=1 scripts/jiezi train sft --config src/jiezi/train/configs/qwen3.
 rc=$?
 echo "--- rc=$rc (0 done, 3 paused) $(date -Iseconds)" >> "$log"
 hold '{"hold_until": null}'
+if [ "$rc" = 0 ] && [ ! -f var/train/qwen3.5-4b-r1/model-Q4_K_M.gguf ]; then
+  # 訓練完成：合併並轉成 GGUF（CPU，約 9 GB 系統記憶體）；評測與換核心交給白天與使用者決定
+  # Done: merge and convert to GGUF on the CPU; evaluation and any core switch are decided in the daytime
+  echo "=== export $(date -Iseconds)" >> "$log"
+  HF_HUB_OFFLINE=1 scripts/jiezi train export --run qwen3.5-4b-r1 --quant Q4_K_M >> "$log" 2>&1
+  echo "--- export rc=$? $(date -Iseconds)" >> "$log"
+fi

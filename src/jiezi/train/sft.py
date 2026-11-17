@@ -141,9 +141,16 @@ def train(cfg: TrainConfig, root: Path, log=print) -> tuple[Path, str]:
     if cfg.load_in_4bit:
         # 4-bit 模型不能 .to()，要在載入時指定裝置（2026-11-17 實裝 transformers 5.23 後修正）
         # A 4-bit model cannot be moved with .to(); place it at load time
-        from peft import prepare_model_for_kbit_training
+        # 不用 peft 的 prepare_model_for_kbit_training：它把所有非 4-bit 參數轉成 fp32，Qwen3.5 的詞嵌入
+        # （248,320×2,560）會從 1.2 GB 變 2.4 GB，6 GB 顯卡放不下（2026-11-17 冒煙測試）。只凍結基底、開梯度檢查點。
+        # Not peft's prepare_model_for_kbit_training: it upcasts every non-4-bit parameter to fp32, doubling
+        # Qwen3.5's 248k-word embedding to 2.4 GB. Freeze the base and enable checkpointing only.
         model = AutoModelForCausalLM.from_pretrained(cfg.base_model, device_map={"": 0}, **kw)
-        model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=cfg.gradient_checkpointing)
+        for prm in model.parameters():
+            prm.requires_grad = False
+        if cfg.gradient_checkpointing:
+            model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+            model.enable_input_require_grads()
     else:
         model = AutoModelForCausalLM.from_pretrained(cfg.base_model, **kw).to("cuda")
         if cfg.gradient_checkpointing:
