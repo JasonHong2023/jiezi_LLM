@@ -73,6 +73,14 @@ def _sse(obj) -> bytes:
     return b"data: " + json.dumps(obj, ensure_ascii=False).encode("utf-8") + b"\n\n"
 
 
+def _bare_question(text: str) -> str:
+    """稽核清單只顯示問題：附加的文件換成「〔附文件：檔名〕」。 / The audit list shows the question; documents become a tag."""
+    from ..documents import DOC_RE
+    names = [m.group("name") for m in DOC_RE.finditer(text or "")]
+    q = DOC_RE.sub("", text or "").strip()
+    return (f"〔附文件：{'、'.join(names)}〕" if names else "") + q
+
+
 def _message(resp: dict) -> dict:
     return ((resp.get("choices") or [{}])[0].get("message")) or {}
 
@@ -635,7 +643,7 @@ class Gateway:
             users = [m for m in (r.get("request") or {}).get("messages") or [] if m.get("role") == "user"]
             out.append({"id": r.get("id"), "at": r.get("at"), "policy": r.get("policy"), "status": r.get("status"),
                         "final_tier": r.get("final_tier"), "training_use": r.get("training_use"),
-                        "question": message_text(users[-1])[:200] if users else "",
+                        "question": _bare_question(message_text(users[-1]))[:200] if users else "",
                         "sources": sorted({s.get("source") for s in r.get("sources") or [] if s.get("source")})})
         return JSONResponse({"records": out})
 

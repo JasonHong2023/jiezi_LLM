@@ -45,6 +45,8 @@ class TestUi(unittest.TestCase):
                 h = {"Authorization": f"Bearer {KEY}"}
                 t = c.get("/admin/trajectories?limit=5", headers=h).json()["records"]
                 self.assertEqual((t[0]["question"], t[0]["sources"]), ("民法第184條", ["moj-laws"]))
+                from jiezi.runtime.gateway import _bare_question
+                self.assertEqual(_bare_question("【文件：a.txt】\n內容\n【文件結束】\n\n問題？"), "〔附文件：a.txt〕問題？")
                 self.assertIn("checks", c.get("/admin/doctor", headers=h).json())
 
     def test_document_upload(self):
