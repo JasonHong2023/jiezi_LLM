@@ -90,7 +90,7 @@ def cmd_curriculum(root, args) -> int:
     return 0 if keys or ids else 1
 
 
-def _embedder(root, s, env, ngl: int = 0):
+def _embedder(root, s, env, ngl: int = 0, port_offset: int = 2):
     """embedding 引擎（R11 的 engine-embed 埠；預設 CPU，不和對話模型搶 GPU）。沒有模型檔就回傳 None。
     The embedding engine on the R11 engine-embed port (CPU by default). None when the model file is absent."""
     from ..engine import LocalEngine
@@ -100,7 +100,7 @@ def _embedder(root, s, env, ngl: int = 0):
     if not s.rag or not path.exists():
         return None
     return Embedder(lambda: LocalEngine(root, fresh_facts(root), path, port_base(env), ngl=ngl, ctx=8192,
-                                        port=port_base(env) + 2, alias=EMBED_MODEL,
+                                        port=port_base(env) + port_offset, alias=EMBED_MODEL,
                                         extra=("--embedding", "--pooling", "last", "-ub", "8192")),
                     log_path=s.var / "runtime" / "engine-embed.log", idle_s=s.idle_unload_s)
 
@@ -494,7 +494,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"reranker self-check: {rr.note} ({'gpu' if st.rerank_gpu else 'cpu'})")
                 if args.action == "check" or not ok:
                     return 0 if ok else 1
-                emb = _embedder(root, st, load_env(root))
+                # 量測用實驗埠（R11 的 36110–36119），不和 gateway 的 embedding 引擎搶 36102
+                # Measured on an experimental port so the gateway's embedder keeps 36102
+                emb = _embedder(root, st, load_env(root), port_offset=12)
                 kn = Knowledge(kdb(root))
                 store = rag.VectorStore(rag.vectors_path(root))
                 text_of = lambda i: rag.doc_text(kn.section(i))  # noqa: E731
