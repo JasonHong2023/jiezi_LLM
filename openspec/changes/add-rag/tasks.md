@@ -9,4 +9,4 @@
 
 - [x] 2.1 單元測試；CPU 小樣本實測相似度（玉山 0.69、無關 ≤ 0.22，門檻 0.5）
 - [x] 2.2 改為全掃描並加入法規向量（`scripts/jiezi laws embed`）；94 條法規樣本實測正確
-- [ ] 2.3 E0 結束後以 GPU 建完整向量（知識庫、法規），自我評測前後比較 / Full builds and self-test after E0
+- [x] 2.3（2026-11-17：知識庫 9,659、法規 40,954 向量以 GPU 建完；自我評測 knowledge 10/10、laws 9/10） E0 結束後以 GPU 建完整向量（知識庫、法規），自我評測前後比較 / Full builds and self-test after E0

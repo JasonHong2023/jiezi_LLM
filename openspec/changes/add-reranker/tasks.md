@@ -1,4 +1,4 @@
 - [x] 1.1（2026-11-17 完成：模型 SHA-256 吻合；引擎 `Reranker`、埠 36106、R11 表與 R12 流程圖已同步；擺放先做成開關 `JIEZI_RERANK_GPU`，預設 CPU）模型登記（授權讀官方檔、SHA-256、鎖定 commit）；`engine-rerank`（埠 36106、延遲啟動、預算擺放）；R11 表與 R12 流程圖 / model registry, engine, port table and flow chart
 - [x] 1.2（2026-11-17；自我檢查在第一次使用時執行，另有 `scripts/jiezi rerank check`）檢索流程接入（前 N → 重排序 → 前 k、失敗退回）、`JIEZI_RERANK`、啟動自我檢查、`doctor` / retrieval wiring, switch, self-check
 - [x] 1.3 單元測試（假引擎）；文件；`openspec validate add-reranker --strict` / tests and docs
-- [ ] 2.1 量測（與實作分開，R8、R17）：有無重排序的命中率@k 與延遲，GPU 與 CPU 各一組；依 OQ1 門檻決定預設值，結果記入報表 / A/B measurement deciding the default
+- [x] 2.1（2026-11-17：GPU +12.5 分／+0.59 秒（過門檻）、CPU +20 分／+61.7 秒（不過）；與核心同放 GPU 只剩約 500 MiB，低於保留量 → 本機預設維持 off；報表 `var/reports/rerank-measure-{gpu,cpu}.json`） 量測（與實作分開，R8、R17）：有無重排序的命中率@k 與延遲，GPU 與 CPU 各一組；依 OQ1 門檻決定預設值，結果記入報表 / A/B measurement deciding the default

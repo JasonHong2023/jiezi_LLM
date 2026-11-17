@@ -7,4 +7,4 @@
 
 - [x] 2.1 單元測試；`openspec validate add-selftest --strict`
 - [x] 2.2 `--dry` 資料覆蓋 80/80（順便修正：「38-8-43」被誤當成日期）
-- [ ] 2.3 E0 結束後以 jiezi-local 實際跑一次並記錄分數 / Real run after E0
+- [x] 2.3（2026-11-17：核心 qwen3.5-4b-q4_k_m，84/90） E0 結束後以 jiezi-local 實際跑一次並記錄分數 / Real run after E0
