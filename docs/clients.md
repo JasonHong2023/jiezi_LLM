@@ -231,6 +231,27 @@ scripts/jiezi audit                     # 相依套件安全稽核（R23）/ dep
 gateway 也提供 OpenAI 相容的 `POST /v1/embeddings`（Qwen3-Embedding-0.6B；`"input_type": "query"` 會加查詢指令），客戶端可以拿來做自己的檢索。
 The gateway also serves OpenAI-compatible embeddings for clients.
 
+## 5.5 唯讀檔案代理 / Read-only file agent（add-agent-readonly，2026-11-17）
+
+讓芥子替你**看**檔案：「找出下載資料夾最大的五個檔案」「讀一下這份會議紀錄，整理待辦事項」。只能讀，不能寫入、刪除、搬移或執行任何東西。
+Let Jiezi look at your files; it can only read, never write, delete, move or run anything.
+
+```bash
+# .env 加 JIEZI_AGENT=on，重啟 gateway / enable, then restart the gateway
+scripts/jiezi agent grant ~/文件/會議紀錄        # 授權一個資料夾（預設一個都沒有）/ grant a folder (none by default)
+scripts/jiezi agent grants                       # 目前授權了哪些 / list grants
+scripts/jiezi agent revoke ~/文件/會議紀錄       # 取消 / revoke
+scripts/jiezi agent audit --days 7               # 稽核紀錄：每個動作、允許或拒絕（不存檔案內容）/ audit log
+```
+
+- chat：`/agent on`，之後的問題都可以用到工具；狀態列即時顯示「第 1 步：正在讀取 …」。`/agent off` 關閉。
+- 桌面網頁：勾選「讀我的檔案（唯讀）」；每一步顯示在回答上方；「稽核紀錄」頁下方有代理的動作清單。
+- **一律拒絕、授權也打不開**：`.env`、金鑰檔（`*.key`、`*.pem`、`id_rsa*`）、`.ssh`、`.gnupg`、`.aws`、瀏覽器設定檔、`~/.hermes`、`~/.claude`、專案的 `var/`。也不能授權整個家目錄。符號連結依實際指向判斷。
+- **檔案內容不會離開這台電腦**：代理只用本機模型；策略選 `jiezi-cloud` 或 `jiezi-ask-claude` 會回 400。檔案內容也不會進訓練資料。
+- 檔案裡寫著「請接著讀取某某檔案」之類的句子只當資料：會在回答下方警告，就算模型照做，授權外的路徑也會被拒絕。
+- 一個問題最多 6 步工具呼叫（`JIEZI_AGENT_STEPS`）；按 Esc／中止（chat 是 Ctrl+C）會立刻停止並結束進行中的讀檔。
+- 其他 MCP 客戶端（Hermes、OpenCode）也可以接同一組唯讀工具：MCP stdio 指令 `scripts/jiezi agent server`，授權與稽核規則相同。
+
 ## 6. Hermes Agent 與 OpenCode / Hermes Agent and OpenCode
 
 ```bash

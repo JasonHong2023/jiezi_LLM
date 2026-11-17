@@ -6,7 +6,8 @@
 (user request: behave like Claude Code)；Ctrl+C 中斷生成 / stop generation；F3 複製最後一則回答 / copy the last
 answer；F2 切換策略 / switch policy；Ctrl+Q 離開 / quit。
 指令 / Commands：`/save 路徑`、`/copy`、`/clear`、`/file 路徑`（附文件，之後每一題都帶著，可以一直追問；`/file clear`
-取消）/ attach a document that stays with every following question (`/file clear` detaches)、`/image 路徑`。"""
+取消）/ attach a document that stays with every following question (`/file clear` detaches)、`/image 路徑`、
+`/agent on|off`（唯讀檔案代理：讀你授權的資料夾 / read-only file agent over granted folders）。"""
 
 from __future__ import annotations
 
@@ -24,7 +25,8 @@ from textual.message import Message
 from textual.widgets import Footer, Markdown, Static, TextArea
 from textual.worker import Worker
 
-from .client import Connection, GatewayError, GatewayUnreachable, ensure_gateway, status_line, stream_chat
+from .client import (Connection, GatewayError, GatewayUnreachable, agent_step_text, ensure_gateway, status_line,
+                     stream_chat)
 from .clipboard import system_copy
 from .herdr import HerdrReporter
 
@@ -131,6 +133,7 @@ class ChatApp(App):
         self.copied: str | None = None
         self.pending_image: tuple[str, str] | None = None  # (檔名, data URL) / (name, data URL)
         self.docs: list[dict] = []                         # /file 附著的文件，每一題都帶 / attached, sent with every question
+        self.agent = False                                 # /agent on：唯讀檔案代理（add-agent-readonly）/ read-only agent
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(Static("輸入問題後按 Enter / Type a question and press Enter. "
@@ -240,6 +243,14 @@ class ChatApp(App):
         if text.startswith("/image"):
             self._attach_image(text[6:].strip())
             return
+        if text.startswith("/agent"):
+            arg = text[6:].strip().lower()
+            if arg in ("on", "off"):
+                self.agent = arg == "on"
+            self._update_bar("唯讀代理 agent: " + ("開 on——可以請芥子列出、尋找、讀取你授權的資料夾裡的檔案"
+                                                  "（scripts/jiezi agent grant 資料夾）" if self.agent else "關 off")
+                             + "；用法 usage: /agent on|off")
+            return
         if text.startswith("/file"):
             await self._attach_file(text[5:].strip())
             return
@@ -277,11 +288,14 @@ class ChatApp(App):
         stream = Markdown.get_stream(answer)
         try:
             outgoing = with_documents(for_context(self.history[-MAX_CONTEXT:]), self.docs)
-            async for kind, value in stream_chat(self.conn, outgoing, self.policy):
+            extra = {"extra": {"jiezi_agent": True}} if self.agent else {}  # /agent on 才帶 / only with /agent on
+            async for kind, value in stream_chat(self.conn, outgoing, self.policy, **extra):
                 if kind == "delta":
                     parts.append(value)
                     await stream.write(value)
                     log.scroll_end(animate=False)
+                elif kind == "agent":  # 每一步即時顯示 / show each agent step as it happens
+                    meta_w.update(f"[{agent_step_text(value)}]")
                 else:
                     meta = value
             self.last_status = status_line(meta)

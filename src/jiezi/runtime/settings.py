@@ -69,6 +69,8 @@ class Settings:
     rag_min: float = 0.5            # 向量相似度門檻 / similarity threshold
     doc_semantic: bool = True       # 長文件問答用語意挑段落（add-semantic-chunks）/ semantic chunk selection
     doc_embed_timeout_s: float = 20.0  # 第一題最多等段落向量幾秒，之後先用字面 / first-question wait for chunk vectors
+    agent: bool = False             # 唯讀代理（add-agent-readonly；預設關）/ read-only file agent, off by default
+    agent_max_steps: int = 6        # 一個請求最多幾步工具呼叫（使用者 2026-11-17：6）/ tool steps per request
     rerank: bool = False            # 向量前 N 名再重排序（add-reranker；量測過門檻才預設開啟）/ rerank the top N (off until measured)
     rerank_gpu: bool = False        # 重排序放 GPU（預設 CPU，不和核心搶顯示記憶體）/ reranker on GPU (CPU by default)
     rerank_timeout_s: float = 10.0  # 逾時就退回向量排序 / fall back to vector order on timeout
@@ -139,6 +141,8 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         rag_min=float(env.get("JIEZI_RAG_MIN") or 0.5),
         doc_semantic=_onoff(env, "JIEZI_DOC_SEMANTIC", True),
         doc_embed_timeout_s=float(env.get("JIEZI_DOC_EMBED_TIMEOUT") or 20.0),
+        agent=_onoff(env, "JIEZI_AGENT", False),
+        agent_max_steps=max(1, min(12, _int(env, "JIEZI_AGENT_STEPS", 6))),
         rerank=_onoff(env, "JIEZI_RERANK", False),
         rerank_gpu=_onoff(env, "JIEZI_RERANK_GPU", False),
         rerank_timeout_s=float(env.get("JIEZI_RERANK_TIMEOUT") or 10.0),

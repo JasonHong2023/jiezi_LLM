@@ -49,7 +49,8 @@ def _error_message(r: httpx.Response) -> str:
 async def stream_chat(conn: Connection, messages: list[dict], policy: str = "jiezi",
                       client: httpx.AsyncClient | None = None, timeout: float = 900,
                       extra: dict | None = None) -> AsyncIterator[tuple[str, object]]:
-    """產生 ("delta", 文字)、("meta", jiezi 欄位)。 / Yield ("delta", text) and ("meta", jiezi field)."""
+    """產生 ("delta", 文字)、("meta", jiezi 欄位)、("agent", 代理的一步)。
+    Yield ("delta", text), ("meta", jiezi field) and ("agent", one agent step)."""
     own = client is None
     client = client or httpx.AsyncClient(timeout=httpx.Timeout(timeout, connect=5.0))
     try:
@@ -70,6 +71,9 @@ async def stream_chat(conn: Connection, messages: list[dict], policy: str = "jie
                     continue
                 if chunk.get("error"):
                     raise GatewayError(str(chunk["error"].get("message")))
+                if chunk.get("jiezi_agent"):  # 唯讀代理的步驟（add-agent-readonly）/ agent steps
+                    yield "agent", chunk["jiezi_agent"]
+                    continue
                 if chunk.get("jiezi"):
                     yield "meta", chunk["jiezi"]
                 for ch in chunk.get("choices") or []:
@@ -141,6 +145,9 @@ def status_line(meta: dict | None) -> str:
         parts.append(f"verify {meta['verification']}")
     if meta.get("escalation") and meta.get("escalation") != "policy":
         parts.append(f"why {meta['escalation']}")
+    ag = meta.get("agent") or {}
+    if ag.get("steps") is not None:
+        parts.append(f"agent {len(ag['steps'])} 個動作 actions" + ("（達上限 limit）" if ag.get("step_limit") else ""))
     line = "[" + " | ".join(parts) + "]"
     inj = meta.get("injection") or {}
     if inj.get("suspected"):  # 疑似提示注入：另起一行提醒 / suspected prompt injection: a warning on its own line
@@ -164,3 +171,16 @@ def ensure_gateway(conn: Connection, log=lambda *_: None) -> str | None:
         return None
     log("gateway 未啟動，正在背景啟動… / starting the gateway in the background…")
     return service.start(project_root(), u.port)
+
+
+def agent_step_text(ev: dict) -> str:
+    """代理一步的一行說明（chat 與 ask 共用）。 / One line describing an agent step."""
+    what = {"list_dir": "列出資料夾", "find_files": "尋找檔案", "read_file": "讀取", "file_info": "查看"}.get(
+        ev.get("tool"), ev.get("tool") or "?")
+    args = ev.get("arguments") or {}
+    target = ev.get("path") or args.get("path") or args.get("root") or ""
+    if ev.get("status") == "running":
+        return f"第 {ev.get('step')} 步：正在{what} {target} …"
+    mark = {"ok": "完成", "refused": "被拒絕（未授權）", "error": "失敗"}.get(ev.get("status"), ev.get("status"))
+    extra = f"：{ev['error']}" if ev.get("error") and ev.get("status") != "ok" else ""
+    return f"第 {ev.get('step')} 步：{what} {target} {mark}{extra}"

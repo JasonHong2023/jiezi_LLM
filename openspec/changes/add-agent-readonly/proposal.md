@@ -1,5 +1,5 @@
-> **狀態 / Status**：提案，**尚未實作**；等使用者審閱並回覆「可以實作」（R4）。
-> Proposal only, **not implemented**; awaiting the user's go-ahead.
+> **狀態 / Status**：使用者 2026-11-17 回覆「照建議，可以實作」；已實作，量測 2.1 另記。
+> Approved 2026-11-17; implemented.
 
 ## Why
 
@@ -55,3 +55,16 @@ This proposal is the first step only: read-only file tools. Window and screen re
 - **OQ2 轉交時的檔案內容**：本機答不出來而轉交 Claude／雲端時，(a) 預設不送檔案內容，只有授權檔標了 `share = true` 的資料夾才送（建議）；(b) 一律不送（代理請求只用本機）；(c) 一律可送。
 - **OQ3 步數上限**：一個請求最多幾步工具呼叫？（建議 6。）
 - **OQ4 預設授權**：一開始要不要預先授權某個資料夾（例如專案的 `docs/`），還是完全空白、由你自己 `grant`？（建議：空白。）
+
+## 已決事項 / Resolved（使用者 2026-11-17）
+
+- **OQ1**：標準函式庫實作 MCP 子集，不加套件。
+- **OQ2**：使用者同意的說法是「轉交 Claude 時，讀到的檔案內容一律不送出，只送摘要」。實作上比原建議 (a) 更嚴：沒有 `share = true` 選項；代理只用本機模型，策略為 `jiezi-cloud`／`jiezi-ask-claude` 時回 400，本機引擎不能用時回 503，不轉交。稽核與回應只帶中繼資料（工具、路徑、字數），不帶內容。
+- **OQ3**：每個請求最多 6 步（`JIEZI_AGENT_STEPS`，上限 12）。
+- **OQ4**：預設不授權任何資料夾。
+
+## 實作補記（R19.4）
+
+- 授權檔改為 `var/agent/grants.json`（原寫 `grants.toml`）：標準函式庫只能讀 TOML、不能寫，而授權只由命令列寫入。
+- 另加 `scripts/jiezi agent server`（MCP stdio 入口，給 Hermes／OpenCode 設定用）與 `GET /v1/agent/audit`（桌面網頁稽核頁用）。
+- 禁止授權整個家目錄或它的上層。

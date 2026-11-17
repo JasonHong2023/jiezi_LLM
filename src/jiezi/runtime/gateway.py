@@ -523,6 +523,7 @@ class Gateway:
                              "knowledge": "on" if self.knowledge else (self.knowledge_note or "off"),
                              "rag": self.rag_note,
                              "rerank": self.reranker.note if self.reranker else "off",
+                             "agent": "on" if self.s.agent else "off",
                              "laws": "on" if self.laws else (self.laws_note or "off"),
                              "memory": "on" if self.memory else (self.memory_note or "off"),
                              "tools": "on" if self.s.tools else "off",
@@ -681,6 +682,10 @@ class Gateway:
             rec["eval"] = True
         if json_mode:
             rec["json_mode"] = True
+        if body.pop("jiezi_agent", None):  # 唯讀代理（add-agent-readonly）/ read-only agent
+            if self.s.agent:
+                return await self._agent(body, rec, policy, stream, json_mode)
+            rec["agent"] = {"enabled": False}  # 關閉時照一般請求處理 / handled as a normal request when off
         # 查資料可能要啟動 embedding 引擎，放到執行緒以免卡住其他請求 / may start the embedder; off the event loop
         data: list[dict] = []  # gateway 自己附加的資料訊息 / data messages the gateway attached
         await anyio.to_thread.run_sync(self._ground, body, rec, data)
@@ -768,6 +773,123 @@ class Gateway:
             return await self._tiered(base, body, rec, t0, policy, stream)
         finally:
             self.sup.release()
+
+    # ── 唯讀代理（add-agent-readonly）/ Read-only agent ──
+    async def _agent(self, body: dict, rec: dict, policy: str, stream: bool, json_mode: bool) -> Response:
+        """模型在本機想、工具在 MCP 子行程裡做（授權與稽核在那裡）；檔案內容不送到 Claude 或雲端（OQ2）。
+        The local model plans; tools run in the MCP child (grants and audit live there); file contents never leave
+        the machine (OQ2)."""
+        import asyncio
+        from ..agent import loop as A
+        from ..agent.grants import Grants
+        if policy not in ("jiezi", "jiezi-local"):
+            return _err(400, "唯讀代理只在本機執行（檔案內容不送出），請用 jiezi 或 jiezi-local / the agent runs locally "
+                             "only; use the jiezi or jiezi-local policy", "agent_policy")
+        if body.get("tools") or json_mode or has_images(body):
+            return _err(400, "唯讀代理不能同時帶自己的工具、JSON 格式或圖片 / the agent cannot be combined with client "
+                             "tools, JSON mode or images", "agent_unsupported")
+        rec["training_use"] = False  # 內容是使用者的私人檔案 / the user's private files
+        rec["agent"] = {"steps": []}
+        t0 = time.monotonic()
+        folders = [str(f) for f in Grants(self.s.root).folders()]
+        try:
+            base = await self.sup.acquire()
+        except EngineUnavailable as exc:
+            return self._finish_error(rec, 503, f"唯讀代理需要本機模型（檔案內容不會送到雲端）；本機引擎無法使用：{exc} / "
+                                                "the agent needs the local engine", "engine_unavailable")
+
+        async def complete(msgs: list[dict], schemas: list | None) -> dict:
+            b = {"messages": msgs, "temperature": 0.3, **({"tools": schemas} if schemas else {})}
+            return _message(await self._local_once(base, b, msgs))
+
+        async def work(emit) -> tuple[dict, dict]:
+            async with A.McpClient(self.s.root) as mcp:
+                return await A.run(body["messages"], complete, mcp, folders, emit, rec["id"], self.s.agent_max_steps)
+
+        def finish(msg: dict, info: dict) -> tuple[dict, dict]:
+            rec["agent"] = info
+            if info.get("suspected"):
+                rec["injection"] = {"suspected": info["suspected"], "where": ["agent tool results"]}
+            resp = {"id": f"chatcmpl-{rec['id']}", "object": "chat.completion", "created": int(time.time()),
+                    "model": self.sup.core["name"] if self.sup.core else self.s.core_model,
+                    "choices": [{"index": 0, "message": {"role": "assistant", "content": msg.get("content") or ""},
+                                 "finish_reason": "stop"}]}
+            meta = self._meta(rec, 0, resp, None, t0)
+            meta["agent"] = {"steps": info["steps"], "step_limit": info["step_limit"], "folders": len(folders)}
+            rec.update(final_tier=0, jiezi=meta)
+            return resp, meta
+
+        if not stream:
+            async def nothing(_ev):
+                return None
+            try:
+                msg, info = await work(nothing)
+            except Exception as exc:  # noqa: BLE001
+                return self._finish_error(rec, 502, f"代理執行失敗 / agent failed: {type(exc).__name__}: {exc}",
+                                          "agent_error")
+            finally:
+                self.sup.release()
+            resp, meta = finish(msg, info)
+            self.traj.write(rec)
+            return JSONResponse({**resp, "jiezi": meta})
+
+        async def gen() -> AsyncIterator[bytes]:
+            send, recv = anyio.create_memory_object_stream(64)
+            out: dict = {}
+
+            async def worker():
+                try:
+                    out["v"] = await work(send.send)
+                except Exception as exc:  # noqa: BLE001
+                    out["err"] = exc
+                finally:
+                    send.close()
+            task = asyncio.create_task(worker())
+            written = False
+            try:
+                async with recv:
+                    async for ev in recv:  # 每一步即時回報 / report every step as it happens
+                        yield _sse({"object": "jiezi.agent.step", "choices": [], "jiezi_agent": ev})
+                await task
+                if "err" in out:
+                    rec.update(status="agent_error", error=str(out["err"]))
+                    self.traj.write(rec)
+                    written = True
+                    yield _sse({"error": {"message": f"代理執行失敗 / agent failed: {out['err']}", "code": "agent_error"}})
+                    yield b"data: [DONE]\n\n"
+                    return
+                resp, meta = finish(*out["v"])
+                self.traj.write(rec)
+                written = True
+                async for chunk in self._synth_stream(resp, meta):
+                    yield chunk
+            finally:
+                if not task.done():  # 客戶端中斷：停止迴圈並結束工具子行程 / client stopped: end loop and tools
+                    task.cancel()
+                    with anyio.CancelScope(shield=True):
+                        try:
+                            await task
+                        except BaseException:  # noqa: BLE001
+                            pass
+                self.sup.release()
+                if not written:
+                    rec.update(status="cancelled")
+                    self.traj.write(rec)
+
+        return StreamingResponse(gen(), media_type="text/event-stream")
+
+    async def agent_audit(self, request: Request) -> Response:
+        """`GET /v1/agent/audit?days=1`：稽核紀錄（桌面網頁的稽核頁用）。 / Audit entries for the desktop page."""
+        if not self._authorized(request):
+            return _err(401, "invalid or missing gateway key", "unauthorized")
+        from ..agent import audit
+        from ..agent.grants import Grants
+        try:
+            days = max(1, min(30, int(request.query_params.get("days") or 1)))
+        except ValueError:
+            days = 1
+        return JSONResponse({"enabled": self.s.agent, "folders": [str(f) for f in Grants(self.s.root).folders()],
+                             "entries": audit.read(self.s.root, days)})
 
     # ── 翻譯（add-translation）/ Translation ──
     def _translate_plan(self, body: dict, policy: str, json_mode: bool) -> dict | None:
@@ -1429,6 +1551,7 @@ def create_app(gw: Gateway) -> Starlette:
         Route("/v1/embeddings", gw.embeddings, methods=["POST"]),
         Route("/v1/documents", gw.documents, methods=["POST"]),
         Route("/v1/documents/warm", gw.documents_warm, methods=["POST"]),
+        Route("/v1/agent/audit", gw.agent_audit, methods=["GET"]),
         Route("/health", gw.health, methods=["GET"]),
         Route("/admin/unload", gw.admin_unload, methods=["POST"]),
         Route("/admin/trajectories", gw.admin_trajectories, methods=["GET"]),

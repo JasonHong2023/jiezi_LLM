@@ -273,6 +273,10 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("--dry", action="store_true", help="no model: check whether the attached data holds the answer")
     gp = sub.add_parser("gaps", help="gap report: questions the local model could not handle")
     gp.add_argument("--days", type=int, default=7, help="最近幾天 / how many recent days (default 7)")
+    agp = sub.add_parser("agent", help="read-only agent: grants and audit log (add-agent-readonly)")
+    agp.add_argument("action", choices=["grant", "revoke", "grants", "audit", "server"])
+    agp.add_argument("folder", nargs="?")
+    agp.add_argument("--days", type=int, default=1, help="audit: 最近幾天 / recent days")
     rp = sub.add_parser("rerank", help="reranker self-check and A/B measurement (add-reranker)")
     rp.add_argument("action", choices=["check", "measure"])
     rp.add_argument("--gpu", action="store_true", help="重排序放 GPU / run the reranker on GPU")
@@ -473,6 +477,39 @@ def main(argv: list[str] | None = None) -> int:
             out, summary = gaps.write(root, args.days)
             print(f"本機需要幫忙 {summary['needed_help']} 筆 / needed help: {summary['by_kind']}；"
                   f"直接請教 {summary['direct']} 筆；報告 / report: {out}")
+            return 0
+        if args.cmd == "agent":
+            from ..agent import audit as AU
+            from ..agent.grants import Grants
+            g = Grants(root)
+            if args.action == "server":  # MCP stdio 伺服器（給 Hermes／OpenCode 設定用）/ MCP server for other clients
+                from ..agent.server import main as serve_mcp
+                sys.argv = [sys.argv[0], "mcp"]
+                return serve_mcp()
+            if args.action in ("grant", "revoke"):
+                if not args.folder:
+                    print(f"usage: scripts/jiezi agent {args.action} <folder>", file=sys.stderr)
+                    return 2
+                try:
+                    if args.action == "grant":
+                        print(f"granted (read-only): {g.grant(args.folder)}")
+                    else:
+                        print("revoked" if g.revoke(args.folder) else "was not granted")
+                except ValueError as exc:
+                    print(f"refused: {exc}", file=sys.stderr)
+                    return 2
+                return 0
+            if args.action == "grants":
+                folders = g.folders()
+                print("\n".join(str(f) for f in folders) if folders else "（沒有授權任何資料夾 / nothing granted）")
+                return 0
+            rows = AU.read(root, args.days)
+            for r in rows:
+                what = r.get("path") or ""
+                extra = r.get("error") or (f"{r['chars']} 字" if r.get("chars") is not None else
+                                           f"{r.get('entries') or r.get('matches') or ''}")
+                print(f"{r['at']}  {'允許' if r.get('allowed') else '拒絕'}  {r.get('tool')}  {what}  {extra}")
+            print(f"{len(rows)} entries ({args.days} day(s))")
             return 0
         if args.cmd == "rerank":
             import dataclasses

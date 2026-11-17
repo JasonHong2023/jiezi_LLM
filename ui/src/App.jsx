@@ -1,7 +1,7 @@
 // 芥子桌面 App 雛形：對話、稽核紀錄、狀態（唯讀；不操控作業系統）。
 // Jiezi desktop prototype: chat, audit log, status (read-only; no OS control).
 import { useEffect, useRef, useState } from "react";
-import { BASE, getJSON, getKey, readDocument, setKey, streamChat, withDocuments } from "./api.js";
+import { BASE, getJSON, getKey, readDocument, setKey, stepText, streamChat, withDocuments } from "./api.js";
 
 const MAX_DOC_CHARS = 1500000;  // 附著文件的總字數上限（和 jiezi chat 相同）/ same cap as jiezi chat
 
@@ -45,6 +45,7 @@ function Chat() {
   const [error, setError] = useState("");
   const [docs, setDocs] = useState([]);       // 附著的文件，每一題都帶 / attached documents, sent with every question
   const [reading, setReading] = useState("");
+  const [agent, setAgent] = useState(false);  // 唯讀檔案代理（add-agent-readonly）/ read-only file agent
   const abort = useRef(null);
   const end = useRef(null);
   const picker = useRef(null);
@@ -86,7 +87,7 @@ function Chat() {
     // The log keeps the bare question; documents are wrapped around the latest question when sending
     const outgoing = [...history.slice(-12)];
     outgoing[outgoing.length - 1] = { role: "user", content: withDocuments(text, docs) };
-    setMsgs([...history, { role: "assistant", content: "", meta: null }]);
+    setMsgs([...history, { role: "assistant", content: "", meta: null, steps: [] }]);
     setInput("");
     setBusy(true);
     setError("");
@@ -95,6 +96,13 @@ function Chat() {
     try {
       await streamChat(outgoing, policy, {
         signal: abort.current.signal,
+        agent,
+        onStep: (ev) => setMsgs((m) => {
+          const c = [...m]; const last = c[c.length - 1];
+          // 同一步「進行中」換成結果 / a running step is replaced by its outcome
+          const steps = (last.steps || []).filter((s) => !(s.step === ev.step && s.status === "running" && ev.status !== "running"));
+          c[c.length - 1] = { ...last, steps: [...steps, ev] }; return c;
+        }),
         onDelta: (t) => setMsgs((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + t }; return c; }),
         onMeta: (meta) => setMsgs((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], meta }; return c; }),
       });
@@ -121,6 +129,9 @@ function Chat() {
           accept=".pdf,.docx,.pptx,.xlsx,.doc,.ppt,.xls,.rtf,.odt,.odp,.ods,.html,.htm,.txt,.md,.csv,.json,.log"
           onChange={(e) => { attach([...e.target.files]); e.target.value = ""; }} />
         <button onClick={() => picker.current?.click()} disabled={busy || !!reading}>附加文件</button>
+        <label title="讓芥子列出、尋找、讀取你授權的資料夾（scripts/jiezi agent grant 資料夾）；只能讀，不能改">
+          <input type="checkbox" checked={agent} onChange={(e) => setAgent(e.target.checked)} disabled={busy} /> 讀我的檔案（唯讀）
+        </label>
       </div>
       {(docs.length > 0 || reading) && (
         <div className="docs">
@@ -138,6 +149,8 @@ function Chat() {
         {msgs.length === 0 && <p className="muted">輸入問題後按 Enter；Shift+Enter 換行；Esc 或「中止」立刻停止。</p>}
         {msgs.map((m, i) => (
           <div key={i} className={`msg ${m.role}`}>
+            {m.steps?.length > 0 && <ul className="steps">{m.steps.map((s, j) =>
+              <li key={j} className={s.status}>{stepText(s)}</li>)}</ul>}
             <div className="body">{m.content || (busy && i === msgs.length - 1 ? "…" : "")}</div>
             {m.meta && <div className="meta">{statusLine(m.meta)}</div>}
             {m.meta?.injection?.suspected?.length > 0 &&
@@ -154,6 +167,35 @@ function Chat() {
         {busy ? <button className="stop" onClick={() => abort.current?.abort()}>中止</button>
           : <button onClick={send} disabled={!input.trim()}>送出</button>}
       </div>
+    </div>
+  );
+}
+
+function AgentAudit() {
+  const [d, setD] = useState(null);
+  const [error, setError] = useState("");
+  const load = () => getJSON("/v1/agent/audit?days=7").then(setD).catch((e) => setError(String(e.message)));
+  useEffect(() => { load(); }, []);
+  if (error) return <div className="error">{error}</div>;
+  if (!d) return null;
+  return (
+    <div>
+      <h3>唯讀代理的動作（最近 7 天）</h3>
+      <p className="muted">代理：{d.enabled ? "開" : "關（JIEZI_AGENT=on 才會啟用）"}；授權資料夾：{d.folders.length ? d.folders.join("、") : "沒有"}。只記錄動作與大小，不存檔案內容。</p>
+      {d.entries.length > 0 && (
+        <table>
+          <thead><tr><th>時間</th><th>結果</th><th>工具</th><th>路徑</th><th>說明</th></tr></thead>
+          <tbody>
+            {[...d.entries].reverse().map((r, i) => (
+              <tr key={i}>
+                <td>{r.at?.slice(5, 16).replace("T", " ")}</td><td>{r.allowed ? "允許" : "拒絕"}</td><td>{r.tool}</td>
+                <td className="q">{r.path || (r.arguments && (r.arguments.path || r.arguments.root)) || ""}</td>
+                <td>{r.error || (r.chars != null ? `${r.chars} 字` : r.entries != null ? `${r.entries} 項` : r.matches != null ? `${r.matches} 個符合` : "")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
@@ -180,6 +222,7 @@ function Audit() {
           ))}
         </tbody>
       </table>
+      <AgentAudit />
     </div>
   );
 }
@@ -225,7 +268,7 @@ export default function App() {
       <main>
         {!ready ? <KeyGate onDone={() => setReady(true)} /> : tab === "chat" ? <Chat /> : tab === "audit" ? <Audit /> : <Status />}
       </main>
-      <footer className="muted">唯讀雛形：不會操控你的電腦。所有對話只經過本機 gateway（127.0.0.1）。</footer>
+      <footer className="muted">不會操控你的電腦：「讀我的檔案」只能讀你授權的資料夾，不能修改。所有對話只經過本機 gateway（127.0.0.1）。</footer>
     </div>
   );
 }

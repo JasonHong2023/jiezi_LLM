@@ -36,3 +36,8 @@ pre { background: #fff; border: 1px solid var(--line); padding: .5rem; overflow:
 .docs { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-bottom: .5rem; font-size: .85rem; }
 .doc { border: 1px solid var(--line); border-radius: 999px; padding: .1rem .2rem .1rem .6rem; background: #fff; }
 .doc button { border: 0; background: none; cursor: pointer; padding: 0 .35rem; font: inherit; }
+
+/* 唯讀代理的步驟 / agent steps */
+.steps { margin: 0 0 6px; padding-left: 18px; font-size: 0.85em; color: #666; }
+.steps li.refused, .steps li.error { color: #a33; }
+.steps li.running { font-style: italic; }

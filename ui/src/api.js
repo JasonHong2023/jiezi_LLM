@@ -50,11 +50,11 @@ export function withDocuments(question, docs) {
 
 // 串流對話：每段文字呼叫 onDelta，最後的 jiezi 狀態呼叫 onMeta；signal 用來一鍵中止。
 // Streaming chat: onDelta per chunk, onMeta for the final jiezi status; signal aborts at once.
-export async function streamChat(messages, policy, { onDelta, onMeta, signal }) {
+export async function streamChat(messages, policy, { onDelta, onMeta, onStep, signal, agent = false }) {
   const r = await fetch(BASE + "/v1/chat/completions", {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ model: policy, messages, stream: true }),
+    body: JSON.stringify({ model: policy, messages, stream: true, ...(agent ? { jiezi_agent: true } : {}) }),
     signal,
   });
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
@@ -75,6 +75,7 @@ export async function streamChat(messages, policy, { onDelta, onMeta, signal }) 
       try {
         const d = JSON.parse(payload);
         if (d.error) throw new Error(d.error.message || "error");
+        if (d.jiezi_agent) { onStep && onStep(d.jiezi_agent); continue; }  // 唯讀代理的一步 / an agent step
         if (d.jiezi) onMeta(d.jiezi);
         for (const ch of d.choices || []) {
           const t = ch.delta && ch.delta.content;
@@ -86,4 +87,14 @@ export async function streamChat(messages, policy, { onDelta, onMeta, signal }) 
       }
     }
   }
+}
+
+// 代理一步的說明（和 chat 的文字一致）/ One agent step as text (same wording as the TUI)
+export function stepText(ev) {
+  const what = { list_dir: "列出資料夾", find_files: "尋找檔案", read_file: "讀取", file_info: "查看" }[ev.tool] || ev.tool || "?";
+  const a = ev.arguments || {};
+  const target = ev.path || a.path || a.root || "";
+  if (ev.status === "running") return `第 ${ev.step} 步：正在${what} ${target} …`;
+  const mark = { ok: "完成", refused: "被拒絕（未授權）", error: "失敗" }[ev.status] || ev.status;
+  return `第 ${ev.step} 步：${what} ${target} ${mark}${ev.error && ev.status !== "ok" ? "：" + ev.error : ""}`;
 }

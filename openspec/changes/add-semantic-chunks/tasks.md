@@ -1,4 +1,4 @@
 - [x] 1.1 `longdoc.py`：語意名次、RRF 合併、段落向量進記憶體快取（不落地、失敗不快取）、逾時與退回 / semantic rank, fusion, in-memory vectors, timeout and fallback
 - [x] 1.2（附檔即建：桌面上傳端點自動、chat 的 /file 呼叫 `POST /v1/documents/warm`） gateway 接入 embedding 引擎、`JIEZI_DOC_SEMANTIC`、`JIEZI_DOC_EMBED_TIMEOUT`、回應的 `longdoc` 欄位註明這一題用了哪種排序；依 OQ3 決定是否在附檔時預先建向量 / wiring, switches, metadata
 - [x] 1.3 單元測試（假 embedding：字面挑不到而語意挑得到、逾時退回、引擎失敗退回、快取不落地）；`docs/clients.md`、`.env.example`；`openspec validate add-semantic-chunks --strict` / tests and docs
-- [ ] 2.1 量測（與實作分開，R8、R17）：勞動基準法全文加另一份非法條文件，各 8 題口語問題（事先寫好正確段落與答案要點），比較開與關的「正確段落進入上下文的比例」與回答正確數、每題耗時；依結果決定預設值，記入討論記錄 / A/B measurement deciding the default
+- [x] 2.1（2026-11-17，核心 qwen3.5-4b-q4_k_m；勞基法 15,252 字＋健保長文 29,148 字，16 題新寫的口語問題，與調參數的 9 題不重複）：正確段落進入上下文 關 9/16 → 開 12/16，答對 關 9/16 → 開 12/16（勞基法 2→5、健保 7→7），**沒有任何一題變差**。耗時：向量建好後和關閉時相近（健保 5.2→5.1 秒）；但向量還在背景建的期間，問題要排在建向量後面，勞基法前幾題 18–35 秒（其中 2 題等滿 20 秒先用字面）。依結果維持預設開。 量測（與實作分開，R8、R17）：勞動基準法全文加另一份非法條文件，各 8 題口語問題（事先寫好正確段落與答案要點），比較開與關的「正確段落進入上下文的比例」與回答正確數、每題耗時；依結果決定預設值，記入討論記錄 / A/B measurement deciding the default
