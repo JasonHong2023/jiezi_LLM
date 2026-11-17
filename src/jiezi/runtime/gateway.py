@@ -627,7 +627,9 @@ class Gateway:
             limit = max(1, min(500, int(request.query_params.get("limit", "100"))))
         except ValueError:
             limit = 100
-        recs = load(self.s.root, 7)[-limit:]
+        # 依時間排序再取最近的（檔案是新的一天在前，直接取尾端會拿到最舊的；2026-11-17 實測）
+        # Sort by time first: files come newest-day first, so slicing the tail returned the oldest records
+        recs = sorted(load(self.s.root, 7), key=lambda r: r.get("at") or "")[-limit:]
         out = []
         for r in reversed(recs):
             users = [m for m in (r.get("request") or {}).get("messages") or [] if m.get("role") == "user"]
@@ -1117,7 +1119,10 @@ class Gateway:
         last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
         if not last or not isinstance(last.get("content"), str):
             return None
-        if not LIVE.search(last["content"]):
+        from ..documents import DOC_RE
+        # 只看問題本身：附加文件裡出現「網站、新聞」等字不代表要上網查（2026-11-17 桌面網頁實測誤判）
+        # Only the question counts: words like "website" inside an attached document do not need the web
+        if not LIVE.search(DOC_RE.sub("", last["content"])):
             return None
         if any(s.get("source") in ("tools", "memory") for s in rec.get("sources") or []):
             return None  # 「今天星期幾」程式已算好；記憶裡有答案 / computed or remembered

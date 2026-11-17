@@ -302,6 +302,15 @@ class TestGateway(unittest.TestCase):
             self.assertEqual(r.json()["jiezi"]["escalation"], "context_too_large")
             self.assertEqual(self.local_seen, [])
 
+    def test_document_words_do_not_trigger_web_routing(self):
+        from jiezi.documents import attach
+        q = attach({"name": "週會.txt", "text": "決議：新版網站 12 月 1 日上線。\n待辦：王小明完成測試"}, "待辦事項有哪些？")
+        with self.client([{"role": "assistant", "content": "王小明完成測試"}], cloud_on=True) as c:
+            r = self.post(c, {"model": "jiezi", "messages": [{"role": "user", "content": q}]}).json()
+            self.assertEqual(r["jiezi"]["tier"], 0)                              # 不因文件裡的「網站」轉交
+            r = self.post(c, {"model": "jiezi", "messages": [{"role": "user", "content": "今天台北天氣如何？"}]}).json()
+            self.assertEqual(r["jiezi"]["escalation"], "needs_web")             # 問題本身要上網照舊轉交
+
     def test_parallel_sampling_picks_verified_majority(self):
         bad = {"role": "assistant", "content": "[get_weather()]"}
         good = {"role": "assistant", "content": "[get_weather(city='台北')]"}

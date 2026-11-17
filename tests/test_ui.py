@@ -27,6 +27,12 @@ class TestUi(unittest.TestCase):
                    "training_use": None, "sources": [{"source": "moj-laws"}],
                    "request": {"messages": [{"role": "user", "content": "民法第184條"}]}}
             (tmp / "var" / "trajectories" / f"{date.today().isoformat()}.jsonl").write_text(json.dumps(rec, ensure_ascii=False))
+            # 前一天的舊紀錄：清單要先列最新的（2026-11-17 實測曾先列最舊的）/ older day: newest must come first
+            from datetime import timedelta
+            old = {**rec, "id": "t0", "at": "2026-11-15T10:00:00+08:00",
+                   "request": {"messages": [{"role": "user", "content": "舊問題"}]}}
+            (tmp / "var" / "trajectories" / f"{(date.today() - timedelta(days=1)).isoformat()}.jsonl").write_text(
+                "\n".join(json.dumps({**old, "id": f"t0{i}"}, ensure_ascii=False) for i in range(6)))
             sup, _, patch = make_supervisor(tmp)
             gw = Gateway(sup.s, sup, TrajectoryWriter(tmp / "traj", log=lambda *_: None), log=lambda *_: None)
             with patch, TestClient(create_app(gw)) as c:
