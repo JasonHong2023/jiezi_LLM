@@ -4,4 +4,4 @@
 - [x] 1.4 簡體 → 繁體的直接轉換路徑（不呼叫模型，標明來源，不進訓練資料）/ direct script conversion
 - [x] 1.5 CLI `jiezi translate`（`--to`、`--out`、`--glossary`、`--plain`、`--yes`、預估時間、可續跑）；`ask`／chat 走同一路徑 / CLI
 - [x] 1.6 單元測試（假引擎）；`docs/clients.md`、`.env.example`；`openspec validate add-translation --strict` / tests and docs
-- [ ] 2.1 量測（與實作分開，R8）：G1 選定核心後，以 3 份真實文件（中→英、英→中、簡→繁）實測耗時、失敗段比例，並由使用者抽查 10 段品質；結果記入討論記錄 / measurement after G1, with the user spot-checking ten chunks
+- [ ] 2.1（2026-11-17：三份實測完成——中→英 2,460 字 55 秒、英→中 1,012 字 5 秒、簡→繁不到 2 秒，失敗段 0；使用者抽查 10 段品質尚未做）量測（與實作分開，R8）：G1 選定核心後，以 3 份真實文件（中→英、英→中、簡→繁）實測耗時、失敗段比例，並由使用者抽查 10 段品質；結果記入討論記錄 / measurement after G1, with the user spot-checking ten chunks
