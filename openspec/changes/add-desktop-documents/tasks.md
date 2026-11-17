@@ -1,4 +1,4 @@
 - [x] 1.1 gateway `POST /v1/documents`：金鑰、檔名與格式檢查、大小上限、暫存後刪除、子行程讀取、清理
 - [x] 1.2 前端：`readDocument`、`withDocuments`、附加按鈕、文件標籤、每題重新附上
 - [x] 1.3 單元測試（含標記與 `documents.attach` 一致）；重建前端；重啟 gateway 後以 curl 實測端點；`openspec validate add-desktop-documents --strict`
-- [ ] 2.1（2026-11-17：上傳端點以 PDF、.doc、.xls、.ppt 實測通過；瀏覽器與 Tauri 畫面仍待使用者看一眼）人工檢查：瀏覽器開 `http://127.0.0.1:36100/ui/` 附一份 PDF 並追問兩題（E0 結束、本機模型可用後）；Tauri 外殼內同樣操作一次
+- [ ] 2.1（2026-11-17：上傳端點以 PDF、.doc、.xls、.ppt 實測通過；**19:00 以無頭 Chromium 自動操作桌面網頁**：附檔顯示「週會.txt（81 字）」、提問由本機 7.6 秒答對、Esc 中止生效、稽核頁正常，畫面截圖檢查中文排版正常；過程中修掉「文件裡的字觸發上網轉交」與「稽核頁先列最舊紀錄」兩個 bug。只剩 Tauri 視窗要使用者看一眼）人工檢查：瀏覽器開 `http://127.0.0.1:36100/ui/` 附一份 PDF 並追問兩題（E0 結束、本機模型可用後）；Tauri 外殼內同樣操作一次
