@@ -215,7 +215,7 @@ function Audit() {
         <tbody>
           {rows.map((r) => (
             <tr key={r.id}>
-              <td>{r.at?.slice(5, 16).replace("T", " ")}</td><td>{r.policy}</td><td>{String(r.final_tier)}</td>
+              <td>{r.at?.slice(5, 16).replace("T", " ")}</td><td>{r.policy}</td><td>{r.final_tier != null ? r.final_tier : (r.status === "cancelled" ? "已中止" : r.status || "—")}</td>
               <td className="q">{r.question}</td><td>{(r.sources || []).join("、")}</td>
               <td>{r.training_use === false ? "否" : r.training_use === true ? "是" : "待確認"}</td>
             </tr>
