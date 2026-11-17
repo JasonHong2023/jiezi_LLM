@@ -1,4 +1,4 @@
 - [x] 1.1 `read_pptx`、`read_xlsx`、共用的壓縮檔 XML 讀取（大小上限、拒絕 DTD）
 - [x] 1.2 接入 `SUPPORTED`／`extract`；CLI、gateway、桌面網頁的格式說明
 - [x] 1.3 單元測試（手工組出的 .pptx／.xlsx）；真實檔案實測；`docs/clients.md`；`openspec validate add-office-documents --strict`
-- [ ] 2.1 歸檔順序：先 add-long-documents，再本變更
+- [x] 2.1 歸檔順序：先 add-long-documents，再本變更
