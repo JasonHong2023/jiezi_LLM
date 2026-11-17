@@ -27,7 +27,7 @@
 
 - [x] 5.1 單元測試全部通過（263 個）；冒煙檢查以 Qwen3-0.6B 在 CPU 實跑一次（使用者同意白天慢速試跑；4/5 可解析，38 秒）；`openspec validate add-e0-benchmark --strict` / Unit tests and strict validation
 - [x] 5.2 夜間：下載候選並核對 SHA-256（2026-11-16 夜間完成，16 個模型全部 ok） / Night: download candidates and verify SHA-256
-- [ ] 5.3 夜間：冒煙檢查；Qwen3.5-2B Q4_K_M 在 GPU 與 CPU 各跑一次（擺放對照）/ Night: smoke checks; GPU-vs-CPU placement check
+- [x] 5.3（2026-11-17 補勾：E0 已含 19 份冒煙檢查與 Qwen3.5-2B Q4_K_M 的 GPU／CPU 兩列——知識 42.0% 對 42.0%、推理 37.0% 對 40.0%（信賴區間重疊）、摘要忠實 0.827 對 0.854，速度 79.9 對 19.2 t/s；分數相近，沒有後端數值問題的跡象） 夜間：冒煙檢查；Qwen3.5-2B Q4_K_M 在 GPU 與 CPU 各跑一次（擺放對照）/ Night: smoke checks; GPU-vs-CPU placement check
 - [x] 5.4（2026-11-17 11:15 完成：18 列全部作答與驗證；使用者允許白天執行） 夜間（約 3 晚）：全部候選的貪婪解碼評測與驗證 / Night (about 3 nights): greedy runs and verification for all candidates
 - [ ] 5.5 夜間（約 2～3 晚）：取樣設定 / Night (about 2–3 nights): sampled setting
 - [x] 5.6（2026-11-17：`var/eval/e0/f49c48d3f3ca/report.md` complete） 產生 E0 報表，交給使用者做 G1 判斷 / Produce the E0 report for the user's G1 decision
