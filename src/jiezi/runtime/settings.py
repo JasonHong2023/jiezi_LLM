@@ -67,6 +67,9 @@ class Settings:
     laws: bool = True               # 法律問題先查全國法規資料庫（add-laws）/ law questions use the MOJ database
     rag: bool = True                # 知識庫用向量重排（有建向量時）/ vector reranking when vectors exist (add-rag)
     rag_min: float = 0.5            # 向量相似度門檻 / similarity threshold
+    rerank: bool = False            # 向量前 N 名再重排序（add-reranker；量測過門檻才預設開啟）/ rerank the top N (off until measured)
+    rerank_gpu: bool = False        # 重排序放 GPU（預設 CPU，不和核心搶顯示記憶體）/ reranker on GPU (CPU by default)
+    rerank_timeout_s: float = 10.0  # 逾時就退回向量排序 / fall back to vector order on timeout
     samples: int = 4                # 可驗證的問題（工具呼叫、程式）平行取樣幾個；1 = 關閉（add-sampling）
     sample_temperature: float = 0.7
     tools: bool = True              # 計算、單位換算、日期由程式算好（add-tools）/ computed by code
@@ -132,6 +135,9 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         translate=_onoff(env, "JIEZI_TRANSLATE", True),
         tier2=_onoff(env, "JIEZI_TIER2", False),
         rag_min=float(env.get("JIEZI_RAG_MIN") or 0.5),
+        rerank=_onoff(env, "JIEZI_RERANK", False),
+        rerank_gpu=_onoff(env, "JIEZI_RERANK_GPU", False),
+        rerank_timeout_s=float(env.get("JIEZI_RERANK_TIMEOUT") or 10.0),
         consult_web=_onoff(env, "JIEZI_CONSULT_WEB", True),
         system_prompt=_system_prompt(root, env),
     )

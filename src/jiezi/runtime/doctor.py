@@ -55,6 +55,11 @@ def checks(root: Path, port: int) -> list[tuple[str, str, str, str]]:
     emb = models / "Qwen3-Embedding-0.6B-Q8_0.gguf"
     add("embedding 模型", OK if emb.exists() else WARN, emb.name if emb.exists() else "缺檔（向量檢索停用）",
         "見 models/manifest.toml 的 qwen3-embedding-0.6b-q8_0")
+    rr = models / "qwen3-reranker-0.6b-q8_0.gguf"  # 重排序（add-reranker；選用）/ optional reranker
+    rr_note = (h or {}).get("rerank") or "off"
+    add("重排序模型", OK if rr.exists() and "failed" not in rr_note and "unavailable" not in rr_note else WARN,
+        (f"{rr.name}（{rr_note}）" if rr.exists() else "缺檔（選用；重排序停用）"),
+        "JIEZI_RERANK=on 啟用；`scripts/jiezi rerank check` 自我檢查；模型見 models/manifest.toml")
     try:  # 視覺（add-vision）/ vision
         from .settings import load_settings
         from .supervisor import resolve_core

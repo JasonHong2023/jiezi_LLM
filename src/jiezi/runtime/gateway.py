@@ -83,7 +83,8 @@ def _tps(resp: dict) -> float | None:
 class Gateway:
     def __init__(self, settings: Settings, supervisor: Supervisor, trajectories: TrajectoryWriter,
                  local_http: httpx.AsyncClient | None = None, cloud_http: httpx.AsyncClient | None = None,
-                 cap: escalation.DailyCap | None = None, consultant=None, log=print, embedder=None):
+                 cap: escalation.DailyCap | None = None, consultant=None, log=print, embedder=None,
+                 reranker=None):
         self.s, self.sup, self.traj, self.log = settings, supervisor, trajectories, log
         self.consultant = consultant
         if consultant is None and settings.consult == "claude-cli":
@@ -136,24 +137,31 @@ class Gateway:
             except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
                 self.laws_note = str(exc)
         self.embedder, self.hybrid, self.rag_note, self.laws_hybrid = embedder, None, "off", None
+        self.reranker = reranker if settings.rerank else None  # add-reranker：預設關 / off by default
         if settings.rag and self.knowledge is not None and embedder is not None:
             from ..rag import HybridRetriever, VectorStore, vectors_path
             try:
                 store = VectorStore(vectors_path(settings.root))
                 if store.count():
-                    self.hybrid = HybridRetriever(self.knowledge, store, embedder, settings.rag_min)
+                    from ..rag import doc_text
+                    kn = self.knowledge
+                    self.hybrid = HybridRetriever(kn, store, embedder, settings.rag_min, reranker=self.reranker,
+                                                  text_of=lambda i: doc_text(kn.section(i)))
                     self.rag_note = f"on ({store.count()} vectors)"
                 else:
                     self.rag_note = "no vectors; run scripts/jiezi knowledge embed"
             except Exception as exc:  # noqa: BLE001 - 沒有向量就用全文 / full text without vectors
                 self.rag_note = str(exc)
         if settings.rag and self.laws is not None and embedder is not None:
-            from ..laws import vectors_path as law_vectors
+            from ..laws import doc_text as law_text, vectors_path as law_vectors
             from ..rag import HybridRetriever, VectorStore
             try:
                 store = VectorStore(law_vectors(settings.root))
                 if store.count():
-                    self.laws_hybrid = HybridRetriever(self.laws, store, embedder, settings.rag_min)
+                    lw = self.laws
+                    self.laws_hybrid = HybridRetriever(lw, store, embedder, settings.rag_min,
+                                                       reranker=self.reranker,
+                                                       text_of=lambda i: law_text(lw, i))
                     self.rag_note += f"; laws {store.count()} vectors"
             except Exception:  # noqa: BLE001 - 沒有法規向量就用全文 / full text without law vectors
                 pass
@@ -496,6 +504,7 @@ class Gateway:
                              "writing_refs": "on" if self.writing else (self.writing_note or "off"),
                              "knowledge": "on" if self.knowledge else (self.knowledge_note or "off"),
                              "rag": self.rag_note,
+                             "rerank": self.reranker.note if self.reranker else "off",
                              "laws": "on" if self.laws else (self.laws_note or "off"),
                              "memory": "on" if self.memory else (self.memory_note or "off"),
                              "tools": "on" if self.s.tools else "off",
@@ -1306,6 +1315,8 @@ class Gateway:
                 await self.sup.tick()
                 if self.embedder is not None:
                     await anyio.to_thread.run_sync(self.embedder.tick)
+                if self.reranker is not None:
+                    await anyio.to_thread.run_sync(self.reranker.tick)
             except Exception as exc:  # noqa: BLE001 - 背景工作不可中斷 gateway / never kill the gateway
                 self.log(f"warning: supervisor tick: {exc}")
 
@@ -1332,6 +1343,8 @@ def create_app(gw: Gateway) -> Starlette:
                 gw.sup.shutdown()
                 if gw.embedder is not None:
                     gw.embedder.stop()
+                if gw.reranker is not None:
+                    gw.reranker.stop()
                 await gw.aclose()
 
     return Starlette(routes=[

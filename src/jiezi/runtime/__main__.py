@@ -32,7 +32,7 @@ def cmd_serve(root) -> int:
         alias=alias, extra=("--mmproj", str(mmproj)) if mmproj else ())
     sup = Supervisor(s, lambda: fresh_facts(root), factory)
     gw = Gateway(s, sup, TrajectoryWriter(s.var / "trajectories", s.trajectory, s.retention_days),
-                 embedder=_embedder(root, s, env))
+                 embedder=_embedder(root, s, env), reranker=_reranker(root, s, env))
     print(f"jiezi gateway on http://{s.host}:{s.gateway_port}/v1  (core {s.core_model}, lazy load; "
           f"cloud escalation {'on' if s.cloud_ready else 'off'}; trajectories {'on' if s.trajectory else 'off'})")
     print("Ctrl-C 關閉 gateway 與引擎 / Ctrl-C stops the gateway and the engine")
@@ -103,6 +103,22 @@ def _embedder(root, s, env, ngl: int = 0):
                                         port=port_base(env) + 2, alias=EMBED_MODEL,
                                         extra=("--embedding", "--pooling", "last", "-ub", "8192")),
                     log_path=s.var / "runtime" / "engine-embed.log", idle_s=s.idle_unload_s)
+
+
+def _reranker(root, s, env, force: bool = False):
+    """重排序引擎（R11 的 engine-rerank 埠 = 起點 + 6）。開關沒開或沒有模型檔就回傳 None。
+    The reranking engine on the R11 engine-rerank port (base + 6). None when switched off or the file is absent."""
+    from ..engine import LocalEngine
+    from ..facts import fresh_facts
+    from ..rag import RERANK_MODEL, Reranker
+    path = s.models_dir / "qwen3-reranker-0.6b-q8_0.gguf"
+    if not ((s.rerank or force) and s.rag and path.exists()):
+        return None
+    return Reranker(lambda: LocalEngine(root, fresh_facts(root), path, port_base(env), ngl=99 if s.rerank_gpu else 0,
+                                        ctx=8192, port=port_base(env) + 6, alias=RERANK_MODEL,
+                                        extra=("--reranking", "-ub", "8192")),
+                    log_path=s.var / "runtime" / "engine-rerank.log", idle_s=s.idle_unload_s,
+                    timeout_s=s.rerank_timeout_s)
 
 
 DATA_BUILDS = (("dict", "dictionary"), ("curriculum", "curriculum"), ("knowledge", "knowledge"), ("laws", "laws"),
@@ -257,6 +273,10 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("--dry", action="store_true", help="no model: check whether the attached data holds the answer")
     gp = sub.add_parser("gaps", help="gap report: questions the local model could not handle")
     gp.add_argument("--days", type=int, default=7, help="最近幾天 / how many recent days (default 7)")
+    rp = sub.add_parser("rerank", help="reranker self-check and A/B measurement (add-reranker)")
+    rp.add_argument("action", choices=["check", "measure"])
+    rp.add_argument("--gpu", action="store_true", help="重排序放 GPU / run the reranker on GPU")
+    rp.add_argument("-n", type=int, default=40, help="measure: 題數 / number of queries (default 40)")
     kp = sub.add_parser("knowledge", help="Taiwan knowledge base, taiwan-md (add-knowledge)")
     kp.add_argument("action", choices=["build", "search", "embed"])
     kp.add_argument("--gpu", action="store_true", help="embed: 用 GPU 建向量（E0 等評測沒在跑時）/ use the GPU")
@@ -454,6 +474,43 @@ def main(argv: list[str] | None = None) -> int:
             print(f"本機需要幫忙 {summary['needed_help']} 筆 / needed help: {summary['by_kind']}；"
                   f"直接請教 {summary['direct']} 筆；報告 / report: {out}")
             return 0
+        if args.cmd == "rerank":
+            import dataclasses
+            import json as _json
+            from .. import rag
+            from ..knowledge import Knowledge, db_path as kdb
+            from .settings import load_settings
+            st = load_settings(root)
+            if args.gpu:
+                st = dataclasses.replace(st, rerank_gpu=True)
+            rr = _reranker(root, st, load_env(root), force=True)
+            if rr is None:
+                print("reranker model not found (models/manifest.toml: qwen3-reranker-0.6b-q8_0) or JIEZI_RAG=off",
+                      file=sys.stderr)
+                return 1
+            emb = None
+            try:
+                ok = rr.check()
+                print(f"reranker self-check: {rr.note} ({'gpu' if st.rerank_gpu else 'cpu'})")
+                if args.action == "check" or not ok:
+                    return 0 if ok else 1
+                emb = _embedder(root, st, load_env(root))
+                kn = Knowledge(kdb(root))
+                store = rag.VectorStore(rag.vectors_path(root))
+                text_of = lambda i: rag.doc_text(kn.section(i))  # noqa: E731
+                res = rag.measure(kn, rag.HybridRetriever(kn, store, emb, st.rag_min),
+                                  rag.HybridRetriever(kn, store, emb, st.rag_min, reranker=rr, text_of=text_of),
+                                  n=args.n)
+                res["placement"] = "gpu" if st.rerank_gpu else "cpu"
+                out = st.var / "reports" / f"rerank-measure-{res['placement']}.json"
+                out.parent.mkdir(parents=True, exist_ok=True)
+                out.write_text(_json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
+                print(f"gain {res['gain_points']} points, +{res['extra_seconds']} s/query; report: {out}")
+                return 0
+            finally:
+                rr.stop()
+                if emb is not None:
+                    emb.stop()
         if args.cmd == "knowledge":
             from .. import knowledge as K
             if args.action == "build":

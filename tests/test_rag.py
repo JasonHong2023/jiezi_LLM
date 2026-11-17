@@ -65,6 +65,71 @@ class TestRag(unittest.TestCase):
         hits = self.k.retrieve("尾牙為什麼要吃虎咬豬慰勞職工", broken)      # 出錯退回全文 / full-text fallback
         self.assertEqual(hits[0]["heading"], "尾牙與職工")
 
+    def test_rerank_reorders_and_falls_back(self):
+        emb = FakeEmbedder()
+        rag.build(self.k, self.store, emb, log=lambda *_: None)
+        text_of = lambda i: rag.doc_text(self.k.section(i))  # noqa: E731
+        plain = rag.HybridRetriever(self.k, self.store, emb, min_score=-1.0)("尾牙 職工", 3)
+        self.assertEqual(len(plain), 3)
+
+        class Fake:
+            def __init__(self, fail=False):
+                self.fail, self.calls = fail, []
+
+            def score(self, query, docs):
+                self.calls.append((query, docs))
+                if self.fail:
+                    raise TimeoutError("slow")
+                return [float(i) for i in range(len(docs))]  # 把向量順序反過來 / reverse the vector order
+        rr = Fake()
+        h = rag.HybridRetriever(self.k, self.store, emb, min_score=-1.0, reranker=rr, text_of=text_of)
+        got = h("尾牙 職工", 3)
+        self.assertEqual([i for i, _ in got], [i for i, _ in reversed(plain)])
+        self.assertEqual(len(rr.calls[0][1]), 3)
+        self.assertIn("｜", rr.calls[0][1][0])                               # 段落文字含標題 / title-prefixed text
+        self.assertEqual(h("尾牙 職工", 1), got[:1])                         # 取前 k / top k after reranking
+        bad = rag.HybridRetriever(self.k, self.store, emb, min_score=-1.0, reranker=Fake(fail=True), text_of=text_of)
+        self.assertEqual(bad("尾牙 職工", 3), plain)                         # 逾時退回向量排序 / timeout falls back
+        self.assertIn("TimeoutError", bad.last_error)
+        gate = Fake()                                                        # 向量說沒有相關就不重排 / gate stays
+        self.assertEqual(rag.HybridRetriever(self.k, self.store, emb, min_score=0.99, reranker=gate,
+                                             text_of=text_of)("完全無關的問題", 3), [])
+        self.assertEqual(gate.calls, [])
+
+    def test_reranker_self_check_disables_a_bad_model(self):
+        class Engine:
+            base_url = "http://127.0.0.1:1"
+
+            def __init__(self):
+                self.stopped = False
+
+            def start(self, log):
+                pass
+
+            def stop(self):
+                self.stopped = True
+
+        def make(scores):
+            eng = Engine()
+            r = rag.Reranker(lambda: eng, clock=lambda: 0.0)
+            r._post = lambda q, docs, timeout: scores(docs)  # 不連網路 / no network
+            return r, eng
+        good, _ = make(lambda docs: [0.9, 0.1][:len(docs)] + [0.0] * (len(docs) - 2))
+        self.assertTrue(good.check())
+        self.assertEqual(good.note, "ok")
+        self.assertEqual(len(good.score("問題", ["甲", "乙", "丙"])), 3)
+        flat, eng = make(lambda docs: [1e-6] * len(docs))                   # 已知的壞轉檔：分數都接近 0
+        self.assertFalse(flat.check())
+        self.assertIn("self-check failed", flat.note)
+        with self.assertRaises(Exception):
+            flat.score("問題", ["甲", "乙"])
+
+        def boom(docs):
+            raise OSError("no engine")
+        down, _ = make(boom)
+        self.assertFalse(down.check())
+        self.assertIn("unavailable", down.note)
+
     def test_cosine(self):
         a = rag._norm([3.0, 4.0])
         self.assertAlmostEqual(rag.cosine(a, a), 1.0, places=6)

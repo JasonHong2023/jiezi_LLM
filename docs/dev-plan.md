@@ -111,7 +111,7 @@
                  自我進化飛輪（老師階梯 → LoRA / 技能 / 路由器）
 ```
 
-> **Port**：依專案規則 R11，本機服務固定使用 36100–36119（gateway 36100、engine-chat 36101、engine-embed 36102、engine-cpu 36103、verifier 36104、router 36105），一律綁定 `127.0.0.1`。`hetero-runtime.md` 中的 8000 / 8080–8082 已作廢。
+> **Port**：依專案規則 R11，本機服務固定使用 36100–36119（gateway 36100、engine-chat 36101、engine-embed 36102、engine-cpu 36103、verifier 36104、router 36105、engine-rerank 36106），一律綁定 `127.0.0.1`。`hetero-runtime.md` 中的 8000 / 8080–8082 已作廢。
 
 ### 4.1 元件與硬體分工
 

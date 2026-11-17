@@ -25,6 +25,18 @@ QUERY_INSTRUCT = ("Instruct: Given a question in Traditional Chinese, retrieve p
                   "that answer it\nQuery: ")
 DOC_CHARS, CANDIDATES, BATCH, SCAN_DIM, RERANK = 800, 200, 16, 256, 50
 DEFAULT_MIN = 0.5
+# 重排序（add-reranker）：向量階段的前 N 名交給「問題＋段落一起讀」的模型重新排序
+# Reranking: the top N of the vector stage are re-scored by a model that reads question and passage together
+RERANK_MODEL, RERANK_TOP, RERANK_SLACK, RERANK_TIMEOUT_S = "qwen3-reranker-0.6b-q8_0", 20, 0.1, 10.0
+# 自我檢查用的樣本（問題、相關、不相關）；已知有些 GGUF 轉檔分數都接近 0，分不開就停用
+# Self-check samples (query, relevant, irrelevant): some GGUF conversions score everything near 0
+RERANK_PROBES = (
+    ("酒後開車會被怎麼處罰？", "駕駛人吐氣所含酒精濃度達每公升零點二五毫克以上而駕駛動力交通工具者，處三年以下有期徒刑。",
+     "臺灣的珍珠奶茶起源於一九八〇年代的臺中與臺南茶店。"),
+    ("玉山有多高？", "玉山主峰海拔三千九百五十二公尺，是臺灣的最高峰。", "勞工每日正常工作時間不得超過八小時。"),
+    ("What is the capital of Taiwan?", "Taipei is the seat of the central government of Taiwan.",
+     "Bubble sort repeatedly swaps adjacent elements that are out of order."),
+)
 
 
 def vectors_path(root: Path) -> Path:
@@ -86,6 +98,53 @@ class Embedder:
         with self.lock:
             if self.engine is not None:
                 self.stop_locked()
+
+
+class Reranker(Embedder):
+    """重排序引擎（R11 的 engine-rerank 埠）：延遲啟動、閒置卸載；第一次使用先自我檢查，沒過就停用。
+    The reranking engine (R11 engine-rerank port): lazy start, idle stop; self-checked on first use and disabled
+    when relevant and irrelevant passages cannot be told apart."""
+
+    def __init__(self, engine_factory, log_path: Path | None = None, idle_s: float = 900, clock=time.monotonic,
+                 timeout_s: float = RERANK_TIMEOUT_S):
+        super().__init__(engine_factory, log_path, idle_s, clock)
+        self.timeout_s, self.checked, self.note = timeout_s, None, "not checked yet"
+
+    def _post(self, query: str, docs: list[str], timeout: float) -> list[float]:
+        eng = self._ensure()
+        req = urllib.request.Request(f"{eng.base_url}/v1/rerank", method="POST",
+                                     data=json.dumps({"model": RERANK_MODEL, "query": query,
+                                                      "documents": docs}).encode(),
+                                     headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            results = json.loads(r.read())["results"]
+        self.last = self.clock()
+        out = [0.0] * len(docs)
+        for item in results:
+            out[item["index"]] = float(item["relevance_score"])
+        return out
+
+    def check(self) -> bool:
+        """三組樣本都要「相關 > 不相關」而且分數有分開；結果記住，不重跑。
+        Every probe must rank the relevant passage first with a real gap; the result is remembered."""
+        if self.checked is None:
+            try:
+                gaps = []
+                for q, good, bad in RERANK_PROBES:
+                    a, b = self._post(q, [good, bad], 120)  # 含第一次載入模型 / includes the first model load
+                    gaps.append(a - b)
+                self.checked = all(g > 1e-3 for g in gaps)
+                self.note = "ok" if self.checked else f"self-check failed (gaps {[round(g, 4) for g in gaps]}); disabled"
+            except Exception as exc:  # noqa: BLE001 - 起不來就停用，不影響回答 / unusable means disabled
+                self.checked, self.note = False, f"unavailable: {type(exc).__name__}: {exc}"
+            if not self.checked:
+                self.stop()
+        return self.checked
+
+    def score(self, query: str, docs: list[str]) -> list[float]:
+        if not self.check():
+            raise JieziError(f"reranker {self.note}")
+        return self._post(query[:500], docs, self.timeout_s)
 
 
 class VectorStore:
@@ -159,8 +218,12 @@ def build(knowledge, store: VectorStore, embedder: Embedder, log=print, ids: lis
 class HybridRetriever:
     """截短向量全掃描 → 完整向量重排 → 門檻。 / Prefix scan, full rerank, threshold."""
 
-    def __init__(self, knowledge, store: VectorStore, embedder: Embedder, min_score: float = DEFAULT_MIN):
+    def __init__(self, knowledge, store: VectorStore, embedder: Embedder, min_score: float = DEFAULT_MIN,
+                 reranker: "Reranker | None" = None, text_of: Callable[[int], str] | None = None,
+                 top_n: int = RERANK_TOP):
         self.k, self.store, self.embedder, self.min = knowledge, store, embedder, min_score
+        self.reranker, self.text_of, self.top_n = reranker, text_of, top_n
+        self.last_error, self.reranked = None, 0
         self._ids, self._pref = store.prefixes()
 
     def __call__(self, text: str, limit: int = 2) -> list[tuple[int, float]]:
@@ -171,4 +234,49 @@ class HybridRetriever:
         top = sorted(zip(self._ids, (cosine(qp, v) for v in self._pref)), key=lambda x: -x[1])[:RERANK]
         full = self.store.get([i for i, _ in top])
         scored = sorted(((sid, cosine(q, v)) for sid, v in full.items()), key=lambda x: -x[1])
+        if self.reranker is not None and self.text_of is not None and scored and scored[0][1] >= self.min:
+            # 向量先判定「有相關段落」，再讓重排序在門檻附近的前 N 名裡挑；失敗或逾時就用向量排序
+            # Vectors decide relevance exists; the reranker picks among the top N near the threshold; errors fall back
+            cands = [(sid, s) for sid, s in scored[:self.top_n] if s >= self.min - RERANK_SLACK]
+            if len(cands) > 1:
+                try:
+                    scores = self.reranker.score(text, [self.text_of(sid) for sid, _ in cands])
+                    order = sorted(range(len(cands)), key=lambda i: -scores[i])
+                    self.reranked += 1
+                    return [cands[i] for i in order[:limit]]
+                except Exception as exc:  # noqa: BLE001 - 重排序不可影響回答 / reranking never blocks an answer
+                    self.last_error = f"{type(exc).__name__}: {exc}"
         return [(sid, s) for sid, s in scored[:limit] if s >= self.min]
+
+
+def measure(knowledge, hybrid_plain: "HybridRetriever", hybrid_rerank: "HybridRetriever", n: int = 40, k: int = 3,
+            seed: int = 20261117, log=print) -> dict:
+    """A/B 量測（add-reranker 2.1）：從知識庫隨機抽段落，拿段落中間的一句話當問題，看該段落有沒有進前 k 名。
+    這是「已知項目檢索」的合成題，只能比較有無重排序的相對差異，不代表真實問題的命中率。
+    A/B measurement: a sentence from the middle of a random section is the query and the section is the target.
+    Synthetic known-item retrieval: good for the relative difference only, not a real-question hit rate."""
+    import random
+    import re
+    rng = random.Random(seed)
+    ids = [r[0] for r in knowledge.con.execute("SELECT id FROM sections ORDER BY id")]
+    rng.shuffle(ids)
+    items = []
+    for sid in ids:
+        text = knowledge.section(sid)["text"][:DOC_CHARS]
+        sents = [x.strip() for x in re.split(r"[。！？\n]", text) if 14 <= len(x.strip()) <= 60]
+        if len(sents) >= 3:
+            items.append((sid, sents[len(sents) // 2]))
+        if len(items) >= n:
+            break
+    out = {"n": len(items), "k": k}
+    for name, h in (("vector", hybrid_plain), ("rerank", hybrid_rerank)):
+        hit, t0 = 0, time.monotonic()
+        for sid, q in items:
+            hit += sid in [i for i, _ in h(q, k)]
+        out[name] = {"hit_at_k": round(hit / max(1, len(items)), 4),
+                     "seconds_per_query": round((time.monotonic() - t0) / max(1, len(items)), 3)}
+        log(f"  {name}: hit@{k} {out[name]['hit_at_k']:.1%}, {out[name]['seconds_per_query']} s/query")
+    out["reranked_queries"], out["rerank_errors"] = hybrid_rerank.reranked, hybrid_rerank.last_error
+    out["gain_points"] = round((out["rerank"]["hit_at_k"] - out["vector"]["hit_at_k"]) * 100, 1)
+    out["extra_seconds"] = round(out["rerank"]["seconds_per_query"] - out["vector"]["seconds_per_query"], 3)
+    return out
