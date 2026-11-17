@@ -1,4 +1,4 @@
 - [x] 1.1 `documents.py`：沙盒內的 LibreOffice 轉檔（私有設定檔目錄、單一輸入檔、時間／記憶體／輸出上限）、轉檔後交給既有讀取程式 / sandboxed conversion feeding the existing readers
 - [x] 1.2 缺 LibreOffice 或沙盒時的訊息；`doctor` 檢查；bootstrap 選用步驟 `office` / missing-tool messages, doctor check, optional bootstrap step
-- [ ] 1.3（程式、假轉檔測試與文件已完成；真實轉檔測試待 LibreOffice 安裝後執行）單元測試（假的轉檔程式；有 LibreOffice 時另跑真實的 .doc／.xls／.ppt 樣本）；`stack.md`、`security/accepted.toml`、`docs/licenses.md`、`docs/clients.md`；`openspec validate add-legacy-office --strict` / tests and docs
-- [ ] 2.1 量測（與實作分開）：3 份真實舊版檔案的耗時與文字完整度，結果記入討論記錄 / measurement on three real legacy files
+- [x] 1.3（2026-11-17 LibreOffice 24.2.7 安裝後真實 RTF 測試通過 / real RTF test passes）單元測試（假的轉檔程式；有 LibreOffice 時另跑真實的 .doc／.xls／.ppt 樣本）；`stack.md`、`security/accepted.toml`、`docs/licenses.md`、`docs/clients.md`；`openspec validate add-legacy-office --strict` / tests and docs
+- [x] 2.1 量測（與實作分開）：3 份真實舊版檔案的耗時與文字完整度，結果記入討論記錄 / measurement on three real legacy files — 2026-11-17：.doc／.rtf／.odt／.xls／.ods／.ppt／.odp 各一份（LibreOffice 自己產生的樣本），沙盒內轉檔加讀取每份 1.7–1.9 秒，文字、數字、工作表與投影片順序全部完整 / seven formats, 1.7–1.9 s each, text complete
