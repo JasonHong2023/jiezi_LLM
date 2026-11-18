@@ -1056,11 +1056,12 @@ class Gateway:
         if self.doc_vectors is not None:
             vectors, wait_s = self.doc_vectors, self.s.doc_embed_timeout_s
 
-            async def semantic(question: str, text: str, parts: list[str]):
-                return await anyio.to_thread.run_sync(vectors.order, question, text, parts, wait_s)
+            async def semantic(question: str, text: str, parts: list[str], alt: str | None = None):
+                return await anyio.to_thread.run_sync(vectors.order, question, text, parts, wait_s, alt)
 
         t = time.monotonic()
-        new, info = await condense(msgs[idx]["content"], complete, hint, budget, self.doc_notes, semantic)
+        new, info = await condense(msgs[idx]["content"], complete, hint, budget, self.doc_notes, semantic,
+                                   self.s.doc_recall)
         msgs[idx] = {**msgs[idx], "content": new}
         info["seconds"] = round(time.monotonic() - t, 1)
         info["followup"] = bool(prev)

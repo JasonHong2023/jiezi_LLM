@@ -1,4 +1,4 @@
-> **狀態 / Status**：提案，**尚未實作**，待使用者審閱（R4）。Proposal only, not implemented; awaiting review.
+> **狀態 / Status**：2026-11-18 使用者同意：A、B 都做、量完再定預設（OQ2＝2、OQ3＝8 秒）。實作中。/ Approved: both, measure first.
 
 ## Why
 

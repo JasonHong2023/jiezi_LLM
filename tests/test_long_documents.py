@@ -691,3 +691,75 @@ class TestSemanticChunks(unittest.TestCase):
                     import time
                     time.sleep(0.05)
                 self.assertIsNotNone(gw.doc_vectors.get(D.clean_for_attach(text)))
+
+
+class TestChunkRecall(unittest.TestCase):
+    """add-chunk-recall：保留語意名額、HyDE 與退回。 / Reserved semantic slots, HyDE and fallbacks."""
+
+    def test_reserve_keeps_top_semantic_chunks(self):
+        parts = [f"第{i}段" + "內容" * 300 for i in range(10)]
+        semantic = [7, 3, 1, 0, 2, 4, 5, 6, 8, 9]
+        budget = 200 + 2 * (L.est_tokens(parts[0]) + 20) + 30                # 只放得下兩段 / room for two chunks
+        self.assertEqual(L.select("第0段", parts, budget, "", semantic, reserve=2), [3, 7])
+        self.assertNotEqual(L.select("第0段", parts, budget, "", semantic), [3, 7])
+        self.assertEqual(L.select("第0段", parts, budget, "", None, reserve=2),
+                         L.select("第0段", parts, budget))                  # 沒有語意排序就不變 / unchanged
+
+    def test_rrf_of_question_and_draft(self):
+        self.assertEqual(L.rrf([[0, 1, 2, 3], [3, 1, 2, 0]])[0], 1)                # 兩邊都前面的勝出 / consensus wins
+        cv = L.ChunkVectors(TestSemanticChunks.fake_embed)
+        text = TestSemanticChunks.doc()
+        parts = L.chunks(text, L.QA_CHUNK_TOKENS)
+        seen = []
+
+        def embed(texts):
+            seen.append(list(texts))
+            return TestSemanticChunks.fake_embed(texts)
+        cv.embed = embed
+        _, how = cv.order("加班費", text, parts, 5, alt="延長工作時間之工資加給")
+        self.assertEqual(how, "semantic+hyde")
+        self.assertEqual(seen[-1][1], "延長工作時間之工資加給")             # 答案句不加查詢指令 / no instruction
+        cv.close()
+
+    def test_condense_hyde_and_fallbacks(self):
+        content = D.attach({"name": "勞基法.txt", "text": TestSemanticChunks.doc()}, "加班費怎麼算？")
+        got = {}
+
+        async def sem(q, t, parts, alt=None):
+            got["alt"] = alt
+            return list(range(len(parts))), "semantic+hyde" if alt else "semantic"
+
+        async def draft(msgs, n):
+            if msgs[0]["content"].startswith("以下問題"):
+                return "延長工作時間之工資依標準加給。"
+            return "x"
+        _, info = anyio.run(L.condense, content, draft, "", L.LIMIT, None, sem, "hyde")
+        self.assertEqual((got["alt"], info["selected"][0]["recall"]), ("延長工作時間之工資依標準加給。", "hyde"))
+        self.assertEqual(info["selected"][0]["ranking"], "semantic+hyde+lexical")
+
+        async def slow(msgs, n):
+            await anyio.sleep(5)
+            return "x"
+        old = L.HYDE_TIMEOUT_S
+        try:
+            L.HYDE_TIMEOUT_S = 0.05
+            text, why = anyio.run(L.draft_answer, "x", "q", slow, 0.05)
+            self.assertEqual((text, why), (None, "hyde_timeout"))         # 逾時退回 / timeout falls back
+        finally:
+            L.HYDE_TIMEOUT_S = old
+
+        async def broken(msgs, n):
+            raise OSError("engine down")
+        _, info = anyio.run(L.condense, content, broken, "", L.LIMIT, None, sem, "hyde")
+        self.assertEqual((got["alt"], info["selected"][0]["recall"]), (None, "hyde_error: OSError"))
+        _, info = anyio.run(L.condense, content, draft, "", L.LIMIT, None, sem, "reserve")
+        self.assertEqual(info["selected"][0]["recall"], "reserve")
+        _, info = anyio.run(L.condense, content, draft, "", L.LIMIT, None, None, "hyde")
+        self.assertEqual(info["selected"][0]["recall"], "off")              # 沒有語意就不猜 / no draft without vectors
+
+    def test_setting(self):
+        from jiezi.errors import JieziError
+        from jiezi.runtime.settings import _recall
+        self.assertEqual((_recall(None), _recall(" HyDE ")), ("off", "hyde"))
+        with self.assertRaises(JieziError):
+            _recall("always")

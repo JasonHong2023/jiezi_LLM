@@ -55,6 +55,14 @@ RRF_K = 10                                   # 倒數名次合併的平滑常數
 # the A/B measurement must use different questions.
 SEMANTIC_WEIGHT = 1.5
 EMBED_BATCH = 8                              # 每批建幾段的向量（約 5,000 token，引擎上限 8,192）/ chunks per request
+# 段落召回（add-chunk-recall）：reserve＝先放語意前幾名；hyde＝先讓本機模型猜答案句，再和問題各查一次語意排序
+# Chunk recall: "reserve" keeps the top semantic chunks; "hyde" also embeds a drafted answer sentence
+RECALL_MODES = ("off", "reserve", "hyde")
+RESERVE_TOP = 2                              # 保留語意前幾名（多了會擠掉點名條號的字面命中）/ reserved semantic slots
+HYDE_TIMEOUT_S = 8.0                         # 猜答案超過就放棄、用現行做法 / give up on the draft after this
+HYDE_ANSWER = 120
+HYDE_PROMPT = ("以下問題是關於《{name}》這份文件。請假設你知道答案，用一到兩句繁體中文寫出可能出現在原文裡的答案句，"
+               "像條文或文章本身的寫法。不確定也照猜，不要解釋、不要說不知道。")
 DOC_QUERY_INSTRUCT = ("Instruct: Given a question about a document, retrieve the passage of the document that "
                       "answers it\nQuery: ")
 
@@ -143,9 +151,12 @@ class ChunkVectors:
             with self.lock:
                 self.building.pop(k, None)
 
-    def order(self, question: str, text: str, parts: list[str], wait_s: float) -> tuple[list[int] | None, str]:
-        """語意排序（段落編號，最相關在前）。沒準備好或出錯回傳 (None, 原因)。
-        The semantic order of chunks, or (None, reason) when not ready or failing."""
+    def order(self, question: str, text: str, parts: list[str], wait_s: float,
+              alt: str | None = None) -> tuple[list[int] | None, str]:
+        """語意排序（段落編號，最相關在前）。沒準備好或出錯回傳 (None, 原因)。alt：猜出的答案句（HyDE），
+        和問題各排一次再合併。
+        The semantic order of chunks, or (None, reason) when not ready or failing. alt: a drafted answer (HyDE),
+        ranked separately and fused with the question's order."""
         vecs = self.get(text)
         if vecs is None:
             fut = self.start(text)
@@ -162,12 +173,20 @@ class ChunkVectors:
                     return None, f"error: {type(exc).__name__}: {str(exc)[:120]}"
         if len(vecs) != len(parts):
             return None, "chunk_mismatch"
+        queries = [DOC_QUERY_INSTRUCT + question[:500]]
+        if alt and alt.strip():
+            queries.append(alt.strip()[:500])    # 答案句是「像段落的文字」，不加查詢指令 / passage-like, no instruction
         try:
-            q = self.embed([DOC_QUERY_INSTRUCT + question[:500]])[0]
+            qs = self.embed(queries)
         except Exception as exc:  # noqa: BLE001
             return None, f"error: {type(exc).__name__}: {str(exc)[:120]}"
-        sims = [sum(a * b for a, b in zip(q, v)) for v in vecs]  # 都已正規化 / normalized
-        return sorted(range(len(vecs)), key=lambda i: -sims[i]), "semantic"
+        orders = []
+        for q in qs:
+            sims = [sum(a * b for a, b in zip(q, v)) for v in vecs]  # 都已正規化 / normalized
+            orders.append(sorted(range(len(vecs)), key=lambda i: -sims[i]))
+        if len(orders) == 1:
+            return orders[0], "semantic"
+        return rrf(orders), "semantic+hyde"
 
     def close(self) -> None:
         self.pool.shutdown(wait=False, cancel_futures=True)
@@ -256,6 +275,16 @@ def rank(question: str, parts: list[str], hint: str = "") -> list[tuple[float, i
     return sorted(((sc, i) for i, sc in enumerate(score)), key=lambda x: -x[0])
 
 
+def rrf(orders: list[list[int]]) -> list[int]:
+    """等權重的倒數名次合併，同分照第一個排序。 / Equal-weight RRF; ties follow the first order."""
+    score = Counter()
+    for order in orders:
+        for r, i in enumerate(order, 1):
+            score[i] += 1.0 / (RRF_K + r)
+    first = {i: r for r, i in enumerate(orders[0])}
+    return sorted(score, key=lambda i: (-score[i], first.get(i, len(first))))
+
+
 def fuse(lexical: list[int], semantic: list[int] | None) -> list[int]:
     """倒數名次合併（RRF）：兩種排序各給 1/(K+名次)，相加後排序；沒有語意排序就照字面。
     Reciprocal rank fusion of the lexical and semantic orders; lexical alone when there is no semantic order."""
@@ -269,9 +298,15 @@ def fuse(lexical: list[int], semantic: list[int] | None) -> list[int]:
 
 
 def select(question: str, parts: list[str], budget: int = LIMIT, hint: str = "",
-           semantic: list[int] | None = None) -> list[int]:
+           semantic: list[int] | None = None, reserve: int = 0) -> list[int]:
+    """挑放得進預算的段落。reserve：先放語意排序的前幾名，剩下的名額再照合併排序。
+    Pick chunks within the budget; reserve: the top semantic chunks go first, then the fused order."""
     picked, used = [], est_tokens(question) + 200
-    for i in fuse([i for _, i in rank(question, parts, hint)], semantic):
+    order = fuse([i for _, i in rank(question, parts, hint)], semantic)
+    if reserve > 0 and semantic:
+        top = list(semantic[:reserve])
+        order = top + [i for i in order if i not in top]
+    for i in order:
         if not 0 <= i < len(parts):
             continue
         t = est_tokens(parts[i]) + 20
@@ -328,8 +363,25 @@ async def summarize(name: str, text: str, complete: Complete, budget: int = LIMI
 
 
 # ── 入口 / Entry ──
+async def draft_answer(name: str, question: str, complete: Complete,
+                       timeout_s: float = HYDE_TIMEOUT_S) -> tuple[str | None, str]:
+    """HyDE：讓本機模型猜一句答案，只用來查段落、不給使用者看；逾時或失敗回傳 (None, 原因)。
+    HyDE: a drafted answer used only for retrieval, never shown; (None, reason) on timeout or failure."""
+    import anyio
+    msgs = [{"role": "system", "content": HYDE_PROMPT.format(name=name)}, {"role": "user", "content": question[:500]}]
+    try:
+        with anyio.fail_after(timeout_s):
+            text = (await complete(msgs, HYDE_ANSWER)).strip()
+    except TimeoutError:
+        return None, "hyde_timeout"
+    except Exception as exc:  # noqa: BLE001 - 退回現行做法 / fall back
+        return None, f"hyde_error: {type(exc).__name__}"
+    return (text, "hyde") if text else (None, "hyde_empty")
+
+
 async def condense(content: str, complete: Complete, hint: str = "", budget: int = LIMIT,
-                   cache: NotesCache | None = None, semantic: Semantic | None = None) -> tuple[str, dict]:
+                   cache: NotesCache | None = None, semantic: Semantic | None = None,
+                   recall: str = "off") -> tuple[str, dict]:
     """把含長文件的訊息改寫成放得進本機上下文的版本。hint：上一輪問答（追問時幫忙挑段落）。
     Rewrite a long-document message to fit the local context. hint: the previous exchange, for follow-ups."""
     budget = max(MIN_BUDGET, budget)
@@ -349,15 +401,22 @@ async def condense(content: str, complete: Complete, hint: str = "", budget: int
     else:
         for name, text in docs:
             parts = chunks(text, QA_CHUNK_TOKENS)
-            order, how = (None, "off")
+            order, how, alt, recalled = (None, "off", None, "off")
             if semantic is not None and len(parts) > 1:
+                if recall == "hyde" and question:
+                    alt, recalled = await draft_answer(name, question, complete)
                 try:
-                    order, how = await semantic(question, text, parts)
+                    order, how = await (semantic(question, text, parts, alt) if alt
+                                        else semantic(question, text, parts))
                 except Exception as exc:  # noqa: BLE001 - 語意排序不可擋住回答 / never block the answer
                     order, how = None, f"error: {type(exc).__name__}"
-            keep = select(question, parts, budget // max(1, len(docs)), hint, order)
+                if recall == "reserve":
+                    recalled = "reserve" if order else "off"
+            keep = select(question, parts, budget // max(1, len(docs)), hint, order,
+                          RESERVE_TOP if recall == "reserve" else 0)
             info.setdefault("selected", []).append({"document": name, "chunks": len(parts), "kept": keep,
-                                                    "ranking": "semantic+lexical" if order else f"lexical ({how})"})
+                                                    "ranking": f"{how}+lexical" if order else f"lexical ({how})",
+                                                    "recall": recalled})
             body = "\n\n".join(f"〔第 {i + 1}/{len(parts)} 段〕\n{parts[i]}" for i in keep)
             blocks.append(f"以下是《{name}》（原文 {len(text)} 字）中和問題最相關的段落：\n{body}")
         instruction = (question + "\n（只根據上面的段落回答；段落裡找不到答案就說文件中沒有提到，並指出依據的段落編號。）")

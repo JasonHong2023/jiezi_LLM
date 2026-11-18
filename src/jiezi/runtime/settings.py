@@ -33,6 +33,14 @@ def _onoff(env: dict, key: str, default: bool) -> bool:
     raise JieziError(f"{key} must be on or off, got {v!r}")
 
 
+def _recall(value: str | None) -> str:
+    from ..longdoc import RECALL_MODES
+    v = (value or "off").strip().lower()
+    if v not in RECALL_MODES:
+        raise JieziError(f"JIEZI_DOC_RECALL must be one of {', '.join(RECALL_MODES)}, got {v!r}")
+    return v
+
+
 @dataclass
 class Settings:
     root: Path
@@ -69,6 +77,7 @@ class Settings:
     rag_min: float = 0.5            # 向量相似度門檻 / similarity threshold
     doc_semantic: bool = True       # 長文件問答用語意挑段落（add-semantic-chunks）/ semantic chunk selection
     doc_embed_timeout_s: float = 20.0  # 第一題最多等段落向量幾秒，之後先用字面 / first-question wait for chunk vectors
+    doc_recall: str = "off"         # 段落召回 off／reserve／hyde（add-chunk-recall）/ chunk recall mode
     agent: bool = False             # 唯讀代理（add-agent-readonly；預設關）/ read-only file agent, off by default
     agent_max_steps: int = 6        # 一個請求最多幾步工具呼叫（使用者 2026-11-17：6）/ tool steps per request
     rerank: bool = False            # 向量前 N 名再重排序（add-reranker；量測過門檻才預設開啟）/ rerank the top N (off until measured)
@@ -141,6 +150,7 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         rag_min=float(env.get("JIEZI_RAG_MIN") or 0.5),
         doc_semantic=_onoff(env, "JIEZI_DOC_SEMANTIC", True),
         doc_embed_timeout_s=float(env.get("JIEZI_DOC_EMBED_TIMEOUT") or 20.0),
+        doc_recall=_recall(env.get("JIEZI_DOC_RECALL")),
         agent=_onoff(env, "JIEZI_AGENT", False),
         agent_max_steps=max(1, min(12, _int(env, "JIEZI_AGENT_STEPS", 6))),
         rerank=_onoff(env, "JIEZI_RERANK", False),
