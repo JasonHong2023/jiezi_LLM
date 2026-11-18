@@ -67,7 +67,10 @@ def eval_targets(root: Path) -> tuple[set[str], set[str]]:
 
 
 def _ex(messages, answer, source, license_, origin, **extra) -> dict:
-    msgs = [*messages, {"role": "assistant", "content": answer}]
+    # 系統訊息合併成開頭一則：Qwen 的對話範本只接受開頭的 system（2026-11-19 夜間訓練因老師樣本有兩則 system 而失敗）
+    # One leading system message: the Qwen chat template rejects any other (training failed on 2026-11-19)
+    from .runtime.context import merge_system
+    msgs = [*merge_system(list(messages)), {"role": "assistant", "content": answer}]
     return {"messages": msgs, "source": source, "license": license_, "training_use": True, "origin": origin,
             "sha256": _sha(msgs), **extra}
 
@@ -214,8 +217,12 @@ def export(root: Path, limit_per_source: int = 2000, replay: Path | None = None,
     rng = random.Random(SEED)
     banned, targets = eval_targets(root)
     traj, why = from_trajectories(root)
+    from .runtime.context import merge_system
     from .teacher import load as teacher_load
-    pool = traj + teacher_load(root)[-limit_per_source:] + from_laws(root, rng, limit_per_source) + \
+    teach = teacher_load(root)[-limit_per_source:]
+    for ex in teach:          # 舊的老師樣本也整理 / earlier teacher rows too
+        ex["messages"] = merge_system(ex["messages"])
+    pool = traj + teach + from_laws(root, rng, limit_per_source) + \
         from_curriculum(root, rng, limit_per_source) + from_knowledge(root, rng, limit_per_source)
     kept, seen = [], set()
     for ex in pool:

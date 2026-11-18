@@ -39,13 +39,15 @@ class TestTeacher(unittest.TestCase):
             self.assertTrue(all(T.take(root, "m", 2) for _ in range(2)))
             self.assertFalse(T.take(root, "m", 2))
             self.assertTrue(T.take(root, "n", 2))
-            T.save(root, [{"role": "user", "content": "玉山多高？"}], "3952 公尺", "nvidia-nemotron-3-ultra",
+            T.save(root, [{"role": "system", "content": "你是芥子"}, {"role": "system", "content": "資料：玉山 3952"},
+                          {"role": "user", "content": "玉山多高？"}], "3952 公尺", "nvidia-nemotron-3-ultra",
                    "delivered", "t1")
             (root / "var" / "trajectories").mkdir(parents=True)
             (root / "var" / "trajectories" / f"{date.today().isoformat()}.jsonl").write_text("")
             out, _ = TD.export(root, limit_per_source=5)
             rows = [json.loads(x) for x in out.read_text(encoding="utf-8").splitlines()]
         t = [r for r in rows if r.get("source") == "teacher"]
+        self.assertFalse(any(m["role"] == "system" for r in rows for m in r["messages"][1:]))   # 只在開頭 / leading only
         self.assertEqual(t[0]["messages"][-1]["content"], "3952 公尺")
         self.assertEqual(t[0]["teacher"], "nvidia-nemotron-3-ultra")
 
