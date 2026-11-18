@@ -78,3 +78,5 @@ details.draft > div { white-space: pre-wrap; border-left: 3px solid var(--line);
 .refs { overflow-wrap: anywhere; }
 .ref a { color: var(--accent); }
 .warn.check { font-size: .8rem; }
+.esc { margin-bottom: 1rem; }
+.esc h3 { margin: .2rem 0; font-size: 1rem; }

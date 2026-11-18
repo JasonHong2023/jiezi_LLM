@@ -41,6 +41,13 @@ from .settings import POLICIES, Settings
 # Questions that truly need the web or live data (stricter than memory's WEB)
 LIVE = re.compile(r"https?://|網址|網頁|網站|新聞|天氣|氣溫|下雨|颱風動態|股價|匯率|油價|最新消息|即時|"
                   r"現在幾點|上網查|網路上(找|查|搜)|搜尋一下")
+# 優先走雲端免費模型的轉交原因（使用者 2026-11-18）/ escalation reasons that go to the free cloud models first
+CLOUD_FIRST = frozenset({"context_too_large", "engine_unavailable"})
+# 抱怨或回饋，不是要答案的問題 / complaints and feedback rather than questions
+FEEDBACK = re.compile(r"又(出現|變成|是|有)|怎麼又|還是(有|一樣|錯)|不要再|你又|你剛剛|你剛才|講過了|說過了")
+# 代理程式請模型摘要或下標題時，把整段對話貼成「User: … Assistant: …」；這不是要上網的問題（2026-11-18 Hermes 誤判）
+# Agents paste the conversation as "User: … Assistant: …" to get a title or summary; that is not a web question
+TRANSCRIPT = re.compile(r"(^|\n)\s*(User|使用者)\s*[:：].*?\n\s*(Assistant|助理)\s*[:：]", re.S)
 CORRECTION_DIRECT = 0.5
 
 
@@ -394,6 +401,31 @@ class Gateway:
             return "cloud"
         return None
 
+    @staticmethod
+    def _keep_local(help_reason: str | None, body: dict, rec: dict) -> str | None:
+        """本機說「不確定」也不轉交的情況（2026-11-18 轉交紀錄分析）：只打路徑沒附檔（「看不到，請附上」就是正確答案）、
+        問芥子自己（「你知道你在哪裡嗎」）、抱怨或回饋（「又出現簡體中文字」）——Claude 也不會答得更好。
+        When "unsure" is still the right local answer: a bare path, a question about Jiezi, or feedback."""
+        if help_reason != "self_reported_unsure":
+            return help_reason
+        if rec.get("path_note"):
+            return None
+        from ..memory import SELF
+        last = next((m for m in reversed(body.get("messages") or []) if m.get("role") == "user"), None)
+        q = message_text(last) if last else ""
+        if SELF.search(q) or FEEDBACK.search(q):
+            rec["kept_local"] = "about_jiezi" if SELF.search(q) else "feedback"
+            return None
+        return help_reason
+
+    def _route_for(self, reason: str) -> str | None:
+        """依轉交原因選去處：本機放不下（Hermes 等代理程式的大請求）或本機被評測保留時，雲端開著就先走雲端免費模型，
+        不用 Claude（使用者 2026-11-18：「轉給 Claude 的次數這個一定要降低」，選「改轉雲端免費模型」）。
+        Requests the local model cannot hold, or a reserved engine, go to the free cloud models first when available."""
+        if reason in CLOUD_FIRST and self._can_escalate() is None:
+            return "cloud"
+        return self._auto_route()
+
     def _no_route_reason(self) -> str:
         if self.s.consult_auto and self.consultant is not None:
             return "consult_daily_cap"
@@ -402,7 +434,7 @@ class Gateway:
     async def _escalate(self, body: dict, rec: dict, t0: float, stream: bool, reason: str) -> Response:
         """自動轉交（design D5、D9）：Claude 失敗時改用雲端，再不行就回本機答案。
         Automatic escalation: on Claude failure try the cloud, else return the local answer."""
-        if self._auto_route() == "consult":
+        if self._route_for(reason) == "consult":
             _stage("asking_claude")
             try:
                 resp, info = await self._consult_once(body)
@@ -844,6 +876,14 @@ class Gateway:
                         "question": _bare_question(message_text(users[-1]))[:200] if users else "",
                         "sources": sorted({s.get("source") for s in r.get("sources") or [] if s.get("source")})})
         return JSONResponse({"records": out})
+
+    async def admin_escalations(self, request: Request) -> Response:
+        """最近 7 天每天轉給 Claude／雲端的次數與原因（狀態頁用）。 / Escalations per day for the status page."""
+        if not self._authorized(request):
+            return _err(401, "invalid or missing gateway key", "unauthorized")
+        from .gaps import load
+        from .stats import escalations
+        return JSONResponse(await anyio.to_thread.run_sync(lambda: escalations(load(self.s.root, 7))))
 
     async def admin_doctor(self, request: Request) -> Response:
         if not self._authorized(request):
@@ -1413,7 +1453,7 @@ class Gateway:
         from ..documents import DOC_RE
         # 只看問題本身：附加文件裡出現「網站、新聞」等字不代表要上網查（2026-11-17 桌面網頁實測誤判）
         # Only the question counts: words like "website" inside an attached document do not need the web
-        if not LIVE.search(DOC_RE.sub("", last["content"])):
+        if not LIVE.search(DOC_RE.sub("", last["content"])) or TRANSCRIPT.search(last["content"]):
             return None
         if any(s.get("source") in ("tools", "memory") for s in rec.get("sources") or []):
             return None  # 「今天星期幾」程式已算好；記憶裡有答案 / computed or remembered
@@ -1476,10 +1516,7 @@ class Gateway:
                                  "tps": _tps(resp), "usage": resp.get("usage")})
         final, tier, escalate_reason = resp, 0, None
         help_reason = escalation.needs_help(_message(resp), (resp.get("choices") or [{}])[0].get("finish_reason"))
-        if help_reason == "self_reported_unsure" and rec.get("path_note"):
-            # 只打了路徑沒附檔：「看不到，請附上」就是正確答案，不用轉交（2026-11-18 實測被轉給 Claude）
-            # A path without the file: "I can't see it, please attach it" is the right answer, no escalation
-            help_reason = None
+        help_reason = self._keep_local(help_reason, body, rec)
         if help_reason and ver["status"] != "fail":
             # 本機自己表示不會：本機重試沒有幫助，直接轉交 / the local model says it can't: retrying won't help
             rec["tiers"][-1]["needs_help"] = help_reason
@@ -1836,7 +1873,7 @@ class Gateway:
             released = True
             text = "".join(content)
             ver = escalation.verify(body, {"content": text}, self._grounding(body, rec))
-            help_reason = escalation.needs_help({"content": text}, finish)
+            help_reason = self._keep_local(escalation.needs_help({"content": text}, finish), body, rec)
             grounded = next((c for c in ver.get("checks") or [] if c["check"] == "grounded"), {})
             if grounded.get("status") == "fail":
                 # 串流已送出，無法重答：附上提醒，並在 jiezi 策略下自動請教 / already streamed: warn, then consult
@@ -1985,6 +2022,7 @@ def create_app(gw: Gateway) -> Starlette:
         Route("/admin/unload", gw.admin_unload, methods=["POST"]),
         Route("/admin/trajectories", gw.admin_trajectories, methods=["GET"]),
         Route("/admin/doctor", gw.admin_doctor, methods=["GET"]),
+        Route("/admin/escalations", gw.admin_escalations, methods=["GET"]),
         *ui_routes(gw.s.root),
     ], lifespan=lifespan, middleware=[_cors()])
 

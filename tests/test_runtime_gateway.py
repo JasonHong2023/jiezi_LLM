@@ -812,3 +812,58 @@ class TestHistoryAppendix(unittest.TestCase):
         gw._ground(body, rec, [])
         self.assertEqual(rec.get("grounding_skipped"), "about_jiezi")
         self.assertEqual(len(body["messages"]), 1)
+
+
+class TestFewerClaudeEscalations(unittest.TestCase):
+    """轉給 Claude 的次數要降低（使用者 2026-11-18）。 / Fewer escalations to Claude."""
+
+    def test_keep_local_for_self_feedback_and_paths(self):
+        from jiezi.runtime.gateway import Gateway
+        k = Gateway._keep_local
+        for q in ("你知道你在哪裡嗎?", "又出現簡體中文字", "你剛剛講錯了"):
+            rec = {}
+            self.assertIsNone(k("self_reported_unsure", {"messages": [{"role": "user", "content": q}]}, rec), q)
+            self.assertIn(rec["kept_local"], ("about_jiezi", "feedback"))
+        self.assertIsNone(k("self_reported_unsure", {"messages": [{"role": "user", "content": "x"}]}, {"path_note": ["a"]}))
+        body = {"messages": [{"role": "user", "content": "薛影仪的单曲是哪一年发行的？"}]}
+        self.assertEqual(k("self_reported_unsure", body, {}), "self_reported_unsure")      # 真的不知道 / really unknown
+        self.assertEqual(k("unsupported_claims", {"messages": [{"role": "user", "content": "你是誰"}]}, {}),
+                         "unsupported_claims")
+
+    def test_transcript_is_not_a_web_question(self):
+        from jiezi.runtime.gateway import LIVE, TRANSCRIPT
+        q = "User: hi\n\nAssistant: 嗨，我是你的 Hermes Agent 助理，可以幫你查網站。\n\n請用 5 個字以內下標題"
+        self.assertTrue(LIVE.search(q) and TRANSCRIPT.search(q))
+        self.assertIsNone(TRANSCRIPT.search("今天台北的天氣如何？"))
+
+    def test_route_for_prefers_cloud_when_too_large(self):
+        import types
+        from jiezi.runtime.gateway import Gateway
+        gw = Gateway.__new__(Gateway)
+        gw._can_escalate = lambda: None
+        gw._auto_route = lambda: "consult"
+        self.assertEqual(gw._route_for("context_too_large"), "cloud")
+        self.assertEqual(gw._route_for("engine_unavailable"), "cloud")
+        self.assertEqual(gw._route_for("unsupported_claims"), "consult")
+        gw._can_escalate = lambda: "cloud_off"
+        self.assertEqual(gw._route_for("context_too_large"), "consult")              # 雲端沒開照舊 / cloud off
+        _ = types
+
+    def test_escalation_stats(self):
+        from jiezi.runtime.stats import escalations
+        recs = [{"at": "2026-11-18T10:00:00", "policy": "jiezi", "tiers": [{"tier": 0}, {"tier": 3, "provider": "claude",
+                                                                                           "reason": "needs_web"}]},
+                {"at": "2026-11-18T11:00:00", "policy": "jiezi", "tiers": [{"tier": 3, "provider": "cloud",
+                                                                           "reason": "context_too_large"}]},
+                {"at": "2026-11-18T12:00:00", "policy": "jiezi", "tiers": [{"tier": 3, "provider": "claude", "error": "x"},
+                                                                           {"tier": 3, "provider": "cloud",
+                                                                            "reason": "unsupported_claims"}]},
+                {"at": "2026-11-17T09:00:00", "policy": "jiezi-ask-claude", "tiers": [{"provider": "claude"}]},
+                {"at": "2026-11-17T09:00:00", "policy": "jiezi", "tiers": [{"tier": 0}]},
+                {"at": "2026-11-17T09:00:00", "eval": True, "tiers": [{"provider": "claude"}]}]
+        out = escalations(recs)
+        self.assertEqual(out["total"], {"requests": 5, "claude": 2, "cloud": 2})
+        self.assertEqual(out["days"][0]["day"], "2026-11-18")
+        self.assertEqual(out["days"][0]["reasons"], {"claude:needs_web": 1, "cloud:context_too_large": 1,
+                                                     "cloud:unsupported_claims": 1})
+        self.assertEqual(out["days"][1]["reasons"], {"claude:policy": 1})

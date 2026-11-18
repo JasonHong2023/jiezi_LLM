@@ -349,18 +349,42 @@ function Audit() {
   );
 }
 
+// 轉交原因的中文說明 / escalation reasons in words
+const REASONS = { context_too_large: "請求太大", engine_unavailable: "本機被保留", unsupported_claims: "查核沒過",
+  self_reported_unsure: "本機不確定", needs_web: "要上網", truncated: "回答被截斷", empty_answer: "沒有回答",
+  verification_failed: "驗證沒過", policy: "使用者指定", consult_failed: "請教失敗", unknown: "其他" };
+function reasonText(k) {
+  const [who, why] = k.split(":");
+  return `${who === "claude" ? "Claude" : "雲端"}・${REASONS[why] || why}`;
+}
+
 function Status() {
   const [health, setHealth] = useState(null);
   const [doctor, setDoctor] = useState(null);
+  const [esc, setEsc] = useState(null);
   const [error, setError] = useState("");
   useEffect(() => {
     fetch(BASE + "/health").then((r) => r.json()).then(setHealth).catch((e) => setError(String(e)));
     getJSON("/admin/doctor").then(setDoctor).catch((e) => setError(String(e.message)));
+    getJSON("/admin/escalations").then(setEsc).catch(() => setEsc(null));
   }, []);
   return (
     <div>
       {error && <div className="error">{error}</div>}
       {!doctor && !error && <p className="muted">讀取中…</p>}
+      {esc && (
+        <div className="esc">
+          <h3>轉交次數（最近 7 天）</h3>
+          <p className="muted">共 {esc.total.requests} 題，請教 Claude {esc.total.claude} 次、雲端模型 {esc.total.cloud} 次</p>
+          <table>
+            <thead><tr><th>日期</th><th>題數</th><th>Claude</th><th>雲端</th><th>原因</th></tr></thead>
+            <tbody>{esc.days.map((d) => (
+              <tr key={d.day}><td>{d.day}</td><td>{d.requests}</td><td>{d.claude}</td><td>{d.cloud}</td>
+                <td className="q">{Object.entries(d.reasons).map(([k, n]) => `${reasonText(k)} ${n}`).join("、")}</td></tr>
+            ))}</tbody>
+          </table>
+        </div>
+      )}
       {doctor && (
         <table>
           <thead><tr><th></th><th>項目</th><th>狀態</th><th>修復方法</th></tr></thead>
