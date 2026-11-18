@@ -16,7 +16,9 @@ function headers() {
 }
 
 export async function getJSON(path) {
-  const r = await fetch(BASE + path, { headers: headers() });
+  // 30 秒沒回應就顯示錯誤，不讓頁面一直空著 / show an error instead of a blank page after 30 s
+  const r = await fetch(BASE + path, { headers: headers(), signal: AbortSignal.timeout(30000) })
+    .catch((e) => { throw new Error(`連不到 gateway（${BASE || location.origin}）：${e.name === "TimeoutError" ? "30 秒沒有回應" : e.message}`); });
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
   return r.json();
 }

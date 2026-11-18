@@ -310,6 +310,7 @@ function Status() {
   return (
     <div>
       {error && <div className="error">{error}</div>}
+      {!doctor && !error && <p className="muted">讀取中…</p>}
       {doctor && (
         <table>
           <thead><tr><th></th><th>項目</th><th>狀態</th><th>修復方法</th></tr></thead>
