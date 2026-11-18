@@ -20,3 +20,4 @@ build-*/
 models/*.gguf
 models/*.safetensors
 models/*.part
+models/vision/

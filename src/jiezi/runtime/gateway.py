@@ -78,6 +78,9 @@ TOOL_NOTE = ("[呼叫工具的規則]\n"
              "4. 使用者一次要求多件事時，每件事各呼叫一次。")
 
 
+VISION_TIMEOUT_S = 45.0   # 看圖工具（含第一次載入模型）最多等多久 / vision tools, first model load included
+
+
 def _err(status: int, message: str, code: str) -> JSONResponse:
     return JSONResponse({"error": {"message": message, "type": code, "code": code}}, status_code=status)
 
@@ -91,7 +94,7 @@ def _sse(obj) -> bytes:
 # 之後的階段以 object="jiezi.progress"、choices=[] 的事件送出，一般 OpenAI 用戶端會略過。
 # Streamed requests start streaming at the first reported stage (earlier errors keep their HTTP codes); stages are
 # sent as object="jiezi.progress" events with empty choices, which generic OpenAI clients skip.
-STAGES = ("loading_model", "reading_documents", "thinking", "retrying", "asking_claude", "asking_cloud",
+STAGES = ("loading_model", "reading_documents", "looking", "thinking", "retrying", "asking_claude", "asking_cloud",
           "asking_feedback")
 
 
@@ -164,6 +167,15 @@ class Gateway:
                  reranker=None):
         self.s, self.sup, self.traj, self.log = settings, supervisor, trajectories, log
         self.consultant = consultant
+        self.vision = None              # 本機看圖工具（add-vision-tools）/ local vision tools
+        self._seen: dict[str, object] = {}   # 請求 id → 圖片工具結果（不寫進軌跡）/ per request, not logged
+        if settings.vision_tools:
+            from ..vision_tools import VisionTools
+            vt = VisionTools(settings.models_dir or settings.root / "models")
+            if vt.available():
+                self.vision = vt
+            else:
+                log("vision tools: models/vision not found; run the vision download first")
         if consultant is None and settings.consult == "claude-cli":
             self.consultant = consult_mod.ClaudeCliConsultant(settings.var / "runtime" / "consult-cwd",
                                                               settings.consult_timeout_s, settings.consult_model,
@@ -409,9 +421,8 @@ class Gateway:
                 return
             # 有圖片時問題是在問圖，同樣不撈模糊命中（2026-11-17 實測：看圖題被附上不相干的知識庫文章，驗證判失敗）
             # With an image the question is about the image: no fuzzy hits either (a live false failure)
-            last = {"role": "user", "content": text, "_target": last,
-                    "_doc": any(isinstance(p, dict) and p.get("type") in ("image_url", "input_image")
-                                for p in last["content"])}
+            img = any(isinstance(p, dict) and p.get("type") in ("image_url", "input_image") for p in last["content"])
+            last = {"role": "user", "content": text, "_target": last, "_doc": img, "_img": img}
         elif not isinstance(last.get("content"), str):
             return
         else:
@@ -427,7 +438,9 @@ class Gateway:
         # With a long document attached the question is about the document: no fuzzy vector hits from the knowledge base
         # or statutes (they crowded out the document in a live test); explicitly named articles still attach.
         doc = bool(last.get("_doc"))
-        if self.memory is not None:  # 記憶最優先（使用者的更正）/ memory first (the user's corrections)
+        # 看圖題的答案取決於這張圖，不用文字記憶（2026-11-18 實測：附圖再問，被附上之前「只打路徑」那題的答案）
+        # An image question depends on the image: no text memory (a live test recalled the earlier path-only answer)
+        if self.memory is not None and not last.get("_img"):  # 記憶最優先 / memory first
             from ..memory import recall_block
             found.append(recall_block(last["content"], self.memory))
         if self.s.tools:  # 程式算好的數字 / numbers computed by code
@@ -516,6 +529,9 @@ class Gateway:
     def _remember(self, body: dict, rec: dict, msg: dict, provider: str, model: str | None) -> None:
         """把請教／雲端的答案存進記憶 wiki；存不了不影響回答。 / Save to the memory wiki; failures never block."""
         if self.memory is None or body.get("tools") or rec.get("eval") or rec.get("json_mode"):
+            return
+        if has_images(body) or rec.get("path_note"):  # 答案取決於圖或沒附上的檔案 / depends on an image or missing file
+            rec["memory"] = {"saved": False, "why": "image" if has_images(body) else "path_without_file"}
             return
         if self._injected(rec):  # 可疑資料影響過的答案不進記憶 / never remember an answer shaped by suspicious data
             rec["memory"] = {"saved": False, "why": "suspected_injection"}
@@ -875,7 +891,8 @@ class Gateway:
             done = await self._translate(body, rec, t0, stream, policy, plan)
             if done is not None:
                 return done
-        if self.memory is not None and not body.get("tools") and not json_mode and not body.get("jiezi_translate"):
+        if self.memory is not None and not body.get("tools") and not json_mode and not body.get("jiezi_translate") \
+                and not has_images(body):
             early = self._memory_early(body, rec, t0, stream, policy)
             if early is not None:
                 return early
@@ -938,13 +955,15 @@ class Gateway:
                 self.log(f"longdoc: condensing failed, sending as is: {type(exc).__name__}: {exc}")
                 rec["longdoc"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 
+        seen = await self._vision_look(body, rec) if self.vision is not None and has_images(body) else None
         if stream and not body.get("tools") and not json_mode and not body.get("jiezi_translate") \
-                and not self._sample_kind(body):
+                and not self._sample_kind(body) and seen is None:
             _stage("thinking")        # 第一個字前還要處理提示（附圖時可能幾十秒）/ prompt processing before the first token
             return StreamingResponse(self._relay_stream(base, body, rec, t0, policy), media_type="text/event-stream")
         try:
             return await self._tiered(base, body, rec, t0, policy, stream)
         finally:
+            self._seen.pop(rec["id"], None)
             self.sup.release()
 
     # ── 唯讀代理（add-agent-readonly）/ Read-only agent ──
@@ -1392,8 +1411,70 @@ class Gateway:
                     escalate_reason = "local_only_policy"
         if not escalate_reason:
             self._learn_skill(body, rec, final, ver)
+        if rec["id"] in self._seen:
+            await self._vision_check(base, rec, final)
         meta = self._meta(rec, tier, final, ver, t0, escalation=escalate_reason)
         return self._deliver(final, meta, rec, stream)
+
+    # ── 本機看圖工具（add-vision-tools）/ Local vision tools ──
+    async def _vision_look(self, body: dict, rec: dict):
+        """回答前跑偵測與開放詞彙比對，結果當資料附給核心；失敗或逾時就照原本看圖。
+        Run detection and open-vocabulary scoring before answering; on failure or timeout, answer as before."""
+        from .. import vision_tools as V
+        urls = V.images_in(body)
+        if not urls:
+            return None
+        _stage("looking")
+        try:
+            img = V.image_from_url(urls[0])
+            if img is None:
+                return None
+            seen = await asyncio.wait_for(asyncio.to_thread(self.vision.look, img), VISION_TIMEOUT_S)
+        except asyncio.TimeoutError:
+            rec["vision"] = {"error": f"timeout after {VISION_TIMEOUT_S}s"}
+            return None
+        except Exception as exc:  # noqa: BLE001 - 工具壞了不擋回答 / a broken tool never blocks the answer
+            rec["vision"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+            self.log(f"vision tools: {rec['vision']['error']}")
+            return None
+        body["messages"] = [*body["messages"], {"role": "system", "content": V.hint_text(seen)}]
+        body.setdefault("repeat_penalty", 1.1)   # 列舉圖中物體時小模型容易重複 / small models loop when listing objects
+        rec["vision"] = {"detections": seen.detections, "hints": seen.hints, "seconds": seen.seconds}
+        self._seen[rec["id"]] = seen
+        return seen
+
+    async def _vision_check(self, base: str, rec: dict, final: dict) -> None:
+        """回答說圖裡有的東西逐一核對，分數低的標「（不確定）」（使用者 2026-11-18：保留並標註）。
+        Score every object the answer claims; low scorers are marked "(uncertain)" and kept."""
+        from .. import vision_tools as V
+        seen = self._seen.get(rec["id"])
+        msg = _message(final)
+        answer = msg.get("content") or ""
+        if seen is None or not answer.strip() or msg.get("tool_calls"):
+            return
+        answer, removed = V.collapse_repeats(answer)
+        if removed:
+            msg["content"] = answer
+            rec["vision_repeats_removed"] = removed
+        try:
+            r = await self.local.post(f"{base}/v1/chat/completions", json={
+                "model": self.sup.core["name"] if self.sup.core else self.s.core_model,
+                "messages": [{"role": "user", "content": V.EXTRACT_PROMPT.format(answer=answer[:4000])}],
+                "response_format": {"type": "json_schema", "json_schema": {"schema": V.EXTRACT_SCHEMA}},
+                "temperature": 0, "max_tokens": 600, "chat_template_kwargs": {"enable_thinking": False}})
+            r.raise_for_status()
+            objs = json.loads(_message(r.json()).get("content") or "{}").get("objects") or []
+            pairs = [(o["zh"].strip(), o["en"].strip().lower()) for o in objs
+                     if isinstance(o, dict) and o.get("zh") and o.get("en")]
+            scores = await asyncio.to_thread(self.vision.check, seen, sorted({en for _, en in pairs}))
+        except Exception as exc:  # noqa: BLE001 - 核對失敗就不標，照原答案 / no marks when the check fails
+            rec["vision_check"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+            return
+        low = [zh for zh, en in pairs if scores.get(en, 1.0) < V.CHECK_MIN]
+        if low:
+            msg["content"] = V.mark_uncertain(answer, low)
+        rec["vision_check"] = {"objects": {f"{zh}/{en}": scores.get(en) for zh, en in pairs}, "uncertain": low,
+                               "threshold": V.CHECK_MIN}
 
     async def _tier2(self, base: str, body: dict, rec: dict, t0: float, stream: bool, last: dict, ver: dict
                      ) -> Response | None:
@@ -1515,7 +1596,8 @@ class Gateway:
                 "latency_s": elapsed(t0), "tps": _tps(resp),
                 "cloud": {"tokens": usage.get("total_tokens"), "cost": (cloud or {}).get("cost")} if cloud else None,
                 "trajectory_id": rec["id"], "sources": rec.get("sources") or [],
-                "confidence": rec.get("confidence")}
+                "confidence": rec.get("confidence"),
+                **({"vision_check": rec["vision_check"]} if rec.get("vision_check") else {})}
 
     def _deliver(self, resp: dict, meta: dict, rec: dict, stream: bool) -> Response:
         if rec.get("json_mode"):

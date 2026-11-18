@@ -177,6 +177,7 @@ def first_phase(policy: str, docs: bool, image: bool, agent: bool) -> str:
 STAGE_TEXT = {      # gateway 回報的階段（add-progress-events）/ stages reported by the gateway
     "loading_model": "載入模型中 / loading the model",
     "reading_documents": "閱讀文件中 / reading the documents",
+    "looking": "辨識圖中物體 / looking at the image",
     "thinking": "思考中 / thinking",
     "retrying": "答案沒通過檢查，重新作答 / answer failed a check, retrying",
     "asking_claude": "請教 Claude 中 / asking Claude",

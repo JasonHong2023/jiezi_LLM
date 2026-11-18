@@ -111,7 +111,7 @@ export function firstPhase(policy, { docs = false, agent = false } = {}) {
   return "思考中";
 }
 export const STAGE_TEXT = {  // gateway 回報的階段（add-progress-events）/ stages reported by the gateway
-  loading_model: "載入模型中", reading_documents: "閱讀文件中", thinking: "思考中",
+  loading_model: "載入模型中", reading_documents: "閱讀文件中", looking: "辨識圖中物體", thinking: "思考中",
   retrying: "答案沒通過檢查，重新作答", asking_claude: "請教 Claude 中", asking_cloud: "詢問雲端模型中",
   asking_feedback: "請教建議後重答",
 };
