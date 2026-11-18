@@ -124,6 +124,32 @@ class TestUi(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(json.loads(r.stdout), [["第二題", "/help", "第一題", None, "/help", "第二題", "草稿"], ["a"]])
 
+    def test_frontend_dark_mode(self):
+        """夜間模式：自動→淺色→深色循環、記住選擇；樣式沒有寫死的白底（使用者 2026-11-18）。
+        Dark mode cycles auto → light → dark and is remembered; no hard-coded white backgrounds remain."""
+        import re
+        import shutil
+        import subprocess
+        css = (ROOT / "ui" / "src" / "style.css").read_text(encoding="utf-8")
+        self.assertIn(':root[data-theme="dark"]', css)
+        self.assertIn("prefers-color-scheme: dark", css)
+        rules = re.sub(r"--[\w-]+:\s*#[0-9a-fA-F]+;?", "", css)              # 變數定義以外 / outside variables
+        self.assertNotRegex(rules, r"#fff\b|#666\b|#a33\b")
+        self.assertIn('data-theme="auto"', (ROOT / "ui" / "index.html").read_text(encoding="utf-8"))
+        if not shutil.which("node"):
+            self.skipTest("node not installed")
+        js = (ROOT / "ui" / "src" / "api.js").resolve().as_uri()
+        prog = ("globalThis.location = {protocol: 'http:', hostname: 'localhost'};"
+                f"const m = await import({js!r});"
+                "const mem = {v: null, getItem() { return this.v; }, setItem(k, v) { this.v = v; }};"
+                "const seen = [m.loadTheme(mem)]; let t = seen[0];"
+                "for (let i = 0; i < 3; i++) { t = m.nextTheme(t, mem); seen.push(t, m.loadTheme(mem)); }"
+                "mem.v = 'neon'; seen.push(m.loadTheme(mem));"
+                "console.log(JSON.stringify(seen));")
+        r = subprocess.run(["node", "--input-type=module", "-e", prog], capture_output=True, text=True, timeout=30)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout), ["auto", "light", "light", "dark", "dark", "auto", "auto", "auto"])
+
     def test_no_ui_without_build(self):
         from jiezi.runtime.gateway import ui_routes
         with tempfile.TemporaryDirectory() as d:

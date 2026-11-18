@@ -1,45 +1,55 @@
-/* 芥子前端樣式：淺色、系統字型、不載入外部字型（CSP 只允許本機）。
-   Jiezi styles: light, system fonts, no external fonts (CSP allows local resources only). */
-:root { --fg: #1d2330; --muted: #6b7280; --line: #e5e7eb; --accent: #2f6f4e; --bg: #fafaf7; --warn: #a15c00; --bad: #b42318; }
+/* 芥子前端樣式：淺色／深色（使用者 2026-11-18：夜間模式）、系統字型、不載入外部字型（CSP 只允許本機）。
+   主題：<html data-theme="auto|light|dark">；auto 跟隨系統設定。
+   Jiezi styles: light and dark themes, system fonts, no external fonts (CSP allows local resources only). */
+:root { --fg: #1d2330; --muted: #6b7280; --line: #e5e7eb; --accent: #2f6f4e; --bg: #fafaf7; --warn: #a15c00; --bad: #b42318;
+  --panel: #fff; --bubble: #e8f2ec; --on-accent: #fff; color-scheme: light; }
+/* 深色：文字對比 ≥ 7:1，主色調亮以維持可讀 / dark: text contrast ≥ 7:1, accent lightened to stay readable */
+:root[data-theme="dark"] { --fg: #e6e8ec; --muted: #a0a7b4; --line: #343a46; --accent: #6fc49a; --bg: #15181e; --warn: #f0b45a;
+  --bad: #ff8a80; --panel: #1e222a; --bubble: #23382d; --on-accent: #10261a; color-scheme: dark; }
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"] { --fg: #e6e8ec; --muted: #a0a7b4; --line: #343a46; --accent: #6fc49a; --bg: #15181e; --warn: #f0b45a;
+    --bad: #ff8a80; --panel: #1e222a; --bubble: #23382d; --on-accent: #10261a; color-scheme: dark; }
+}
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, "Noto Sans TC", "Microsoft JhengHei", sans-serif; color: var(--fg); background: var(--bg); }
 .app { display: flex; flex-direction: column; height: 100vh; }
-header { display: flex; align-items: center; gap: 1rem; padding: .5rem 1rem; border-bottom: 1px solid var(--line); background: #fff; }
+header { display: flex; align-items: center; gap: 1rem; padding: .5rem 1rem; border-bottom: 1px solid var(--line); background: var(--panel); }
+header .theme { margin-left: auto; }
 header h1 { font-size: 1.1rem; margin: 0; color: var(--accent); }
 nav { display: flex; gap: .25rem; }
 main { flex: 1; overflow: auto; padding: 1rem; }
 footer { padding: .3rem 1rem; font-size: .8rem; border-top: 1px solid var(--line); }
-button { border: 1px solid var(--line); background: #fff; padding: .35rem .8rem; border-radius: 6px; cursor: pointer; font: inherit; }
-button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+button { border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: .35rem .8rem; border-radius: 6px; cursor: pointer; font: inherit; }
+button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 button:disabled { opacity: .5; cursor: default; }
-button.stop { background: var(--bad); color: #fff; border-color: var(--bad); }
+button.stop { background: var(--bad); color: var(--on-accent); border-color: var(--bad); }
 .muted { color: var(--muted); }
 .error { color: var(--bad); margin: .5rem 0; }
 .warn { color: var(--bad); font-size: .85rem; margin-top: .25rem; }
-.card { max-width: 32rem; margin: 3rem auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 1.5rem; }
-.card input { width: 100%; padding: .5rem; margin: .5rem 0 1rem; font: inherit; }
+.card { max-width: 32rem; margin: 3rem auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 1.5rem; }
+.card input { width: 100%; padding: .5rem; margin: .5rem 0 1rem; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
 .chat { display: flex; flex-direction: column; height: 100%; }
 .toolbar { display: flex; gap: .75rem; align-items: center; margin-bottom: .5rem; }
 .log { flex: 1; overflow: auto; }
 .msg { margin: .6rem 0; max-width: 52rem; }
-.msg.user .body { background: #e8f2ec; display: inline-block; padding: .5rem .8rem; border-radius: 10px; }
+.msg.user .body { background: var(--bubble); display: inline-block; padding: .5rem .8rem; border-radius: 10px; }
 .msg.assistant .body { white-space: pre-wrap; line-height: 1.6; }
 .meta { font-size: .78rem; color: var(--muted); margin-top: .2rem; }
 .composer { display: flex; gap: .5rem; margin-top: .5rem; }
-.composer textarea { flex: 1; font: inherit; padding: .5rem; border: 1px solid var(--line); border-radius: 8px; resize: vertical; }
-table { border-collapse: collapse; width: 100%; background: #fff; font-size: .88rem; }
+.composer textarea { flex: 1; font: inherit; padding: .5rem; border: 1px solid var(--line); border-radius: 8px; resize: vertical; color: var(--fg); background: var(--panel); }
+table { border-collapse: collapse; width: 100%; background: var(--panel); font-size: .88rem; }
 th, td { border-bottom: 1px solid var(--line); padding: .35rem .5rem; text-align: left; vertical-align: top; }
 td.q { max-width: 28rem; }
 tr.warn td:first-child { color: var(--warn); }
 tr.fail td:first-child { color: var(--bad); }
-pre { background: #fff; border: 1px solid var(--line); padding: .5rem; overflow: auto; }
+pre { background: var(--panel); border: 1px solid var(--line); padding: .5rem; overflow: auto; }
 .docs { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-bottom: .5rem; font-size: .85rem; }
-.doc { border: 1px solid var(--line); border-radius: 999px; padding: .1rem .2rem .1rem .6rem; background: #fff; }
+.doc { border: 1px solid var(--line); border-radius: 999px; padding: .1rem .2rem .1rem .6rem; background: var(--panel); }
 .doc button { border: 0; background: none; cursor: pointer; padding: 0 .35rem; font: inherit; }
 
 /* 唯讀代理的步驟 / agent steps */
-.steps { margin: 0 0 6px; padding-left: 18px; font-size: 0.85em; color: #666; }
-.steps li.refused, .steps li.error { color: #a33; }
+.steps { margin: 0 0 6px; padding-left: 18px; font-size: 0.85em; color: var(--muted); }
+.steps li.refused, .steps li.error { color: var(--bad); }
 .steps li.running { font-style: italic; }
 
 /* 開場動畫與送出後的狀態（使用者 2026-11-18）/ Opening animation and live status */
@@ -47,3 +57,5 @@ pre { background: #fff; border: 1px solid var(--line); padding: .5rem; overflow:
   font-family: "Noto Sans Mono CJK TC", "Noto Sans CJK TC", monospace; background: none; border: 0; }
 .progress { color: var(--muted); font-size: 0.9rem; margin-top: 0.25rem; }
 .progress .spin { display: inline-block; width: 1.2em; }
+select, input, a { color: inherit; }
+select { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; font: inherit; }

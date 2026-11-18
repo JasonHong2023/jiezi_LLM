@@ -154,3 +154,16 @@ export function recallInput(inputs, pos, draft, dir) {
   if (pos === null) return null;
   return pos === inputs.length - 1 ? [null, draft] : [pos + 1, inputs[pos + 1]];
 }
+
+// 夜間模式（使用者 2026-11-18）：auto 跟隨系統，light／dark 固定；選擇存在 localStorage。
+// Dark mode: auto follows the system, light / dark are fixed; the choice is kept in localStorage.
+export const THEMES = ["auto", "light", "dark"];
+export const THEME_LABEL = { auto: "🌓 自動", light: "☀ 淺色", dark: "🌙 深色" };
+export function loadTheme(store = globalThis.localStorage) {
+  try { const t = store?.getItem("jiezi.theme"); return THEMES.includes(t) ? t : "auto"; } catch { return "auto"; }
+}
+export function nextTheme(theme, store = globalThis.localStorage) {
+  const t = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+  try { store?.setItem("jiezi.theme", t); } catch { /* 存不下就只用這次 / this session only */ }
+  return t;
+}

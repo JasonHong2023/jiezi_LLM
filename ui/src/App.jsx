@@ -1,7 +1,7 @@
 // 芥子桌面 App 雛形：對話、稽核紀錄、狀態（唯讀；不操控作業系統）。
 // Jiezi desktop prototype: chat, audit log, status (read-only; no OS control).
 import { useEffect, useRef, useState } from "react";
-import { BASE, firstPhase, getJSON, getKey, loadInputs, phaseAfter, phaseLabel, readDocument, recallInput, rememberInput, setKey, stepText, streamChat, withDocuments } from "./api.js";
+import { BASE, THEME_LABEL, firstPhase, getJSON, getKey, loadInputs, loadTheme, nextTheme, phaseAfter, phaseLabel, readDocument, recallInput, rememberInput, setKey, stepText, streamChat, withDocuments } from "./api.js";
 
 const MAX_DOC_CHARS = 1500000;  // 附著文件的總字數上限（和 jiezi chat 相同）/ same cap as jiezi chat
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;  // 和 jiezi chat 的 /image 相同 / same cap as /image in chat
@@ -326,6 +326,8 @@ function Status() {
 export default function App() {
   const [tab, setTab] = useState("chat");
   const [ready, setReady] = useState(!!getKey());
+  const [theme, setTheme] = useState(loadTheme);
+  useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
   return (
     <div className="app">
       <header>
@@ -336,6 +338,8 @@ export default function App() {
           ))}
           {ready && <button onClick={() => { setKey(""); setReady(false); }}>登出</button>}
         </nav>
+        <button className="theme" title="切換主題：自動（跟隨系統）／淺色／深色" aria-label="切換主題"
+          onClick={() => setTheme((t) => nextTheme(t))}>{THEME_LABEL[theme]}</button>
       </header>
       <main>
         {!ready ? <KeyGate onDone={() => setReady(true)} /> : tab === "chat" ? <Chat /> : tab === "audit" ? <Audit /> : <Status />}
