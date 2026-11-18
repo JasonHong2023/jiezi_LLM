@@ -14,10 +14,10 @@ sys.path.insert(0, str(ROOT / "tests"))
 from jiezi import vision_tools as V  # noqa: E402
 
 
-def data_url() -> str:
+def data_url(size=(8, 8)) -> str:
     from PIL import Image
     buf = io.BytesIO()
-    Image.new("RGB", (8, 8), (200, 10, 10)).save(buf, format="PNG")
+    Image.new("RGB", size, (200, 10, 10)).save(buf, format="PNG")
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
@@ -73,7 +73,8 @@ class FakeVision:
 
 
 class TestGateway(unittest.TestCase):
-    def run_one(self, vision, answer="圖裡有馬和長頸鹿。", stream=False):
+    def run_one(self, vision, answer="圖裡有馬和長頸鹿。", stream=False, size=(8, 8), question="有哪些動物",
+                tile_answer="1. 長頸鹿\n2. 长颈鹿\n- 馬（棕色）"):
         from starlette.testclient import TestClient
         from test_runtime_gateway import make_supervisor, settings  # noqa: F401
         from jiezi.runtime.gateway import Gateway, create_app
@@ -84,7 +85,9 @@ class TestGateway(unittest.TestCase):
         def handler(request):
             b = json.loads(request.content)
             seen.append(b)
-            if b.get("response_format"):
+            if json.dumps(b["messages"], ensure_ascii=False).find(V.TILE_PROMPT) >= 0:
+                content = tile_answer
+            elif b.get("response_format"):
                 content = json.dumps({"objects": [{"zh": "馬", "en": "horse"}, {"zh": "長頸鹿", "en": "giraffe"}]})
             else:
                 content = answer
@@ -97,7 +100,7 @@ class TestGateway(unittest.TestCase):
                          local_http=httpx.AsyncClient(transport=httpx.MockTransport(handler)), log=lambda *_: None)
             gw.core_vision, gw.vision = True, vision
             body = {"model": "jiezi-local", "stream": stream, "messages": [{"role": "user", "content": [
-                {"type": "text", "text": "有哪些動物"}, {"type": "image_url", "image_url": {"url": data_url()}}]}]}
+                {"type": "text", "text": question}, {"type": "image_url", "image_url": {"url": data_url(size)}}]}]}
             with patch, TestClient(create_app(gw)) as c:
                 r = c.post("/v1/chat/completions", json=body, headers={"Authorization": f"Bearer {sup.s.key}"})
             return r, seen, gw
@@ -115,6 +118,35 @@ class TestGateway(unittest.TestCase):
         self.assertEqual(r.json()["choices"][0]["message"]["content"], "圖裡有馬和長頸鹿。")
         self.assertNotIn("看圖工具的結果", json.dumps(seen[0]["messages"], ensure_ascii=False))
         self.assertNotIn("vision_check", r.json()["jiezi"])
+
+    def test_tiles_for_listing_questions(self):
+        r, seen, _ = self.run_one(FakeVision(), size=(680, 1200))
+        tiles = [b for b in seen if V.TILE_PROMPT in json.dumps(b["messages"], ensure_ascii=False)]
+        self.assertEqual(len(tiles), 8)                                      # 2 欄 × 4 列 / 2 × 4
+        final = next(b for b in seen if "切塊放大" in json.dumps(b["messages"], ensure_ascii=False)
+                     and not b.get("response_format") and b not in tiles)
+        self.assertIn("最上排左：長頸鹿、馬", json.dumps(final["messages"], ensure_ascii=False))
+        data = r.json()
+        self.assertEqual(data["choices"][0]["message"]["content"], "圖裡有馬和長頸鹿。")   # 切塊看到的不標 / not marked
+        self.assertEqual(data["jiezi"]["vision_check"]["uncertain"], [])
+
+    def test_no_tiles_for_other_questions_or_small_images(self):
+        for kw in ({"size": (680, 1200), "question": "這張圖適合當桌布嗎"}, {"size": (300, 300)}):
+            _, seen, _ = self.run_one(FakeVision(), **kw)
+            self.assertFalse(any(V.TILE_PROMPT in json.dumps(b["messages"], ensure_ascii=False) for b in seen), kw)
+
+    def test_tiles_still_run_when_tools_fail(self):
+        r, seen, _ = self.run_one(FakeVision(fail=True), size=(680, 1200))
+        self.assertIn("切塊放大", json.dumps(seen[-1]["messages"], ensure_ascii=False))
+        self.assertNotIn("vision_check", r.json()["jiezi"])                  # 沒有特徵就不核對 / no features, no check
+
+    def test_tile_helpers(self):
+        self.assertEqual(V.tile_grid(675, 1200), (2, 4))
+        self.assertEqual(V.tile_grid(1024, 1024), (3, 2))
+        self.assertEqual(V.tile_grid(300, 300), (1, 1))
+        self.assertEqual(V.parse_tile_list("1. 负鼠\n負鼠\n- 獅子（坐著）\n\n**海星**\n" + "狐狸\n" * 30),
+                         ["負鼠", "獅子", "海星", "狐狸"])
+        self.assertEqual(len(V.parse_tile_list("\n".join(chr(0x4E00 + 7 * i) + "獸" for i in range(40)))), V.TILE_MAX_ITEMS)
 
     def test_off_by_default(self):
         from jiezi.runtime.settings import load_settings

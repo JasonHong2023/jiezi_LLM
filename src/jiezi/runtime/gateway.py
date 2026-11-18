@@ -79,7 +79,9 @@ TOOL_NOTE = ("[呼叫工具的規則]\n"
              "4. 使用者一次要求多件事時，每件事各呼叫一次。")
 
 
-VISION_TIMEOUT_S = 45.0   # 看圖工具（含第一次載入模型）最多等多久 / vision tools, first model load included
+VISION_TIMEOUT_S = 45.0  # 看圖工具（含第一次載入模型）最多等多久 / vision tools, first model load included
+TILE_TIMEOUT_S = 30.0    # 切塊逐塊看：每塊的時限 / per tile
+TILE_BUDGET_S = 90.0     # 切塊逐塊看：全部的時限，超過的塊略過 / all tiles; later tiles are skipped
 
 
 def _err(status: int, message: str, code: str) -> JSONResponse:
@@ -1015,7 +1017,7 @@ class Gateway:
                 self.log(f"longdoc: condensing failed, sending as is: {type(exc).__name__}: {exc}")
                 rec["longdoc"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 
-        seen = await self._vision_look(body, rec) if self.vision is not None and has_images(body) else None
+        seen = await self._vision_look(base, body, rec) if self.vision is not None and has_images(body) else None
         if stream and not body.get("tools") and not json_mode and not body.get("jiezi_translate") \
                 and not self._sample_kind(body) and seen is None:
             _stage("thinking")        # 第一個字前還要處理提示（附圖時可能幾十秒）/ prompt processing before the first token
@@ -1481,9 +1483,11 @@ class Gateway:
         return self._deliver(final, meta, rec, stream)
 
     # ── 本機看圖工具（add-vision-tools）/ Local vision tools ──
-    async def _vision_look(self, body: dict, rec: dict):
-        """回答前跑偵測與開放詞彙比對，結果當資料附給核心；失敗或逾時就照原本看圖。
-        Run detection and open-vocabulary scoring before answering; on failure or timeout, answer as before."""
+    async def _vision_look(self, base: str, body: dict, rec: dict):
+        """回答前跑偵測與開放詞彙比對，問「有哪些東西」時再切塊放大逐塊看；結果當資料附給核心。
+        失敗或逾時就略過那一步，照原本看圖。
+        Before answering: detection and open-vocabulary scoring, plus a tile-by-tile look for listing questions.
+        Results go to the core as data; a failed or slow step is skipped."""
         from .. import vision_tools as V
         urls = V.images_in(body)
         if not urls:
@@ -1491,21 +1495,62 @@ class Gateway:
         _stage("looking")
         try:
             img = V.image_from_url(urls[0])
-            if img is None:
-                return None
+        except Exception:  # noqa: BLE001 - 壞圖交給引擎處理 / a broken image is the engine's problem
+            img = None
+        if img is None:
+            return None
+        seen = None
+        try:
             seen = await asyncio.wait_for(asyncio.to_thread(self.vision.look, img), VISION_TIMEOUT_S)
+            rec["vision"] = {"detections": seen.detections, "hints": seen.hints, "seconds": seen.seconds}
         except asyncio.TimeoutError:
             rec["vision"] = {"error": f"timeout after {VISION_TIMEOUT_S}s"}
-            return None
         except Exception as exc:  # noqa: BLE001 - 工具壞了不擋回答 / a broken tool never blocks the answer
             rec["vision"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
             self.log(f"vision tools: {rec['vision']['error']}")
+        found = await self._vision_tiles(base, img, body, rec)
+        if seen is None and not found:
             return None
-        body["messages"] = [*body["messages"], {"role": "system", "content": V.hint_text(seen)}]
+        extra = ([{"role": "system", "content": V.hint_text(seen)}] if seen is not None else []) + \
+            ([{"role": "system", "content": V.tile_hint(found)}] if found else [])
+        body["messages"] = [*body["messages"], *extra]
         body.setdefault("repeat_penalty", 1.1)   # 列舉圖中物體時小模型容易重複 / small models loop when listing objects
-        rec["vision"] = {"detections": seen.detections, "hints": seen.hints, "seconds": seen.seconds}
+        seen = seen or V.Seen()
+        seen.tile_names = {n for _, names in found for n in names}
         self._seen[rec["id"]] = seen
         return seen
+
+    async def _vision_tiles(self, base: str, img, body: dict, rec: dict) -> list[tuple[str, list[str]]]:
+        """問題要列舉圖中東西、圖又夠大時：切塊放大，核心逐塊列出看到的東西（使用者 2026-11-18）。
+        For listing questions on large enough images: the core lists what it sees in each enlarged tile."""
+        from .. import vision_tools as V
+        last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
+        if last is None or not V.LISTING.search(message_text(last)):
+            return []
+        parts = await asyncio.to_thread(V.tiles, img)
+        if not parts:
+            return []
+        t0, found, errors = time.monotonic(), [], 0
+        model = self.sup.core["name"] if self.sup.core else self.s.core_model
+        for where, crop in parts:
+            if time.monotonic() - t0 > TILE_BUDGET_S:
+                errors += 1
+                continue
+            try:
+                r = await self.local.post(f"{base}/v1/chat/completions", json={
+                    "model": model, "messages": [{"role": "user", "content": [
+                        {"type": "text", "text": V.TILE_PROMPT},
+                        {"type": "image_url", "image_url": {"url": V.data_url(crop)}}]}],
+                    "temperature": 0, "max_tokens": V.TILE_MAX_TOKENS, "repeat_penalty": 1.15,
+                    "chat_template_kwargs": {"enable_thinking": False}}, timeout=TILE_TIMEOUT_S)
+                r.raise_for_status()
+                found.append((where, V.parse_tile_list(_message(r.json()).get("content") or "")))
+            except Exception as exc:  # noqa: BLE001 - 一塊失敗就略過那塊 / skip a failed tile
+                errors += 1
+                self.log(f"vision tiles: {where}: {type(exc).__name__}: {exc}")
+        rec.setdefault("vision", {})["tiles"] = {"grid": len(parts), "seconds": round(time.monotonic() - t0, 2),
+                                                 "found": {w: n for w, n in found}, "failed": errors}
+        return found
 
     async def _vision_check(self, base: str, rec: dict, final: dict) -> None:
         """回答說圖裡有的東西逐一核對，分數低的標「（不確定）」（使用者 2026-11-18：保留並標註）。
@@ -1514,7 +1559,7 @@ class Gateway:
         seen = self._seen.get(rec["id"])
         msg = _message(final)
         answer = msg.get("content") or ""
-        if seen is None or not answer.strip() or msg.get("tool_calls"):
+        if seen is None or seen.features is None or not answer.strip() or msg.get("tool_calls"):
             return
         answer, removed = V.collapse_repeats(answer)
         if removed:
@@ -1525,7 +1570,7 @@ class Gateway:
                 "model": self.sup.core["name"] if self.sup.core else self.s.core_model,
                 "messages": [{"role": "user", "content": V.EXTRACT_PROMPT.format(answer=answer[:4000])}],
                 "response_format": {"type": "json_schema", "json_schema": {"schema": V.EXTRACT_SCHEMA}},
-                "temperature": 0, "max_tokens": 600, "chat_template_kwargs": {"enable_thinking": False}})
+                "temperature": 0, "max_tokens": 1600, "chat_template_kwargs": {"enable_thinking": False}})
             r.raise_for_status()
             objs = json.loads(_message(r.json()).get("content") or "{}").get("objects") or []
             pairs = [(o["zh"].strip(), o["en"].strip().lower()) for o in objs
@@ -1534,7 +1579,10 @@ class Gateway:
         except Exception as exc:  # noqa: BLE001 - 核對失敗就不標，照原答案 / no marks when the check fails
             rec["vision_check"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
             return
-        low = [zh for zh, en in pairs if scores.get(en, 1.0) < V.CHECK_MIN]
+        # 切塊放大時看到的不標：整張縮小後 OWLv2 在密集小圖上分不開（2026-11-18 第二張拼貼：猞猁、德牧、大象在場卻被標）
+        # Objects seen in an enlarged tile are not marked: on dense collages the whole-image score cannot separate them
+        tiled = getattr(seen, "tile_names", set())
+        low = [zh for zh, en in pairs if scores.get(en, 1.0) < V.CHECK_MIN and zh not in tiled]
         if low:
             msg["content"] = V.mark_uncertain(answer, low)
         rec["vision_check"] = {"objects": {f"{zh}/{en}": scores.get(en) for zh, en in pairs}, "uncertain": low,
