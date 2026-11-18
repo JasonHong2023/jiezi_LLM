@@ -166,6 +166,8 @@ def cmd_train(root, args) -> int:
         r = check(snapshot_from_run(P(args.before)), snapshot_from_run(P(args.after)), args.target)
         print(json.dumps(r, ensure_ascii=False, indent=1))
         return 0 if r["pass"] else 1
+    if args.action == "replay":
+        return cmd_replay(root, args.model)
     if args.action == "sft":
         from ..train.config import TrainConfig
         from ..train.sft import train
@@ -177,6 +179,41 @@ def cmd_train(root, args) -> int:
     run_dir = root / "var" / "train" / args.run
     merge(run_dir)
     print(json.dumps(to_gguf(root, run_dir, args.quant), ensure_ascii=False))
+    return 0
+
+
+def cmd_replay(root, model_ref: str) -> int:
+    """凍結核心對 MBPP 非 test 題作答，沙盒驗證後寫出複習資料（長時間、用 GPU，夜間）。
+    The frozen core answers the non-test MBPP problems; verified answers become replay data (GPU, night job)."""
+    from ..eval.__main__ import resolve_model
+    from ..eval.client import ChatClient
+    from ..eval.engine import LocalEngine
+    from ..facts import fresh_facts
+    from ..train.replay import build
+    from ..verify.sandbox import Sandbox
+    env = load_env(root)
+    model, _ = resolve_model(root, env, model_ref)
+    facts = fresh_facts(root)
+    sandbox = Sandbox(root, facts)
+    ok, reason = sandbox.available()
+    if not ok:
+        print(f"sandbox unavailable: {reason}")
+        return 2
+    log_dir = root / "var" / "training"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    with LocalEngine(root, facts, model, port_base(env), ngl=99, ctx=4096) as eng:
+        eng.start(log_dir / "replay.llama-server.log")
+        client = ChatClient(eng.base_url, model.name, timeout_s=300)
+        extra = {"chat_template_kwargs": {"enable_thinking": False}}
+
+        def complete(msgs, max_tokens):
+            r = client.complete(msgs, temperature=0.0, max_tokens=max_tokens, extra=extra)
+            if r.status != "ok":
+                raise RuntimeError(r.error or r.status)
+            return r.content
+
+        out, stats = build(root, complete, sandbox, log=lambda m: print(m, flush=True))
+    print(json.dumps(stats, ensure_ascii=False), flush=True)
     return 0
 
 
@@ -242,7 +279,8 @@ def main(argv: list[str] | None = None) -> int:
     mp.add_argument("action", choices=["list", "search", "forget", "path"])
     mp.add_argument("query", nargs="?", help="search：問題；forget：主題名稱 / search: question; forget: topic title")
     trp = sub.add_parser("train", help="Phase 6 LoRA training (R20): plan, sft, export, gate")
-    trp.add_argument("action", choices=["plan", "sft", "export", "gate"])
+    trp.add_argument("action", choices=["plan", "sft", "export", "gate", "replay"])
+    trp.add_argument("--model", default="qwen3.5-4b-q4_k_m", help="replay: 凍結核心（清單名稱）/ frozen core")
     trp.add_argument("--params", type=float, help="plan: 模型參數量（十億）/ model size in billions")
     trp.add_argument("--config", help="sft: 設定檔 JSON / TrainConfig JSON")
     trp.add_argument("--run", help="export: var/train/<run>")
@@ -264,6 +302,8 @@ def main(argv: list[str] | None = None) -> int:
     dsp = sub.add_parser("dataset", help="export SFT training data (R20.3 verified only; no evaluation overlap)")
     dsp.add_argument("action", choices=["export"])
     dsp.add_argument("--limit", type=int, default=2000, help="template examples per source")
+    dsp.add_argument("--replay", help="複習資料 JSONL（train replay 產生）/ replay JSONL from `train replay`")
+    dsp.add_argument("--replay-ratio", type=float, default=0.0, help="複習資料佔全部的比例 / replay share, 0–<1")
     tc = sub.add_parser("toolcheck", help="ACEBench through the gateway as OpenAI tools (system-level tool-call score)")
     tc.add_argument("--policy", default="jiezi-local")
     sub.add_parser("dashboard", help="metrics dashboard: achievement rate, local handling, E0, self-test, gaps")
@@ -442,7 +482,9 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_data_build(root)
         if args.cmd == "dataset":
             from .. import training_data
-            out, m = training_data.export(root, args.limit)
+            from pathlib import Path as P
+            out, m = training_data.export(root, args.limit, P(args.replay) if args.replay else None,
+                                          args.replay_ratio)
             print(f"{m['examples']} examples {m['by_source']}; excluded {m['excluded']}; file: {out}")
             return 0
         if args.cmd == "toolcheck":

@@ -48,6 +48,7 @@
 | `train-hf` | transformers 5.23.0、peft 0.21.3、accelerate 1.16.0、safetensors 0.8.0、tokenizers 0.23.3、huggingface-hub 2.4.0 | https://pypi.org/project/transformers/ 等 | Apache-2.0 | 是 / yes | 不適用 / n/a | 2026-11-17 | 已安裝套件的 metadata / installed metadata |
 | `train-bitsandbytes` | bitsandbytes 0.50.2（4-bit QLoRA）| https://pypi.org/project/bitsandbytes/ | MIT | 是 / yes | 不適用 / n/a | 2026-11-17 | 已安裝套件的 metadata / installed metadata |
 | `train-fla` | flash-linear-attention 0.6.0、fla-core 0.6.0（Qwen3.5 線性注意力的 Triton 核心）、einops 0.8.2 | https://pypi.org/project/flash-linear-attention/ | MIT | 是 / yes | 不適用 / n/a | 2026-11-17 | PyPI metadata；OSV 查詢無公告 / no OSV advisories |
+| `train-mbpp` | MBPP（Google Research；`mbpp/mbpp.jsonl` @ github.com/google-research/google-research f82046ba，sha256 ccf64cea…）。只用 prompt／validation／train（task 1–10、511–974）當第二輪訓練的複習題，test（11–510）是評測用的不取；答案是凍結核心自己作答、沙盒驗證通過的（add-sft-round2）。檔案只在 `var/`，不隨專案散布 / replay prompts for round-2 training; test split never used; files stay in var/ | https://github.com/google-research/google-research/tree/master/mbpp | CC BY 4.0（須標示出處 / attribution required） | 是 / yes | 是 / yes（使用者 2026-11-18 同意） | 2026-11-18 | Hugging Face 資料卡標示 license:cc-by-4.0 |
 
 ## 已排除 / Excluded
 

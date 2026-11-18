@@ -1,0 +1,22 @@
+{
+ "base_model": "Qwen/Qwen3.5-4B",
+ "base_revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+ "dataset": "var/training/sft-r2.jsonl",
+ "run_name": "qwen3.5-4b-r2",
+ "lora_r": 16,
+ "lora_alpha": 32,
+ "lora_dropout": 0.05,
+ "learning_rate": 5e-05,
+ "epochs": 1,
+ "max_len": 768,
+ "batch_size": 1,
+ "grad_accum": 16,
+ "load_in_4bit": true,
+ "gradient_checkpointing": true,
+ "seed": 20261118,
+ "extra": {
+  "stop_at": "06:30",
+  "vram_ceiling_mib": 5500,
+  "note": "add-sft-round2（使用者 2026-11-18 審閱）：lr 5e-5、每源上限 800、MBPP 複習資料補到 50%、max_len 768（第一輪 1024 峰值 6,367 MiB 超過 6,141 MiB 實體）/ round 2: lr 5e-5, 800 per source, MBPP replay topped up to 50%, max_len 768"
+ }
+}

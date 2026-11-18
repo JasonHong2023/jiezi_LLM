@@ -179,7 +179,34 @@ def from_knowledge(root: Path, rng: random.Random, limit: int) -> list[dict]:
     return out
 
 
-def export(root: Path, limit_per_source: int = 2000) -> tuple[Path, dict]:
+def _overlaps(ex: dict, banned: set[str], targets: set[str]) -> bool:
+    q = next((m["content"] for m in reversed(ex["messages"][:-1]) if m["role"] == "user"), "")
+    nq = _norm(q)
+    return nq in banned or any(t in nq for t in targets)
+
+
+def mix_replay(kept: list[dict], replay: list[dict], ratio: float, rng: random.Random) -> list[dict]:
+    """把複習資料補到佔全部的 ratio（題目不夠就重複取樣，每輪打亂），再和新資料一起打亂。
+    Top replay up to `ratio` of the total (repeating, reshuffled each pass, when short), then shuffle everything."""
+    if not replay or ratio <= 0:
+        return kept
+    want = round(len(kept) * ratio / (1 - ratio))
+    picked: list[dict] = []
+    while len(picked) < want:
+        batch = replay[:]
+        rng.shuffle(batch)
+        picked += batch[:want - len(picked)]
+    out = kept + picked
+    rng.shuffle(out)
+    return out
+
+
+def export(root: Path, limit_per_source: int = 2000, replay: Path | None = None,
+           replay_ratio: float = 0.0) -> tuple[Path, dict]:
+    """replay：凍結核心通過驗證的回答（add-sft-round2），依 replay_ratio 混入。
+    replay: verified answers of the frozen core (add-sft-round2), mixed in at replay_ratio."""
+    if not 0 <= replay_ratio < 1:
+        raise ValueError("replay_ratio must be in [0, 1)")
     rng = random.Random(SEED)
     banned, targets = eval_targets(root)
     traj, why = from_trajectories(root)
@@ -187,9 +214,7 @@ def export(root: Path, limit_per_source: int = 2000) -> tuple[Path, dict]:
         from_knowledge(root, rng, limit_per_source)
     kept, seen = [], set()
     for ex in pool:
-        q = next((m["content"] for m in reversed(ex["messages"][:-1]) if m["role"] == "user"), "")
-        nq = _norm(q)
-        if nq in banned or any(t in nq for t in targets):
+        if _overlaps(ex, banned, targets):
             why["overlaps_evaluation"] += 1
             continue
         if ex["sha256"] in seen:
@@ -197,12 +222,22 @@ def export(root: Path, limit_per_source: int = 2000) -> tuple[Path, dict]:
             continue
         seen.add(ex["sha256"])
         kept.append(ex)
+    rep: list[dict] = []
+    if replay is not None:
+        for line in replay.read_text(encoding="utf-8").splitlines():
+            ex = json.loads(line)
+            if not ex.get("training_use") or _overlaps(ex, banned, targets):
+                why["replay_overlaps_evaluation" if ex.get("training_use") else "replay_not_trainable"] += 1
+                continue
+            rep.append(ex)
+    kept = mix_replay(kept, rep, replay_ratio, rng)
     out = root / "var" / "training" / f"sft-{date.today().isoformat()}.jsonl"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(json.dumps(e, ensure_ascii=False) for e in kept) + ("\n" if kept else ""), encoding="utf-8")
     manifest = {"created": datetime.now().astimezone().isoformat(timespec="seconds"), "file": out.name,
                 "examples": len(kept), "by_source": dict(Counter(e["source"] for e in kept)),
                 "licenses": dict(Counter(e["license"] for e in kept)), "excluded": dict(why),
-                "rules": "R20.3 verified only; non-trainable sources and evaluation overlaps removed"}
+                "rules": "R20.3 verified only; non-trainable sources and evaluation overlaps removed",
+                "limit_per_source": limit_per_source, "replay_ratio": replay_ratio, "replay_unique": len(rep)}
     out.with_suffix(".manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
     return out, manifest

@@ -166,8 +166,11 @@ def train(cfg: TrainConfig, root: Path, log=_say) -> tuple[Path, str]:
         model = get_peft_model(model, LoraConfig(r=cfg.lora_r, lora_alpha=cfg.lora_alpha,
                                                  lora_dropout=cfg.lora_dropout,
                                                  target_modules=list(cfg.target_modules), task_type="CAUSAL_LM"))
-    data = [e for e in (encode(x, tok, cfg.max_len) for x in load_examples(root / cfg.dataset)) if e]
-    log(f"examples: {len(data)}; trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+    raw = load_examples(root / cfg.dataset)
+    data = [e for e in (encode(x, tok, cfg.max_len) for x in raw) if e]
+    dropped = len(raw) - len(data)       # 超過 max_len 的整筆排除、不截斷 / over-long examples dropped, not truncated
+    log(f"examples: {len(data)} (dropped {dropped} over {cfg.max_len} tokens); "
+        f"trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
     load_peak = torch.cuda.max_memory_allocated() / 2**20
     torch.cuda.reset_peak_memory_stats()  # 載入時的峰值和訓練時分開記 / loading and training peaks recorded apart
     opt = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=cfg.learning_rate)
@@ -218,7 +221,14 @@ def train(cfg: TrainConfig, root: Path, log=_say) -> tuple[Path, str]:
     state["seconds"] += round(time.monotonic() - t0)
     record = {"steps": state["history"], "seconds": state["seconds"], "sessions": state["sessions"],
               "peak_vram_mib": round(torch.cuda.max_memory_allocated() / 2**20), "load_peak_vram_mib": round(load_peak),
-              "examples_seen": state["step"] * cfg.grad_accum, "total_steps": steps}
+              "examples_seen": state["step"] * cfg.grad_accum, "total_steps": steps, "dropped_over_max_len": dropped}
+    ceiling = extra.get("vram_ceiling_mib")
+    if ceiling:
+        record["vram_ceiling_mib"] = ceiling
+        record["over_ceiling"] = record["peak_vram_mib"] > ceiling
+        if record["over_ceiling"]:
+            log(f"WARNING: training peak {record['peak_vram_mib']} MiB is over the {ceiling} MiB ceiling; "
+                f"lower max_len next round")
     if paused:
         ckpt.mkdir(parents=True, exist_ok=True)
         model.save_pretrained(ckpt / "adapter")

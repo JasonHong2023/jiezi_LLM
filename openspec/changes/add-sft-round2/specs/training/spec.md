@@ -2,8 +2,8 @@
 
 ### Requirement: Replay Mix And VRAM Ceiling
 
-訓練資料 SHALL 混入凍結核心自己通過驗證的回答（replay），比例記在資料 manifest；replay 題目 MUST NOT 與評測題重疊；訓練的顯示記憶體峰值 SHALL 不超過設定上限（預設 5,500 MiB），超過長度的樣本 SHALL 排除而非截斷。
-Training data SHALL include verified replay answers from the frozen core at a recorded ratio; replay prompts MUST NOT overlap evaluation items; peak training VRAM SHALL stay under the configured ceiling, dropping over-long examples.
+訓練資料 SHALL 混入凍結核心自己通過驗證的回答（replay），比例記在資料 manifest；replay 題目 MUST NOT 與評測題重疊；訓練的顯示記憶體峰值 SHALL 與設定上限（5,500 MiB）比對並在超過時標示，超過長度的樣本 SHALL 排除並計數而非截斷。
+Training data SHALL include verified replay answers from the frozen core at a recorded ratio; replay prompts MUST NOT overlap evaluation items; peak training VRAM SHALL be recorded against the configured ceiling and flagged when over it, and over-long examples SHALL be dropped and counted.
 
 #### Scenario: 與評測重疊 / Overlapping evaluation
 

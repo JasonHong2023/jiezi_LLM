@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 夜間工作（使用者 2026-11-17 選「拆成多晚、小批訓練」）：
-#   1. Phase 6 第一輪訓練（add-sft-training 2.3），06:30 存檢查點暫停、下一晚接續；
+#   1. Phase 6 訓練（目前第二輪 add-sft-round2：先產生 MBPP 複習資料、匯出混合資料集），06:30 存檢查點暫停、下一晚接續；
 #   2. 訓練完成就合併並匯出 Q4_K_M GGUF（CPU，約 3 分鐘、9 GB 系統記憶體）；
 #   3. 用 E0 條件評測訓練後的模型（回歸關卡用）；
 #   4. 剩下的時間跑 E0 取樣設定（add-e0-benchmark 5.5，可接續），06:45 前停。
@@ -11,7 +11,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 log="var/train/night-$(date +%F).log"; mkdir -p var/train
 key=$(grep '^JIEZI_GATEWAY_KEY=' .env | cut -d= -f2-)
-run="qwen3.5-4b-r1"
+run="qwen3.5-4b-r2"   # add-sft-round2（r1 已回滾，2026-11-18）/ round 2; r1 was rolled back
 hold() { curl -s -m 30 -X POST "http://127.0.0.1:36100/admin/unload" -H "Authorization: Bearer $key" \
   -H 'Content-Type: application/json' -d "$1" >> "$log" 2>&1; echo >> "$log"; }
 echo "=== $(date -Iseconds) start" >> "$log"
@@ -22,7 +22,22 @@ if [ -f var/eval/recall-ab/todo ]; then
   echo "--- recall-ab done $(date -Iseconds)" >> "$log"
 fi
 hold "{\"hold_until\": \"$(date +%F)T07:00\", \"reason\": \"nightly training and evaluation\"}"
-if [ ! -f "var/train/$run/adapter/adapter_config.json" ]; then
+# 第二輪的資料：凍結核心對 MBPP 作答、沙盒驗證（約 40 分鐘 GPU），再匯出每源 800 筆＋複習資料補到 50%
+# Round-2 data: frozen-core MBPP replay (verified in the sandbox), then the export with replay topped up to 50%
+if [ ! -f "var/train/$run/adapter/adapter_config.json" ] && [ ! -f var/training/sft-r2.jsonl ]; then
+  if [ ! -s var/training/replay-mbpp.jsonl ]; then
+    echo "=== replay $(date -Iseconds)" >> "$log"
+    scripts/jiezi train replay >> "$log" 2>&1
+    echo "--- replay rc=$? $(date -Iseconds)" >> "$log"
+  fi
+  if [ -s var/training/replay-mbpp.jsonl ]; then
+    scripts/jiezi dataset export --limit 800 --replay var/training/replay-mbpp.jsonl --replay-ratio 0.5 >> "$log" 2>&1 \
+      && cp "var/training/sft-$(date +%F).jsonl" var/training/sft-r2.jsonl \
+      && cp "var/training/sft-$(date +%F).manifest.json" var/training/sft-r2.manifest.json
+    echo "--- dataset rc=$? $(date -Iseconds)" >> "$log"
+  fi
+fi
+if [ ! -f "var/train/$run/adapter/adapter_config.json" ] && [ -f var/training/sft-r2.jsonl ]; then
   HF_HUB_OFFLINE=1 scripts/jiezi train sft --config "src/jiezi/train/configs/$run.json" >> "$log" 2>&1
   echo "--- train rc=$? (0 done, 3 paused) $(date -Iseconds)" >> "$log"
 fi

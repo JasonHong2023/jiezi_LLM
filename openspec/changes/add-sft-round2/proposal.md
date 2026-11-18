@@ -1,4 +1,4 @@
-> **狀態 / Status**：提案，**尚未實作**，待使用者審閱（R4）。Proposal only, not implemented; awaiting review.
+> **狀態 / Status**：2026-11-18 使用者審閱：OQ1 下載 MBPP（CC BY 4.0，只取非 test 部分）、OQ2 複習資料 50%（新資料每源 800 筆，複習題不足就重複取樣補到 50%）、OQ3 lr 5e-5。實作中。/ Reviewed; implementing.
 
 ## Why
 

@@ -91,3 +91,80 @@ class TestTraining(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestReplay(unittest.TestCase):
+    """add-sft-round2：MBPP 複習資料與混合比例。 / MBPP replay and the mix ratio."""
+
+    def test_test_split_never_used_and_hash_pinned(self):
+        from jiezi.train import replay as R
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            rows = [{"task_id": i, "text": f"t{i}", "code": "", "test_setup_code": "", "test_list": ["assert True"],
+                     "challenge_test_list": []} for i in (1, 11, 300, 510, 511, 974)]
+            blob = "".join(json.dumps(r) + "\n" for r in rows).encode()
+
+            class Resp:
+                def __init__(self, b):
+                    self.b = b
+
+                def read(self):
+                    return self.b
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *a):
+                    return False
+            with self.assertRaises(JieziError):                              # 雜湊不符就拒絕 / pinned hash
+                R.fetch_mbpp(root, opener=lambda url, timeout: Resp(blob))
+            p = R.mbpp_path(root)
+            p.parent.mkdir(parents=True)
+            p.write_bytes(blob)
+            self.assertEqual([x["task_id"] for x in R.problems(p)], [1, 511, 974])
+
+    def test_program_runs_all_tests(self):
+        from jiezi.train import replay as R
+        p = {"test_setup_code": "import math", "test_list": ["assert f(2) == 4"], "challenge_test_list": ["assert f(3) == 9"]}
+        prog = R.program(p, "def f(x):\n    return x * x")
+        self.assertIn("import math", prog)
+        self.assertIn("assert f(3) == 9", prog)
+        self.assertIn("問題：", R.prompt_of({"text": "x", "test_list": ["assert 1"]}))
+
+    def test_build_keeps_only_passing_answers(self):
+        from jiezi.train import replay as R
+        probs = [{"task_id": 600 + i, "text": "t", "test_list": ["assert 1"]} for i in range(3)]
+
+        class SB:
+            def run_python(self, files, argv, limits):
+                ok = "good" in files["main.py"]
+                return type("Res", (), {"returncode": 0 if ok else 1, "limit": None})()
+        answers = iter(["```python\ngood = 1\n```", "```python\nbad = 1\n```"])
+
+        def complete(msgs, n):
+            a = next(answers, None)
+            if a is None:
+                raise RuntimeError("engine down")
+            return a
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(R, "fetch_mbpp", return_value=Path(d)), \
+                mock.patch.object(R, "problems", return_value=probs):
+            out, stats = R.build(Path(d), complete, SB(), log=lambda m: None)
+            rows = [json.loads(x) for x in out.read_text().splitlines()]
+        self.assertEqual((stats["passed"], stats["failed"], stats["errors"]), (1, 1, 1))
+        self.assertEqual((rows[0]["source"], rows[0]["training_use"], rows[0]["task_id"]), ("mbpp-replay", True, 600))
+
+    def test_mix_ratio(self):
+        import random
+        from jiezi.training_data import mix_replay
+        kept = [{"id": f"n{i}"} for i in range(30)]
+        rep = [{"id": f"r{i}"} for i in range(4)]
+        out = mix_replay(kept, rep, 0.5, random.Random(1))
+        self.assertEqual(len(out), 60)
+        self.assertEqual(sum(x["id"].startswith("r") for x in out), 30)     # 不夠就重複取樣 / repeated when short
+        self.assertEqual(mix_replay(kept, [], 0.5, random.Random(1)), kept)
+        self.assertEqual(len(mix_replay(kept, rep, 0.0, random.Random(1))), 30)
+
+    def test_round2_config(self):
+        cfg = C.TrainConfig(**json.loads((ROOT / "src/jiezi/train/configs/qwen3.5-4b-r2.json").read_text()))
+        self.assertEqual((cfg.learning_rate, cfg.max_len, cfg.extra["vram_ceiling_mib"]), (5e-05, 768, 5500))
+        self.assertNotEqual(cfg.run_name, "qwen3.5-4b-r1")                    # 每輪新的 LoRA / fresh LoRA (R20.2)
