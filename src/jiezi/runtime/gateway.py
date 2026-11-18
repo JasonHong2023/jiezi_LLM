@@ -1757,6 +1757,55 @@ class Gateway:
                 rec["tiers"].append({"tier": 2, "step": "hint", "error": f"hint unavailable: {exc}"})
         return None
 
+    def _teachers_later(self, rec: dict, tier, provider: str | None) -> None:
+        """轉交過的題目在背景問老師模型（add-open-teacher）。 / Ask the teachers about an escalated question later."""
+        from ..teacher import allowed
+        teachers = [m for m in (getattr(self.s, "teacher_models", None) or []) if allowed(m)]
+        req = rec.get("request") or {}
+        if not teachers or tier != 3 or provider not in ("claude", "cloud") or rec.get("eval") \
+                or rec.get("_teachers_done") or req.get("tools") or req.get("response_format") or has_images(req) \
+                or not self.s.cloud_base or self._injected(rec):
+            return
+        rec["_teachers_done"] = True
+        delivered = next((t["answer"].get("content") for t in reversed(rec.get("tiers") or []) if isinstance(t, dict)
+                          and t.get("tier") == 3 and isinstance(t.get("answer"), dict)), "") or ""
+        msgs = [{"role": m["role"], "content": m["content"]} for m in req.get("messages") or []
+                if m.get("role") in ("system", "user", "assistant") and isinstance(m.get("content"), str)]
+        try:
+            asyncio.get_running_loop().create_task(
+                self._ask_teachers(teachers, msgs, strip_appendix(delivered), rec.get("id") or ""))
+        except RuntimeError:
+            pass
+
+    async def _ask_teachers(self, teachers: list[str], msgs: list[dict], delivered: str, tid: str) -> None:
+        from .. import teacher as T
+        headers = {"Authorization": f"Bearer {self.s.cloud_key}"} if self.s.cloud_key else {}
+
+        async def one(model: str) -> tuple[str, str]:
+            if not await anyio.to_thread.run_sync(T.take, self.s.root, model, self.s.teacher_daily_max):
+                return model, ""
+            try:
+                r = await self.cloud.post(f"{self.s.cloud_base}/v1/chat/completions", headers=headers, json={
+                    "model": model, "messages": msgs, "max_tokens": T.MAX_TOKENS, "stream": False,
+                    "disable_fallbacks": True}, timeout=120)
+                r.raise_for_status()
+                data = r.json()
+                got = str(data.get("model") or "")
+                # LiteLLM 換成別的模型時不收（核對實際回答的模型）/ reject a substituted model
+                if not T.allowed(got):
+                    self.log(f"teacher: {model} answered as {got}, not kept")
+                    return model, ""
+                return model, strip_appendix(_message(data).get("content") or "").strip()
+            except Exception as exc:  # noqa: BLE001 - 老師失敗不影響任何事 / failures are harmless
+                self.log(f"teacher: {model}: {type(exc).__name__}: {exc}")
+                return model, ""
+        answers = dict(await asyncio.gather(*(one(m) for m in teachers)))
+        question = next((m["content"] for m in reversed(msgs) if m["role"] == "user"), "")
+        kept = T.judge(answers, delivered, question)
+        for model, agreed in kept.items():
+            await anyio.to_thread.run_sync(T.save, self.s.root, msgs, answers[model], model, agreed, tid)
+        self.log(f"teacher: {len(kept)}/{len(teachers)} kept for {tid}")
+
     def _experience_done(self, rec: dict, tier, escalation_reason: str | None, provider: str | None) -> None:
         """回答定案後：附上的經驗記一次有效／無效；走過階梯的題目在背景寫一筆新經驗。
         When an answer is final: count the attached lessons, and write a new lesson for a question that needed the ladder."""
@@ -2051,6 +2100,10 @@ class Gateway:
             self._web_memo(rec)
         except Exception as exc:  # noqa: BLE001
             self.log(f"web memo: {type(exc).__name__}: {exc}")
+        try:
+            self._teachers_later(rec, tier, provider)
+        except Exception as exc:  # noqa: BLE001
+            self.log(f"teacher: {type(exc).__name__}: {exc}")
         try:
             self._experience_done(rec, tier, escalation_reason, provider)
         except Exception as exc:  # noqa: BLE001

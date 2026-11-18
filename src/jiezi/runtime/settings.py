@@ -70,6 +70,8 @@ class Settings:
     longdoc: bool = True            # 長文件先分段濃縮（add-long-documents）/ condense long documents first
     ladder: bool = True             # 本機先試到底：重答 → 思考模式 → 雲端提示 → 最後才 Claude（local-first-solving）
     ladder_think: bool = True       # 階梯的思考模式那一步 / the think-mode rung
+    teacher_models: list[str] = field(default_factory=list)   # 老師模型（add-open-teacher）/ teacher models
+    teacher_daily_max: int = 100
     web_read: bool = True           # 使用者訊息裡的網址在本機讀取（add-web-read）/ read typed URLs locally
     experience: bool = True         # 解題經驗記錄與提示（local-first-solving）/ experience records
     tier2: bool = False             # 第 2 層：只向協助者要回饋、本機重答（add-partial-escalation；量測後才預設開啟）
@@ -163,6 +165,8 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         ladder_think=_onoff(env, "JIEZI_LADDER_THINK", True),
         experience=_onoff(env, "JIEZI_EXPERIENCE", True),
         web_read=_onoff(env, "JIEZI_WEB_READ", True),
+        teacher_models=[m.strip() for m in (env.get("JIEZI_TEACHER_MODELS") or "").split(",") if m.strip()],
+        teacher_daily_max=_int(env, "JIEZI_TEACHER_DAILY_MAX", 100),
         rag_min=float(env.get("JIEZI_RAG_MIN") or 0.6),
         laws_rag_min=float(env.get("JIEZI_LAWS_RAG_MIN") or 0.5),
         doc_semantic=_onoff(env, "JIEZI_DOC_SEMANTIC", True),

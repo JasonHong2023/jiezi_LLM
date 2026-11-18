@@ -1,4 +1,4 @@
-> **狀態 / Status**：2026-11-18 提案；使用者：「老師不只一個」→ 改成多位老師。等使用者審閱。/ Revised for several teachers.
+> **狀態 / Status**：2026-11-18 使用者：「老師不只一個」「我不要管條款，能用的模型就用，我只能用免費的」→ 用 LiteLLM 上能用的免費模型（實測可用：nvidia-nemotron-3-ultra、agnes-2.5-flash、nvidia-muse-glimmer-30b；cloudflare-gpt-oss-120b 額度重置後可用），只排除條款明文禁止的 Anthropic、Gemini、OpenAI 商業 API。已實作。/ Implemented with the free models that work.
 
 ## Why
 

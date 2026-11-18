@@ -214,8 +214,9 @@ def export(root: Path, limit_per_source: int = 2000, replay: Path | None = None,
     rng = random.Random(SEED)
     banned, targets = eval_targets(root)
     traj, why = from_trajectories(root)
-    pool = traj + from_laws(root, rng, limit_per_source) + from_curriculum(root, rng, limit_per_source) + \
-        from_knowledge(root, rng, limit_per_source)
+    from .teacher import load as teacher_load
+    pool = traj + teacher_load(root)[-limit_per_source:] + from_laws(root, rng, limit_per_source) + \
+        from_curriculum(root, rng, limit_per_source) + from_knowledge(root, rng, limit_per_source)
     kept, seen = [], set()
     for ex in pool:
         if _overlaps(ex, banned, targets):
