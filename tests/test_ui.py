@@ -124,6 +124,28 @@ class TestUi(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(json.loads(r.stdout), [["第二題", "/help", "第一題", None, "/help", "第二題", "草稿"], ["a"]])
 
+    def test_pasted_key_is_cleaned(self):
+        """貼上整行 `JIEZI_GATEWAY_KEY=...` 也能用（使用者 2026-11-18 得到 401）。 / A pasted .env line still works."""
+        import shutil
+        import subprocess
+        if not shutil.which("node"):
+            self.skipTest("node not installed")
+        js = (ROOT / "ui" / "src" / "api.js").resolve().as_uri()
+        prog = ("globalThis.location = {protocol: 'http:', hostname: 'localhost'};"
+                f"const m = await import({js!r});"
+                "console.log(JSON.stringify(['JIEZI_GATEWAY_KEY=abc_1', ' abc_1 ', 'export JIEZI_GATEWAY_KEY=\"abc_1\"', "
+                "\"'abc_1'\", 'JIEZI_GATEWAY_KEY='].map(m.cleanKey)));")
+        r = subprocess.run(["node", "--input-type=module", "-e", prog], capture_output=True, text=True, timeout=30)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout), ["abc_1", "abc_1", "abc_1", "abc_1", ""])
+
+    def test_effects_return_nothing_or_a_cleanup(self):
+        """useEffect 的箭頭函式不可直接回傳運算式（Chrome 158 的 scrollIntoView 回傳 Promise，React 當成清理函式呼叫而當掉）。
+        Effects must not return an expression's value: React calls it as the cleanup (2026-11-18 blank page)."""
+        import re
+        for f in (ROOT / "ui" / "src").glob("*.jsx"):
+            self.assertEqual(re.findall(r"useEffect\(\(\)\s*=>\s*[^{\s]", f.read_text(encoding="utf-8")), [], f.name)
+
     def test_policy_menu_without_ask_claude(self):
         """策略選單拿掉「直接請教 Claude」（使用者 2026-11-18）。 / The policy menu omits ask-Claude."""
         app = (ROOT / "ui" / "src" / "App.jsx").read_text(encoding="utf-8")

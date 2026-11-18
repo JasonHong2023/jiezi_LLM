@@ -117,7 +117,10 @@ function Chat() {
     setReading("");
   }
 
-  useEffect(() => end.current?.scrollIntoView({ block: "end" }), [msgs]);
+  // 一定要用大括號：新版 Chrome（158）的 scrollIntoView 會回傳 Promise，箭頭函式直接回傳它，React 會當成清理函式呼叫，
+  // 出現「l is not a function」整個畫面消失（使用者 2026-11-18：送出後、切換分頁後空白）
+  // Braces matter: in Chrome 158 scrollIntoView returns a Promise, which React then calls as the cleanup and crashes
+  useEffect(() => { end.current?.scrollIntoView({ block: "end" }); }, [msgs]);
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && abort.current?.abort();  // 一鍵中止 / one-key stop
     window.addEventListener("keydown", onKey);

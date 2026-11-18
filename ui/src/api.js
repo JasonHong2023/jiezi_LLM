@@ -8,8 +8,12 @@ const KEY = "jiezi.gatewayKey";
 const IN_TAURI = location.protocol === "tauri:" || location.hostname === "tauri.localhost";
 export const BASE = IN_TAURI ? "http://127.0.0.1:36100" : "";
 
-export const getKey = () => sessionStorage.getItem(KEY) || "";
-export const setKey = (k) => (k ? sessionStorage.setItem(KEY, k.trim()) : sessionStorage.removeItem(KEY));
+export const getKey = () => cleanKey(sessionStorage.getItem(KEY));
+// 從 .env 或終端機複製時常連「JIEZI_GATEWAY_KEY=」、引號、空白一起貼上（使用者 2026-11-18 得到 401），這裡去掉
+// Pasting from .env or a terminal often brings the variable name, quotes or spaces along; strip them
+export const cleanKey = (k) => String(k || "").trim().replace(/^(export\s+)?JIEZI_GATEWAY_KEY\s*=\s*/, "").trim()
+  .replace(/^(["'])(.*)\1$/, "$2").trim();
+export const setKey = (k) => (cleanKey(k) ? sessionStorage.setItem(KEY, cleanKey(k)) : sessionStorage.removeItem(KEY));
 
 function headers() {
   return { Authorization: `Bearer ${getKey()}`, "Content-Type": "application/json" };
