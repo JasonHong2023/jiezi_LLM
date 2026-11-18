@@ -1659,9 +1659,10 @@ class Gateway:
         if self.consult_cap:
             self.consult_cap.take()
         msg = {"role": "assistant", "content": ans["content"]}
+        called = bool(body.get("tools")) and escalation.text_calls_to_tool_calls(msg, body["tools"])
         resp = {"id": f"chatcmpl-consult-{int(time.time() * 1000)}", "object": "chat.completion",
                 "created": int(time.time()), "model": ans["model"], "usage": ans["usage"],
-                "choices": [{"index": 0, "message": msg, "finish_reason": "stop"}]}
+                "choices": [{"index": 0, "message": msg, "finish_reason": "tool_calls" if called else "stop"}]}
         return resp, ans
 
     def _deliver_consult(self, body: dict, rec: dict, t0: float, stream: bool, resp: dict, ans: dict,

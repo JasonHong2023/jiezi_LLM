@@ -65,6 +65,32 @@ def _calls_from_message(message: dict) -> list[tuple[str, dict]] | None:
     return [(name, args) for c in calls for name, args in c.items()]
 
 
+_ONLY_CALLS = re.compile(r"^\s*(?:```\w*\s*)?(\[.*\])\s*(?:```)?\s*$", re.S)
+
+
+def text_calls_to_tool_calls(message: dict, tools: list[dict]) -> bool:
+    """整段回答只有 `[f(a=1)]` 時，就地改成 OpenAI `tool_calls`（請教 Claude 走文字格式，用戶端只認 tool_calls；
+    2026-11-18 Hermes 收到文字 `[browser_navigate(...)]` 當成最終回答而停住）。函式名都在 tools 裡才轉。回傳有沒有轉。
+    When the whole answer is `[f(a=1)]`, rewrite it in place as OpenAI tool_calls (consulted answers use the text
+    format; clients only act on tool_calls). Only when every name is a listed tool. Returns whether it converted."""
+    import uuid
+    text = message.get("content") or ""
+    m = _ONLY_CALLS.match(text) if isinstance(text, str) and not message.get("tool_calls") else None
+    if not m:
+        return False
+    names = {(t.get("function") or t).get("name") for t in tools or []}
+    try:
+        calls = [(n, a) for c in tool_call.parse_calls(m.group(1)) for n, a in c.items()]
+    except tool_call.Unparsed:
+        return False
+    if not calls or any(n not in names or not isinstance(a, dict) for n, a in calls):
+        return False
+    message["tool_calls"] = [{"id": f"call_{uuid.uuid4().hex[:24]}", "type": "function",
+                              "function": {"name": n, "arguments": json.dumps(a, ensure_ascii=False)}} for n, a in calls]
+    message["content"] = None
+    return True
+
+
 def verify_tools(tools: list[dict], message: dict) -> dict:
     specs = {}
     for t in tools or []:

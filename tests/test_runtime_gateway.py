@@ -662,6 +662,26 @@ class TestAutoConsult(unittest.TestCase):
         self.assertEqual(self.cloud_calls, [])
         self.assertIn("get_weather", self.asked[0])
 
+    def test_consulted_text_call_becomes_tool_calls(self):
+        """Claude 用文字寫的 `[f(a=1)]` 要轉成 tool_calls，Hermes 才會執行（2026-11-18 Hermes 停住）。
+        A consulted text call is returned as tool_calls so agents act on it."""
+        bad = {"role": "assistant", "content": "[get_weather()]"}
+        out = {**TestConsult.OK, "result": '[get_weather(city="台北", days=2)]'}
+        r = self.run_one([bad], {"messages": [{"role": "user", "content": "台北天氣"}], "tools": TOOLS}, consult_out=out)
+        choice = r["choices"][0]
+        self.assertEqual(choice["finish_reason"], "tool_calls")
+        self.assertIsNone(choice["message"]["content"])
+        fn = choice["message"]["tool_calls"][0]["function"]
+        self.assertEqual((fn["name"], json.loads(fn["arguments"])), ("get_weather", {"city": "台北", "days": 2}))
+        # 不是整段呼叫、或函式不在清單裡：照文字回 / prose or unknown functions stay text
+        from jiezi.runtime.escalation import text_calls_to_tool_calls
+        for text in ("先查一下：[get_weather(city='x')]", "[rm_rf(path='/')]", "[1, 2]"):
+            msg = {"role": "assistant", "content": text}
+            self.assertFalse(text_calls_to_tool_calls(msg, TOOLS), text)
+            self.assertEqual(msg["content"], text)
+        msg = {"role": "assistant", "content": "```\n[get_weather(city='x')]\n```"}
+        self.assertTrue(text_calls_to_tool_calls(msg, TOOLS))
+
     def test_engine_unavailable_consults(self):
         r = self.run_one([], {"messages": [{"role": "user", "content": "x"}]}, engine_ok=False)
         self.assertEqual((r["jiezi"]["provider"], r["jiezi"]["escalation"]), ("claude", "engine_unavailable"))
