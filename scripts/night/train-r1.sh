@@ -21,6 +21,11 @@ if [ -f var/eval/recall-ab/todo ]; then
   scripts/night/recall-ab.sh >> "$log" 2>&1 && rm -f var/eval/recall-ab/todo
   echo "--- recall-ab done $(date -Iseconds)" >> "$log"
 fi
+# 知識庫門檻新舊比較（tune-knowledge-relevance 2.4）：有標記才跑一次 / old vs new threshold, once
+if [ -f var/eval/relevance-e2e/todo ]; then
+  scripts/night/relevance-e2e.sh >> "$log" 2>&1 && rm -f var/eval/relevance-e2e/todo
+  echo "--- relevance-e2e done $(date -Iseconds)" >> "$log"
+fi
 hold "{\"hold_until\": \"$(date +%F)T07:00\", \"reason\": \"nightly training and evaluation\"}"
 # 第二輪的資料：凍結核心對 MBPP 作答、沙盒驗證（約 40 分鐘 GPU），再匯出每源 800 筆＋複習資料補到 50%
 # Round-2 data: frozen-core MBPP replay (verified in the sandbox), then the export with replay topped up to 50%
