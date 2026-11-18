@@ -121,6 +121,48 @@ def _reranker(root, s, env, force: bool = False):
                     timeout_s=s.rerank_timeout_s)
 
 
+def cmd_rag_relevance(root, args) -> int:
+    """`scripts/jiezi rag relevance`：知識庫相關度門檻量測（tune-knowledge-relevance）；只跑檢索，用實驗埠。
+    Relevance threshold measurement; retrieval only, on experimental ports."""
+    import dataclasses
+    import json as _json
+    import time as _time
+    from .. import rag
+    from ..knowledge import Knowledge, db_path as kdb
+    from .settings import load_settings
+    st = load_settings(root)
+    if args.gpu:
+        st = dataclasses.replace(st, rerank_gpu=True)
+    rows = [_json.loads(x) for x in rag.RELEVANCE_SET.read_text(encoding="utf-8").splitlines() if x.strip()]
+    emb = _embedder(root, st, load_env(root), port_offset=12)
+    if emb is None:
+        print("embedding model not found or JIEZI_RAG=off", file=sys.stderr)
+        return 1
+    rr = None if args.no_rerank else _reranker(root, st, load_env(root), force=True)
+    try:
+        kn = Knowledge(kdb(root))
+        text_of = lambda i: rag.doc_text(kn.section(i))  # noqa: E731
+        ts = [round(0.40 + 0.025 * i, 3) for i in range(17)]          # 0.40–0.80
+        res = rag.relevance(kn, rag.VectorStore(rag.vectors_path(root)), emb, rows, ts, reranker=rr, text_of=text_of)
+        res["current"] = {"threshold": st.rag_min, "rerank": bool(st.rerank)}
+        out = st.var / "eval" / "relevance" / f"relevance-{_time.strftime('%Y%m%d-%H%M%S')}.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(_json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
+        b = res["best"]
+        cur = next((g for g in res["grid"] if g["threshold"] == round(st.rag_min, 3) and g["rerank"] == bool(st.rerank and rr)),
+                   None)
+        if cur:
+            print(f"current t={st.rag_min} rerank={'on' if st.rerank else 'off'}: 該附有附到 {cur['on_hit']:.1%}，"
+                  f"不該附卻附了 {cur['false_attach']:.1%}")
+        print(f"best: {b}" if b else "no threshold keeps false attachments under the cap")
+        print(f"report: {out}")
+        return 0
+    finally:
+        emb.stop()
+        if rr is not None:
+            rr.stop()
+
+
 DATA_BUILDS = (("dict", "dictionary"), ("curriculum", "curriculum"), ("knowledge", "knowledge"), ("laws", "laws"),
                ("writing-refs", "writing_refs"))
 
@@ -318,6 +360,10 @@ def main(argv: list[str] | None = None) -> int:
     agp.add_argument("action", choices=["grant", "revoke", "grants", "audit", "server"])
     agp.add_argument("folder", nargs="?")
     agp.add_argument("--days", type=int, default=1, help="audit: 最近幾天 / recent days")
+    gp = sub.add_parser("rag", help="knowledge-base retrieval measurements (tune-knowledge-relevance)")
+    gp.add_argument("action", choices=["relevance"])
+    gp.add_argument("--gpu", action="store_true", help="重排序放 GPU / run the reranker on GPU")
+    gp.add_argument("--no-rerank", action="store_true", help="只量向量 / vectors only")
     rp = sub.add_parser("rerank", help="reranker self-check and A/B measurement (add-reranker)")
     rp.add_argument("action", choices=["check", "measure"])
     rp.add_argument("--gpu", action="store_true", help="重排序放 GPU / run the reranker on GPU")
@@ -569,6 +615,8 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{r['at']}  {'允許' if r.get('allowed') else '拒絕'}  {r.get('tool')}  {what}  {extra}")
             print(f"{len(rows)} entries ({args.days} day(s))")
             return 0
+        if args.cmd == "rag":
+            return cmd_rag_relevance(root, args)
         if args.cmd == "rerank":
             import dataclasses
             import json as _json

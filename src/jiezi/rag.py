@@ -280,3 +280,82 @@ def measure(knowledge, hybrid_plain: "HybridRetriever", hybrid_rerank: "HybridRe
     out["gain_points"] = round((out["rerank"]["hit_at_k"] - out["vector"]["hit_at_k"]) * 100, 1)
     out["extra_seconds"] = round(out["rerank"]["seconds_per_query"] - out["vector"]["seconds_per_query"], 3)
     return out
+
+
+# ── 相關度門檻量測（tune-knowledge-relevance）/ Relevance threshold measurement ──
+RELEVANCE_SET = Path(__file__).resolve().parent / "eval" / "data" / "relevance.jsonl"
+FALSE_ATTACH_MAX = 0.10      # 「不該附卻附了」上限（使用者 2026-11-18 同意）/ cap on off-topic attachments
+
+
+def _attach(scored: list[tuple[int, float]], rr: dict[int, float] | None, t: float, limit: int) -> list[int]:
+    """照 HybridRetriever 的規則，在門檻 t 下會附哪些段落（rr＝重排序分數，None＝不重排）。
+    The sections HybridRetriever would attach at threshold t (rr: reranker scores, None: no reranking)."""
+    if rr is not None and scored and scored[0][1] >= t:
+        cands = [(sid, s) for sid, s in scored[:RERANK_TOP] if s >= t - RERANK_SLACK]
+        if len(cands) > 1:
+            return [sid for sid, _ in sorted(cands, key=lambda c: -rr.get(c[0], float("-inf")))[:limit]]
+    return [sid for sid, s in scored[:limit] if s >= t]
+
+
+def relevance(knowledge, store: "VectorStore", embedder: "Embedder", rows: list[dict], thresholds: list[float],
+              reranker: "Reranker | None" = None, text_of: Callable[[int], str] | None = None, limit: int = 2,
+              log=print) -> dict:
+    """只跑檢索：每題算一次向量（與重排序）分數，再模擬各門檻會附哪些文章，量「該附的附到」與「不該附卻附了」。
+    點名文章的題目走全文路徑，與門檻無關。標 unsure 的題目只列出、不計分。
+    Retrieval only: vectors (and reranker scores) once per question, then each threshold is simulated. Questions that
+    name an article take the full-text path regardless of the threshold; `unsure` rows are listed but not scored."""
+    ids, pref = store.prefixes()
+    low = min(thresholds) - RERANK_SLACK
+    per_q, t0 = [], time.monotonic()
+    for r in rows:
+        q = r["q"]
+        item = {"q": q, "kind": r["kind"], "expect": r["expect"], "unsure": bool(r.get("unsure"))}
+        if knowledge.articles_named(q):
+            item["named"] = [s["name"] for s in knowledge.retrieve(q, None)]
+        else:
+            v = embedder.embed_query(q)
+            qp = _norm(list(v[:SCAN_DIM]))
+            top = sorted(zip(ids, (cosine(qp, p) for p in pref)), key=lambda x: -x[1])[:RERANK]
+            full = store.get([i for i, _ in top])
+            scored = sorted(((sid, cosine(v, x)) for sid, x in full.items()), key=lambda x: -x[1])
+            item["scored"] = [(sid, round(s, 4)) for sid, s in scored[:RERANK_TOP]]
+            if reranker is not None and text_of is not None:
+                cands = [sid for sid, s in scored[:RERANK_TOP] if s >= low]
+                if len(cands) > 1:
+                    item["rr"] = dict(zip(cands, reranker.score(q, [text_of(sid) for sid in cands])))
+        per_q.append(item)
+    seconds = round((time.monotonic() - t0) / max(1, len(rows)), 3)
+    names: dict[int, str] = {}
+
+    def name(sid: int) -> str:
+        if sid not in names:
+            names[sid] = knowledge.section(sid)["name"]
+        return names[sid]
+
+    grid = []
+    for use_rr in ((False, True) if reranker is not None else (False,)):
+        for t in thresholds:
+            hit = on_n = fa = off_n = wrong = 0
+            for it in per_q:
+                if it["unsure"]:
+                    continue
+                got = it["named"] if "named" in it else [name(s) for s in _attach(
+                    it["scored"], it.get("rr") if use_rr else None, t, limit)]
+                if it["expect"]:
+                    on_n += 1
+                    ok = bool(set(got) & set(it["expect"]))
+                    hit += ok
+                    wrong += bool(got) and not ok
+                else:
+                    off_n += 1
+                    fa += bool(got)
+            grid.append({"threshold": round(t, 3), "rerank": use_rr, "on_hit": round(hit / max(1, on_n), 4),
+                         "on_wrong": round(wrong / max(1, on_n), 4), "false_attach": round(fa / max(1, off_n), 4),
+                         "on_n": on_n, "off_n": off_n})
+    ok = [g for g in grid if g["false_attach"] <= FALSE_ATTACH_MAX]
+    best = max(ok, key=lambda g: (g["on_hit"], -g["false_attach"], g["threshold"])) if ok else None
+    for g in grid:
+        log(f"  t={g['threshold']:.3f} rerank={'on ' if g['rerank'] else 'off'} 該附有附到 {g['on_hit']:.1%}  "
+            f"附錯 {g['on_wrong']:.1%}  不該附卻附了 {g['false_attach']:.1%}")
+    return {"n": len(rows), "seconds_per_query": seconds, "false_attach_max": FALSE_ATTACH_MAX, "grid": grid,
+            "best": best, "questions": [{k: v for k, v in it.items() if k != "rr"} for it in per_q]}
