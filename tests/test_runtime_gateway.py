@@ -646,6 +646,15 @@ class TestAutoConsult(unittest.TestCase):
         self.assertIs(r["jiezi"]["training_use"], False)
         self.assertEqual(r["choices"][0]["message"]["content"], "玉山")
 
+    def test_path_without_file_is_not_escalated(self):
+        """只打路徑沒附檔，「看不到」就是正確答案（2026-11-18 實測被轉給 Claude）。 / No escalation for a bare path."""
+        r = self.run_one([{"role": "assistant", "content": "抱歉，我無法看到你電腦上的檔案，請用 /image 附上圖片。"}],
+                         {"messages": [{"role": "user", "content": r"'D:\download\a.jpg' 這圖片中有那些動物"}]})
+        self.assertEqual((r["jiezi"]["tier"], r["jiezi"]["escalation"]), (0, None))
+        self.assertEqual(self.asked, [])
+        self.assertIn("只輸出要給使用者看的回答本身", __import__("jiezi.runtime.consult", fromlist=["x"]).render_prompt(
+            {"messages": [{"role": "user", "content": "x"}]}))
+
     def test_failed_verification_consults_before_cloud(self):
         bad = {"role": "assistant", "content": "[get_weather()]"}
         r = self.run_one([bad], {"messages": [{"role": "user", "content": "x"}], "tools": TOOLS}, cloud_on=True)

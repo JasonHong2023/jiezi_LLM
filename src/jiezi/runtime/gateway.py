@@ -1381,6 +1381,10 @@ class Gateway:
                                  "tps": _tps(resp), "usage": resp.get("usage")})
         final, tier, escalate_reason = resp, 0, None
         help_reason = escalation.needs_help(_message(resp), (resp.get("choices") or [{}])[0].get("finish_reason"))
+        if help_reason == "self_reported_unsure" and rec.get("path_note"):
+            # 只打了路徑沒附檔：「看不到，請附上」就是正確答案，不用轉交（2026-11-18 實測被轉給 Claude）
+            # A path without the file: "I can't see it, please attach it" is the right answer, no escalation
+            help_reason = None
         if help_reason and ver["status"] != "fail":
             # 本機自己表示不會：本機重試沒有幫助，直接轉交 / the local model says it can't: retrying won't help
             rec["tiers"][-1]["needs_help"] = help_reason

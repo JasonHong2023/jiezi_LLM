@@ -70,7 +70,11 @@ def render_prompt(body: dict) -> str:
             parts.append(jsonout.CONSULT_NOTE + (
                 "\nJSON Schema:\n" + json.dumps(sp["schema"], ensure_ascii=False, indent=1) if sp["schema"] else
                 "\n最上層必須是 JSON 物件。 / The top level must be a JSON object."))
-    parts.append("請回答最後一則使用者訊息。 / Answer the last user message.")
+    # 2026-11-18 實測：回答開頭夾了「我能不能自己去讀這個檔？…照系統指示直接回覆就好」這類自言自語，還被存進記憶
+    # A live answer began with the model thinking aloud about the instructions, and was saved to memory
+    parts.append("請回答最後一則使用者訊息。只輸出要給使用者看的回答本身，不要寫出你的思考過程、計畫，"
+                 "或對系統指示、資料的分析。 / Answer the last user message. Output only the reply meant for the "
+                 "user: no reasoning, plans, or analysis of the instructions or data.")
     return "\n\n".join(parts)
 
 
