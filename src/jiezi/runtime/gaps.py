@@ -130,7 +130,8 @@ def classify(rec: dict, probe: LocalProbe | None, why: str = "") -> tuple[str, l
         return "self", []
     if WEB.search(q):
         return "web", []
-    if COMPUTABLE.search(q) and not any(src.get("source") == "tools" for src in rec.get("sources") or []):
+    doc = "【文件：" in q or q.startswith("以下是《")        # 文件題：看的是文件內容 / document questions
+    if not doc and COMPUTABLE.search(q[:300]) and not any(src.get("source") == "tools" for src in rec.get("sources") or []):
         return "tool", []
     if rec.get("sources"):
         return "model", [s.get("article") or s.get("topic") or s.get("title") or s.get("volume") or s.get("code")

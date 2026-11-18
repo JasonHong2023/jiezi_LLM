@@ -56,6 +56,8 @@ class TestDashboard(unittest.TestCase):
         self.assertEqual(G.classify(holiday, FakeProbe())[0], "tool")
         computed = rec("2027年的除夕是哪一天?", tiers=esc, final=3, sources=[{"source": "tools"}])
         self.assertNotEqual(G.classify(computed, FakeProbe())[0], "tool")          # 已經有工具 / already a tool
+        doc = rec("以下是《勞動基準法.txt》中和問題最相關的段落：第 30 條 每日不得超過八小時，平均每週…", tiers=esc, final=3)
+        self.assertNotEqual(G.classify(doc, FakeProbe())[0], "tool")              # 文件題不算 / document questions
         solved = rec("國花是什麼", tiers=[{"tier": 0}, {"tier": 1, "step": "retry"}], final=1)
         solved["ladder"] = {"first_error": "x", "solved_by": "retry"}
         with tempfile.TemporaryDirectory() as d:
