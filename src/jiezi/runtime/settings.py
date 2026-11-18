@@ -35,7 +35,7 @@ def _onoff(env: dict, key: str, default: bool) -> bool:
 
 def _recall(value: str | None) -> str:
     from ..longdoc import RECALL_MODES
-    v = (value or "off").strip().lower()
+    v = (value or "hyde").strip().lower()   # 預設 hyde：2026-11-19 量測 32 題答對 off 27、reserve 28、hyde 31
     if v not in RECALL_MODES:
         raise JieziError(f"JIEZI_DOC_RECALL must be one of {', '.join(RECALL_MODES)}, got {v!r}")
     return v
@@ -84,7 +84,7 @@ class Settings:
     laws_rag_min: float = 0.5       # 法規向量門檻（還沒量測，維持原值）/ statutes, not yet measured
     doc_semantic: bool = True       # 長文件問答用語意挑段落（add-semantic-chunks）/ semantic chunk selection
     doc_embed_timeout_s: float = 20.0  # 第一題最多等段落向量幾秒，之後先用字面 / first-question wait for chunk vectors
-    doc_recall: str = "off"         # 段落召回 off／reserve／hyde（add-chunk-recall）/ chunk recall mode
+    doc_recall: str = "hyde"        # 段落召回 off／reserve／hyde（add-chunk-recall；2026-11-19 量測後預設 hyde）
     progress: bool = True           # 串流時回報處理階段（add-progress-events；使用者 2026-11-18：預設開）/ stage events
     agent: bool = False             # 唯讀代理（add-agent-readonly；預設關）/ read-only file agent, off by default
     agent_max_steps: int = 6        # 一個請求最多幾步工具呼叫（使用者 2026-11-17：6）/ tool steps per request

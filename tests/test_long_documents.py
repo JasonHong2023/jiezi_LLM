@@ -760,6 +760,7 @@ class TestChunkRecall(unittest.TestCase):
     def test_setting(self):
         from jiezi.errors import JieziError
         from jiezi.runtime.settings import _recall
-        self.assertEqual((_recall(None), _recall(" HyDE ")), ("off", "hyde"))
+        self.assertEqual((_recall(None), _recall(" HyDE ")), ("hyde", "hyde"))  # 2026-11-19 量測後預設 hyde / default after measurement
+        self.assertEqual(_recall("off"), "off")
         with self.assertRaises(JieziError):
             _recall("always")
