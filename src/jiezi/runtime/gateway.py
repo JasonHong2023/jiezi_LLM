@@ -52,6 +52,9 @@ def message_text(m: dict) -> str:
     return c if isinstance(c, str) else ""
 
 
+from ..memory import CREATIVE  # noqa: E402 - 創作類請求 / creative requests
+
+
 # 系統附在回答後面的附錄（辭典原文、計算、參考資料…）。對話紀錄送回模型前要拿掉，否則模型會照抄格式自己寫一段，
 # 系統再附一段，變成兩個「【計算】」（使用者 2026-11-18：「對話紀錄怎麼回答怪怪的」）
 # Appendices the gateway adds after answers; removed from the history before the model sees it, or the model imitates
@@ -459,9 +462,15 @@ class Gateway:
         # With a long document attached the question is about the document: no fuzzy vector hits from the knowledge base
         # or statutes (they crowded out the document in a live test); explicitly named articles still attach.
         doc = bool(last.get("_doc"))
+        # 創作類（笑話、故事、寫詩…）不用語意向量撈「看起來相關」的知識庫／法規段落：撈到的文章跟題目無關，
+        # 事後查核又把笑話內容判成「資料裡找不到」而轉給 Claude（2026-11-18 實測「說一個笑話」）；點名的文章照附
+        # Creative requests get no fuzzy knowledge-base or statute hits (a live joke request was checked against them)
+        if CREATIVE.search(last["content"] or ""):
+            doc = True
+            rec["grounding_fuzzy"] = "skipped: creative"
         # 看圖題的答案取決於這張圖，不用文字記憶（2026-11-18 實測：附圖再問，被附上之前「只打路徑」那題的答案）
         # An image question depends on the image: no text memory (a live test recalled the earlier path-only answer)
-        if self.memory is not None and not last.get("_img"):  # 記憶最優先 / memory first
+        if self.memory is not None and not last.get("_img") and not CREATIVE.search(last["content"] or ""):  # 記憶最優先
             from ..memory import recall_block
             found.append(recall_block(last["content"], self.memory))
         if self.s.tools:  # 程式算好的數字 / numbers computed by code

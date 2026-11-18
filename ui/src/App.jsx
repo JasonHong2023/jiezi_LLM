@@ -1,7 +1,7 @@
 // 芥子桌面 App 雛形：對話、稽核紀錄、狀態（唯讀；不操控作業系統）。
 // Jiezi desktop prototype: chat, audit log, status (read-only; no OS control).
 import { useEffect, useRef, useState } from "react";
-import { BASE, THEME_LABEL, firstPhase, processSummary, splitAppendix, getJSON, getKey, loadInputs, loadTheme, nextTheme, phaseAfter, phaseLabel, readDocument, recallInput, rememberInput, setKey, stepText, streamChat, withDocuments } from "./api.js";
+import { BASE, THEME_LABEL, firstPhase, processSummary, refParts, splitAppendix, getJSON, getKey, loadInputs, loadTheme, nextTheme, phaseAfter, phaseLabel, readDocument, recallInput, rememberInput, setKey, stepText, streamChat, withDocuments } from "./api.js";
 
 const MAX_DOC_CHARS = 1500000;  // 附著文件的總字數上限（和 jiezi chat 相同）/ same cap as jiezi chat
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;  // 和 jiezi chat 的 /image 相同 / same cap as /image in chat
@@ -76,7 +76,7 @@ function Progress({ phase, t0, events }) {
 // One message: the answer, its references (always shown) and the process (folded)
 function Message({ m, live }) {
   if (m.role !== "assistant") return <div className={`msg ${m.role}`}><div className="body">{m.content}</div></div>;
-  const { body, refs } = splitAppendix(m.content);
+  const { body, refs, checks } = splitAppendix(m.content);
   const steps = m.steps?.length > 0 && <ul className="steps">{m.steps.map((s, j) =>
     <li key={j} className={s.status}>{stepText(s)}</li>)}</ul>;
   const proc = m.meta?.process || [];
@@ -101,10 +101,20 @@ function Message({ m, live }) {
       )}
       <div className="body">{body}</div>
       {live && <Progress {...live} />}
+      {checks.map((c, j) => <div key={j} className="warn check">查核：{c}</div>)}
       {refs.length > 0 && (
         <div className="refs">
           <div className="refs-title">參考資料</div>
-          {refs.map((r, j) => <div key={j} className="ref"><span className="muted">{r.title}</span><div>{r.text}</div></div>)}
+          {refs.map((r, j) => (
+            <div key={j} className="ref">
+              {r.title !== "參考資料" && <span className="muted">{r.title}</span>}
+              {r.text.split("\n").map((line, k) => (
+                <div key={k}>{refParts(line).map((p, n) => p.link
+                  ? <a key={n} href={p.link} target="_blank" rel="noopener noreferrer" title={p.link}>{p.text}</a>
+                  : <span key={n}>{p.text}</span>)}</div>
+              ))}
+            </div>
+          ))}
         </div>
       )}
       {m.meta && <div className="meta">{statusLine(m.meta)}</div>}

@@ -792,6 +792,15 @@ class TestHistoryAppendix(unittest.TestCase):
         self.assertEqual(strip_appendix("分隔線\n---\n不是附錄"), "分隔線\n---\n不是附錄")
         self.assertEqual(strip_appendix("模型自己寫的\n---\n【計算】\n- 根據已知資料"), "模型自己寫的")
 
+    def test_creative_requests(self):
+        from jiezi.runtime.gateway import CREATIVE
+        for q in ("說一個笑話", "寫一首詩給媽媽", "講個故事", "出個謎語"):
+            self.assertTrue(CREATIVE.search(q), q)
+        for q in ("靜夜思的作者是誰", "台灣2027年的國定假日有哪些?", "這首詩在說什麼"):
+            self.assertFalse(CREATIVE.search(q), q)
+        from jiezi.memory import storable
+        self.assertEqual(storable("說一個笑話"), "creative")                  # 不存也不拿舊答案 / never remembered
+
     def test_self_question_skips_grounding(self):
         from jiezi.runtime.gateway import Gateway
         import types

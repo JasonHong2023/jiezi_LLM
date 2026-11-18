@@ -142,10 +142,38 @@ class TestUi(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         a, b, s1, s2 = json.loads(r.stdout)
         self.assertEqual(a, {"body": "除夕是 2/5。", "refs": [{"title": "計算", "text": "- 2027-02-05"},
-                                                             {"title": "參考資料", "text": "- Taiwan.md"}]})
-        self.assertEqual(b, {"body": "沒有附錄", "refs": []})
+                                                             {"title": "參考資料", "text": "- Taiwan.md"}],
+                             "checks": []})
+        self.assertEqual(b, {"body": "沒有附錄", "refs": [], "checks": []})
         self.assertEqual(s1, "過程：查資料 → 本機作答 → 檢查沒過 → 請教 Claude，共 85.4 秒")
         self.assertEqual(s2, "過程：直接回答，共 2 秒")
+
+    def test_reference_links_and_check_note(self):
+        """參考資料只顯示標題當連結、長網址縮短；查核提醒拆出本文（使用者 2026-11-18：版面怪怪的）。
+        Reference titles become links, long URLs are shortened, and the check note leaves the answer body."""
+        import shutil
+        import subprocess
+        if not shutil.which("node"):
+            self.skipTest("node not installed")
+        js = (ROOT / "ui" / "src" / "api.js").resolve().as_uri()
+        prog = ("globalThis.location = {protocol: 'http:', hostname: 'localhost'};"
+                f"const m = await import({js!r});"
+                "const a = m.refParts('- 台灣口語密碼（未經人工審核）：https://github.com/f/t/blob/x/Culture/%E5%8F%B0%E7%81%A3.md');"
+                "const b = m.refParts('資料來源：Taiwan.md（https://github.com/frank890417/taiwan-md ，CC BY-SA 4.0）');"
+                "const c = m.splitAppendix('笑話。\\n\\n［查核：「過熱」 在附上的資料裡找不到，請小心］\\n\\n---\\n【參考資料】\\n- x');"
+                "const d = m.splitAppendix('本機草稿\\n\\n［查核：x 找不到］\\n\\n---\\n【參考資料】\\n- 文章：https://a.b/c.md"
+                "\\n\\n—— 本機答不出來，以下由 Claude 回答 / The local model could not answer; Claude answers below ——\\n\\nClaude 的笑話');"
+                "console.log(JSON.stringify([a, b, c, d]));")
+        r = subprocess.run(["node", "--input-type=module", "-e", prog], capture_output=True, text=True, timeout=30)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        a, b, c, d = json.loads(r.stdout)
+        self.assertEqual(a, [{"link": "https://github.com/f/t/blob/x/Culture/%E5%8F%B0%E7%81%A3.md",
+                              "text": "台灣口語密碼（未經人工審核）"}])
+        self.assertEqual(b[1], {"link": "https://github.com/frank890417/taiwan-md", "text": "github.com/…/taiwan-md"})
+        self.assertEqual(d, {"body": "Claude 的笑話", "refs": [{"title": "參考資料", "text": "- 文章：https://a.b/c.md"}],
+                             "checks": [], "handedOver": True})                  # 草稿與它的查核不顯示 / draft hidden
+        self.assertEqual((c["body"], c["checks"], c["refs"][0]["title"]),
+                         ("笑話。", ["「過熱」 在附上的資料裡找不到，請小心"], "參考資料"))
 
     def test_pasted_key_is_cleaned(self):
         """貼上整行 `JIEZI_GATEWAY_KEY=...` 也能用（使用者 2026-11-18 得到 401）。 / A pasted .env line still works."""

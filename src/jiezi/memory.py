@@ -29,6 +29,10 @@ from .textconv import to_traditional
 # 問芥子自己 / about jiezi itself
 SELF = re.compile(r"自我介紹|你是誰|你叫什麼|你的名字|你在哪|你會哪些|你會那些|你能做什麼|誰做的你|你的作者|"
                   r"你是芥子|芥子(?:的作者|是誰做|是什麼模型|這個名字|的名字)")
+# 創作類請求：每次都該重新創作，不存也不拿記憶裡的舊答案（2026-11-18：「說一個笑話」每次都回同一則）
+# Creative requests: never stored or answered from memory (a joke kept coming back verbatim)
+CREATIVE = re.compile(r"笑話|講個?故事|說個?故事|編一?個|寫一?(?:首|篇|段|則)?(?:詩|歌詞|故事|小說|散文|對聯|笑話)|"
+                      r"作一?首詩|繞口令|謎語|腦筋急轉彎|順口溜|藏頭詩|打油詩")
 # 要上網、即時或網頁內容 / needs the web or live data
 WEB = re.compile(r"https?://|網路上|上網|網頁|網站|新聞|今天|今日|昨天|明天|現在幾點|最新|即時|天氣|股價|匯率|目前")
 # 依賴前文的追問 / follow-ups that depend on earlier turns
@@ -69,6 +73,8 @@ def storable(question: str, earlier_user_turns: int = 0) -> str | None:
         return "too_short"
     if SELF.search(q):
         return "about_jiezi"
+    if CREATIVE.search(q):
+        return "creative"
     if WEB.search(q):
         return "web_or_live"
     if earlier_user_turns and (CONTEXTUAL.search(q) or len(q) < 8):

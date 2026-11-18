@@ -177,15 +177,53 @@ export function nextTheme(theme, store = globalThis.localStorage) {
 // 回答與附錄分開、過程摘要（add-answer-process，使用者 2026-11-18）。附錄格式見 gateway 的 APPENDIX。
 // Split the gateway appendix from the answer and summarise the process (add-answer-process).
 const APPENDIX_HEAD = /\n*-{3,}[ \t]*\n【(字詞轉換|辭典原文|法規原文|參考資料|計算|記憶|課綱資料原文|延伸閱讀)】\n?/g;
+// 串流回答時 gateway 插在本文後的查核提醒「［查核：…］」，拆出來另外顯示 / the inline grounding warning, shown apart
+const CHECK_NOTE = /\n*［查核：([^］]*)］/g;
+// 串流時本機答不出來，gateway 在同一個串流接著送「—— 本機答不出來，以下由 X 回答 ——」與 X 的回答：
+// 畫面只顯示 X 的回答，本機草稿在「過程」裡；本機查到的參考資料保留（使用者 2026-11-18：Claude 的回答跑進參考資料框）
+// When a streamed local answer is handed over, show only the helper's answer; the local draft lives in the process
+const HANDOFF = /\n*—— 本機答不出來，以下由 .+? 回答[^\n]*——\n*/;
 export function splitAppendix(text) {
   const s = String(text || "");
+  const h = s.match(HANDOFF);
+  if (!h) return splitOne(s);
+  const before = splitOne(s.slice(0, h.index)), after = splitOne(s.slice(h.index + h[0].length));
+  return { ...after, refs: [...before.refs, ...after.refs], handedOver: true };
+}
+function splitOne(text) {
+  let s = text;
+  const checks = [...s.matchAll(CHECK_NOTE)].map((m) => m[1].trim());
+  s = s.replace(CHECK_NOTE, "");
   const heads = [...s.matchAll(APPENDIX_HEAD)];
-  if (!heads.length) return { body: s, refs: [] };
+  if (!heads.length) return { body: s.trim(), refs: [], checks };
   const refs = heads.map((m, i) => ({
     title: m[1],
     text: s.slice(m.index + m[0].length, i + 1 < heads.length ? heads[i + 1].index : s.length).trim(),
   }));
-  return { body: s.slice(0, heads[0].index).trimEnd(), refs };
+  return { body: s.slice(0, heads[0].index).trimEnd(), refs, checks };
+}
+
+// 參考資料的一行切成文字與連結：「- 標題（備註）：網址」只顯示標題當連結，其他網址縮短顯示
+// A reference line as text and links: "- title: URL" shows the title as the link; other URLs are shortened
+const URL_RE = /https?:\/\/[^\s，、）)」]+/g;
+export function shortUrl(u) {
+  try {
+    const x = new URL(u);
+    const last = decodeURIComponent(x.pathname.split("/").filter(Boolean).pop() || "");
+    return last ? `${x.hostname}/…/${last}` : x.hostname;
+  } catch { return u; }
+}
+export function refParts(line) {
+  const m = line.match(/^\s*[-•·]?\s*(.+?)[：:]\s*(https?:\/\/\S+)\s*$/);
+  if (m) return [{ link: m[2], text: m[1] }];
+  const out = []; let last = 0;
+  for (const u of line.matchAll(URL_RE)) {
+    if (u.index > last) out.push({ text: line.slice(last, u.index) });
+    out.push({ link: u[0], text: shortUrl(u[0]) });
+    last = u.index + u[0].length;
+  }
+  if (last < line.length) out.push({ text: line.slice(last) });
+  return out;
 }
 const STEP_SHORT = { files: "讀檔", lookup: "查資料", look: "看圖工具" };
 export function processSummary(process, latency) {

@@ -74,4 +74,7 @@ details.draft > div { white-space: pre-wrap; border-left: 3px solid var(--line);
   font-size: .85rem; }
 .refs-title { font-weight: 600; margin-bottom: .3rem; }
 .ref { margin: .25rem 0; }
-.ref > div { white-space: pre-wrap; line-height: 1.5; }
+.ref > div { line-height: 1.5; }
+.refs { overflow-wrap: anywhere; }
+.ref a { color: var(--accent); }
+.warn.check { font-size: .8rem; }
