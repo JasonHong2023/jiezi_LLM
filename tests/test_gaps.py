@@ -49,6 +49,25 @@ class TestGaps(unittest.TestCase):
 
 
 class TestDashboard(unittest.TestCase):
+    def test_tool_candidates_and_local_solves(self):
+        """可以用程式算的題目列為工具候選；本機重想答對的列為訓練候選（local-first-solving）。"""
+        esc = [{"tier": 0, "needs_help": "unsupported_claims"}, {"tier": 3, "provider": "claude"}]
+        holiday = rec("台灣2027年的國定假日有哪些?", tiers=esc, final=3)
+        self.assertEqual(G.classify(holiday, FakeProbe())[0], "tool")
+        computed = rec("2027年的除夕是哪一天?", tiers=esc, final=3, sources=[{"source": "tools"}])
+        self.assertNotEqual(G.classify(computed, FakeProbe())[0], "tool")          # 已經有工具 / already a tool
+        solved = rec("國花是什麼", tiers=[{"tier": 0}, {"tier": 1, "step": "retry"}], final=1)
+        solved["ladder"] = {"first_error": "x", "solved_by": "retry"}
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "var" / "trajectories").mkdir(parents=True)
+            (root / "var" / "trajectories" / f"{date.today().isoformat()}.jsonl").write_text(
+                "\n".join(json.dumps(x, ensure_ascii=False) for x in (holiday, solved)))
+            md, summary = G.report(root, 1, probe=FakeProbe())
+        self.assertEqual(summary["solved_locally"], 1)
+        self.assertIn("可以用程式算", md)
+        self.assertIn("本機重想後自己答對", md)
+
     def test_builds_without_results(self):
         from jiezi.runtime import dashboard
         with tempfile.TemporaryDirectory() as d:

@@ -116,6 +116,12 @@ class LocalProbe:
         return found[:4]
 
 
+# 可以用程式算的題目：該寫成工具，不該靠模型推算（local-first-solving 2.1；例：2027 國定假日本機答錯）
+# Questions a program could compute: tool candidates rather than model reasoning
+COMPUTABLE = re.compile(r"國定假日|補假|連假|放假|幾月幾日|星期幾|禮拜幾|幾天|天數|農曆|節氣|生肖|閏年|倒數|"
+                        r"匯率換算|單位換算|幾公斤|幾公尺|幾坪|幾台斤|稅率|利息|平均|總和|百分比|機率")
+
+
 def classify(rec: dict, probe: LocalProbe | None, why: str = "") -> tuple[str, list[str]]:
     q = _question(rec)
     if why.startswith("error:"):
@@ -124,6 +130,8 @@ def classify(rec: dict, probe: LocalProbe | None, why: str = "") -> tuple[str, l
         return "self", []
     if WEB.search(q):
         return "web", []
+    if COMPUTABLE.search(q) and not any(src.get("source") == "tools" for src in rec.get("sources") or []):
+        return "tool", []
     if rec.get("sources"):
         return "model", [s.get("article") or s.get("topic") or s.get("title") or s.get("volume") or s.get("code")
                          or s.get("source") for s in rec["sources"]]
@@ -131,10 +139,10 @@ def classify(rec: dict, probe: LocalProbe | None, why: str = "") -> tuple[str, l
     return ("trigger" if related else "data"), related
 
 
-KIND = {"trigger": "觸發缺口（本機有資料但沒查到）", "data": "資料缺口（本機沒有相關資料）",
+KIND = {"tool": "可以用程式算（該寫成工具）", "trigger": "觸發缺口（本機有資料但沒查到）", "data": "資料缺口（本機沒有相關資料）",
         "model": "有附資料仍答不好", "self": "問芥子自己（該改系統提示）",
         "web": "需要上網或即時資料（本機做不到，交給 Claude）", "error": "系統錯誤（引擎、請教失敗）"}
-ORDER = ("data", "trigger", "model", "self", "web", "error")
+ORDER = ("tool", "data", "trigger", "model", "self", "web", "error")
 
 
 def report(root: Path, days: int = 7, today: date | None = None, probe: LocalProbe | None = None) -> tuple[str, dict]:
@@ -153,9 +161,19 @@ def report(root: Path, days: int = 7, today: date | None = None, probe: LocalPro
             kind, related = classify(rec, probe, why)
             rows.append({"at": rec.get("at", ""), "q": q, "why": why, "kind": kind, "related": related,
                          "final": rec.get("final_tier"), "policy": rec.get("policy")})
+    # 本機在階梯中自己答對的（local-first-solving 2.2：訓練候選）/ solved locally on the ladder: training candidates
+    solved = [(rec, _question(rec)) for rec in recs if (rec.get("ladder") or {}).get("solved_by") in ("retry", "think")]
+    try:
+        from ..experience import Experience
+        from ..memory import wiki_path
+        lessons = Experience(wiki_path(root)).load()
+    except Exception:  # noqa: BLE001
+        lessons = []
     summary = {"records": len(recs), "needed_help": len(rows), "direct": len(direct),
                "by_reason": dict(collections.Counter(r["why"] for r in rows).most_common()),
-               "by_kind": dict(collections.Counter(r["kind"] for r in rows).most_common())}
+               "by_kind": dict(collections.Counter(r["kind"] for r in rows).most_common()),
+               "solved_locally": len(solved), "lessons": len(lessons),
+               "lessons_active": sum(1 for e in lessons if e.active)}
     span = f"{((today or date.today()) - timedelta(days=days - 1)).isoformat()} ~ {(today or date.today()).isoformat()}"
     md = [f"# 芥子缺口報告 / Gap report（{span}）", "",
           f"- 對話紀錄 {summary['records']} 筆；本機需要幫忙 {summary['needed_help']} 筆；直接指定請教 Claude／雲端 "
@@ -186,7 +204,15 @@ def report(root: Path, days: int = 7, today: date | None = None, probe: LocalPro
                 md.append(f"- {rec.get('at', '')[5:16]} {rec.get('policy')}：{q.replace(chr(10), ' ')[:80]}"
                           + (f"（×{seen[q]}）" if seen[q] > 1 else ""))
                 seen[q] = 0
+    if solved:
+        md += ["", "## 本機重想後自己答對（訓練候選）/ Solved locally on retry (training candidates)", ""]
+        md += [f"- {rec.get('at', '')[5:16]} {(rec.get('ladder') or {}).get('solved_by')}：{q.replace(chr(10), ' ')[:80]}"
+               for rec, q in solved[:MAX_LISTED]]
+    md += ["", f"## 經驗 / Lessons", "", f"- 經驗記錄 {summary['lessons']} 筆，使用中 {summary['lessons_active']} 筆"
+           "（記憶 wiki 的 experience/，Obsidian 可改）"]
     md += ["", "## 建議 / Suggestions", ""]
+    if summary["by_kind"].get("tool"):
+        md.append("- 可以用程式算：把上表的題型寫成工具（像農曆、日期換算那樣由程式算好再給模型），不要讓模型推算。")
     if summary["by_kind"].get("trigger"):
         md.append("- 觸發缺口：檢查上表「相關本機資料」，調整觸發規則（提問用語、門檻）讓它們被查到。")
     if summary["by_kind"].get("data"):

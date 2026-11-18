@@ -67,5 +67,8 @@ if [ -f "var/train/$run/adapter/adapter_config.json" ] && [ "$left" -gt 1800 ]; 
   echo "--- e0 sample rc=$? (124 = stopped at 06:45, resumes next night) $(date -Iseconds)" >> "$log"
   scripts/eval e0 report >> "$log" 2>&1
 fi
+# 缺口報告（local-first-solving 2.1、2.3）：每晚寫一份最近 7 天的，只讀軌跡、不用 GPU
+# Gap report for the last 7 days every night; reads trajectories only
+scripts/jiezi gaps --days 7 >> "$log" 2>&1
 hold '{"hold_until": null}'
 echo "=== $(date -Iseconds) end" >> "$log"

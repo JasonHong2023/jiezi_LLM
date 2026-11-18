@@ -6,7 +6,7 @@
 
 ## 2. 量測 / Measure
 
-- [ ] 2.1（向量部分完成 2026-11-18：`var/eval/relevance/relevance-20261118-223449.json`；重排序版本待夜間）`scripts/jiezi rag relevance`：門檻掃描 × 重排序開關，輸出表格與 JSON
+- [x] 2.1（向量 11-18；重排序 11-19 06:41 GPU：`var/eval/relevance/relevance-20261119-064107.json`。門檻 0.6 下重排序把「該附有附到」71.7% → 77.4%、「附錯」17.0% → 11.3%，「不該附卻附了」同為 3.9%；但重排序在 CPU 每題 +62 秒〔rerank-measure-cpu.json〕，GPU 每題 +0.6 秒卻要和核心搶顯示記憶體〔核心佔約 5.5/6.1 GB〕→ 這台機器維持重排序關閉；換更大顯示卡或核心縮小後再開）`scripts/jiezi rag relevance`：門檻掃描 × 重排序開關，輸出表格與 JSON
 - [ ] 2.2 `sources` 帶向量分數
 - [x] 2.3（2026-11-18 使用者選 0.6：該附有附到 80.2% → 71.7%，不該附卻附了 34.3% → 3.9%；法規分出 JIEZI_LAWS_RAG_MIN 維持 0.5，尚未量測）選門檻、回報；使用者同意後改預設
 - [ ] 2.4 夜間端到端：新舊門檻比轉交率、unsupported_claims、延遲
