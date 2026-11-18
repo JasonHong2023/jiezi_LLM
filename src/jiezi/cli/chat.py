@@ -120,6 +120,44 @@ TITLE = "芥子納須彌"
 SUBTITLE = "芥子納須彌 —— 一粒芥子，裝下一整個世界"
 SEED_FRAMES += [[*_WORLD, TITLE[:n]] for n in range(1, len(TITLE) + 1)] + [[*_WORLD, SUBTITLE]]
 FRAME_S = 0.2
+# 送出後的狀態（使用者 2026-11-18）：gateway 在第一個字之前不會送任何東西，所以先依這一題的條件猜階段，
+# 等太久就改說「處理中」；收到思考片段、轉交的分隔線、代理步驟或第一個字時再換。
+# Status after sending: the gateway sends nothing before the first token, so the first phase is inferred from the
+# question, switched to "processing" when it takes long, then updated by reasoning, escalation, agent steps or text.
+SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+SLOW_S = 8.0
+TICK_S = 0.1
+
+
+def first_phase(policy: str, docs: bool, image: bool, agent: bool) -> str:
+    if policy == "jiezi-ask-claude":
+        return "請教 Claude 中 / asking Claude"
+    if policy == "jiezi-cloud":
+        return "詢問雲端模型中 / asking the cloud model"
+    if agent:
+        return "準備查看你的檔案 / preparing to read your files"
+    if image:
+        return "看圖中 / looking at the image"
+    if docs:
+        return "閱讀文件中 / reading the documents"
+    return "思考中 / thinking"
+
+
+def phase_after(kind: str, value, current: str) -> str:
+    """依串流事件換階段。 / The next phase for a stream event."""
+    if kind == "thinking":
+        return "思考中 / thinking"
+    if kind == "agent":
+        return f"查看檔案中 / reading files：{agent_step_text(value)}"
+    if kind == "delta":
+        if "本機答不出來" in value:
+            return "請教 Claude 中 / asking Claude" if "Claude" in value else "詢問雲端模型中 / asking the cloud model"
+        if current.startswith(("請教", "詢問")):
+            return current      # 轉交中的分隔線之後、真正的回答之前 / still waiting for the escalated answer
+        return "回答中 / answering"
+    return current
+
+
 HELP = ("輸入問題後按 Enter；拖曳選取即複製，F3 複製最後一則回答；Ctrl+C 中斷，F2 換策略，Ctrl+Q 離開。\n"
         "指令：/file 路徑（附文件，/file clear 取消）、/image 路徑、/agent on|off、/copy、/save 檔名、/clear、/help\n"
         "Enter to send; drag to copy, F3 copies the last answer; Ctrl+C stops, F2 policy, Ctrl+Q quits.")
@@ -322,39 +360,58 @@ class ChatApp(App):
         await log.mount(answer, meta)
         log.scroll_end(animate=False)
         self.history.append({"role": "user", "content": content})
-        self.worker = self.run_worker(self._answer(answer, meta, log), exclusive=True)
+        phase = first_phase(self.policy, bool(self.docs), not isinstance(content, str), self.agent)
+        self.worker = self.run_worker(self._answer(answer, meta, log, phase), exclusive=True)
 
-    async def _answer(self, answer: Markdown, meta_w: Static, log: VerticalScroll) -> None:
+    async def _answer(self, answer: Markdown, meta_w: Static, log: VerticalScroll,
+                      phase: str = "思考中 / thinking") -> None:
+        import time
         self.reporter.report("working")
         parts: list[str] = []
         meta = None
         stream = Markdown.get_stream(answer)
+        state = {"phase": phase, "t0": time.monotonic(), "events": 0}
+
+        def tick() -> None:
+            el = time.monotonic() - state["t0"]
+            label = state["phase"]
+            if not state["events"] and el > SLOW_S and label.startswith(("思考", "閱讀", "看圖")):
+                label = "處理中（準備模型或整理資料，第一次會久一點）/ processing"
+            meta_w.update(f"{SPINNER[int(el / TICK_S) % len(SPINNER)]} {label}… {el:.0f} 秒")
+        tick()
+        timer = self.set_interval(TICK_S, tick)
         try:
             outgoing = with_documents(for_context(self.history[-MAX_CONTEXT:]), self.docs)
             extra = {"extra": {"jiezi_agent": True}} if self.agent else {}  # /agent on 才帶 / only with /agent on
             async for kind, value in stream_chat(self.conn, outgoing, self.policy, **extra):
+                if kind != "meta":
+                    state["events"] += 1
+                    state["phase"] = phase_after(kind, value, state["phase"])
                 if kind == "delta":
                     parts.append(value)
                     await stream.write(value)
                     log.scroll_end(animate=False)
-                elif kind == "agent":  # 每一步即時顯示 / show each agent step as it happens
-                    meta_w.update(f"[{agent_step_text(value)}]")
-                else:
+                elif kind == "meta":
                     meta = value
+            timer.stop()
             self.last_status = status_line(meta)
             meta_w.update(self.last_status)
             self.cost += ((meta or {}).get("cloud") or {}).get("cost") or 0.0
         except GatewayUnreachable:
+            timer.stop()
             # 聊天途中 gateway 被關掉：在背景重新啟動，請使用者再送一次 / restart it and ask to resend
             res = await anyio.to_thread.run_sync(ensure_gateway, self.conn)
             meta_w.update(f"[gateway 剛才沒有在執行，已在背景重新啟動（{res}），請再送一次 / the gateway was not "
                           f"running; restarted in the background ({res}), please send again]")
         except GatewayError as exc:
+            timer.stop()
             meta_w.update(f"[錯誤 / error: {exc}]")
         except BaseException:
+            timer.stop()
             meta_w.update("[已中斷 / stopped]")
             raise
         finally:
+            timer.stop()
             await stream.stop()
             if parts:
                 self.history.append({"role": "assistant", "content": "".join(parts)})

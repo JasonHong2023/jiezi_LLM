@@ -49,8 +49,8 @@ def _error_message(r: httpx.Response) -> str:
 async def stream_chat(conn: Connection, messages: list[dict], policy: str = "jiezi",
                       client: httpx.AsyncClient | None = None, timeout: float = 900,
                       extra: dict | None = None) -> AsyncIterator[tuple[str, object]]:
-    """產生 ("delta", 文字)、("meta", jiezi 欄位)、("agent", 代理的一步)。
-    Yield ("delta", text), ("meta", jiezi field) and ("agent", one agent step)."""
+    """產生 ("delta", 文字)、("thinking", 思考片段)、("meta", jiezi 欄位)、("agent", 代理的一步)。
+    Yield ("delta", text), ("thinking", reasoning), ("meta", jiezi field) and ("agent", one agent step)."""
     own = client is None
     client = client or httpx.AsyncClient(timeout=httpx.Timeout(timeout, connect=5.0))
     try:
@@ -77,7 +77,10 @@ async def stream_chat(conn: Connection, messages: list[dict], policy: str = "jie
                 if chunk.get("jiezi"):
                     yield "meta", chunk["jiezi"]
                 for ch in chunk.get("choices") or []:
-                    text = (ch.get("delta") or {}).get("content")
+                    delta = ch.get("delta") or {}
+                    if delta.get("reasoning_content"):  # 模型的思考過程：不顯示，只用來標示「思考中」/ status only
+                        yield "thinking", delta["reasoning_content"]
+                    text = delta.get("content")
                     if text:
                         yield "delta", text
     except (httpx.ConnectError, httpx.ConnectTimeout) as exc:

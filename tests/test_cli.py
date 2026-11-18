@@ -219,6 +219,46 @@ class TestSeedBanner(TestChat):
         self.run_app(script)
 
 
+class TestProgress(TestChat):
+    """送出後顯示狀態（使用者 2026-11-18）。 / Live status after sending."""
+
+    def test_phases(self):
+        self.assertTrue(chat.first_phase("jiezi-ask-claude", False, False, False).startswith("請教 Claude"))
+        self.assertTrue(chat.first_phase("jiezi-cloud", True, False, False).startswith("詢問雲端"))
+        self.assertTrue(chat.first_phase("jiezi", True, False, False).startswith("閱讀文件"))
+        self.assertTrue(chat.first_phase("jiezi", False, True, False).startswith("看圖"))
+        self.assertTrue(chat.first_phase("jiezi", False, False, True).startswith("準備查看"))
+        self.assertTrue(chat.first_phase("jiezi", False, False, False).startswith("思考中"))
+        p = chat.phase_after("delta", "\n\n—— 本機答不出來，以下由 Claude 回答 ——\n\n", "回答中")
+        self.assertTrue(p.startswith("請教 Claude"))
+        self.assertEqual(chat.phase_after("delta", "答案", p), p)                # 等轉交的回答 / still escalating
+        self.assertTrue(chat.phase_after("delta", "台北", "思考中").startswith("回答中"))
+        self.assertTrue(chat.phase_after("thinking", "嗯", "閱讀文件中").startswith("思考中"))
+        self.assertIn("查看檔案中", chat.phase_after("agent", {"type": "call", "tool": "list_dir"}, "x"))
+
+    def test_status_shows_while_waiting_then_final_line(self):
+        gate = anyio.Event()
+
+        async def slow(conn, messages, policy, client=None):
+            await gate.wait()
+            yield "delta", "台北"
+            yield "meta", META
+
+        async def script(app, pilot):
+            await pilot.press(*"你好")
+            await pilot.press("enter")
+            await pilot.pause(0.3)
+            metas = [str(w.render()) for w in app.query(".meta")]
+            self.assertTrue(any("思考中" in m and "秒" in m for m in metas), metas)
+            gate.set()
+            await app.workers.wait_for_complete()
+            await pilot.pause()
+            metas = [str(w.render()) for w in app.query(".meta")]
+            self.assertFalse(any("思考中" in m for m in metas))
+            self.assertTrue(any("tier 0" in m for m in metas))
+        self.run_app(script, slow)
+
+
 class TestClipboard(unittest.TestCase):
     def test_picks_detected_tool_and_utf16_for_clip_exe(self):
         from jiezi.cli import clipboard
