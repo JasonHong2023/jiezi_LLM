@@ -41,3 +41,9 @@ pre { background: #fff; border: 1px solid var(--line); padding: .5rem; overflow:
 .steps { margin: 0 0 6px; padding-left: 18px; font-size: 0.85em; color: #666; }
 .steps li.refused, .steps li.error { color: #a33; }
 .steps li.running { font-style: italic; }
+
+/* 開場動畫與送出後的狀態（使用者 2026-11-18）/ Opening animation and live status */
+.seed { text-align: center; color: var(--muted); margin: 2.5rem auto; line-height: 1.5; font-size: 1.05rem;
+  font-family: "Noto Sans Mono CJK TC", "Noto Sans CJK TC", monospace; background: none; border: 0; }
+.progress { color: var(--muted); font-size: 0.9rem; margin-top: 0.25rem; }
+.progress .spin { display: inline-block; width: 1.2em; }

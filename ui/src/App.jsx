@@ -1,7 +1,7 @@
 // 芥子桌面 App 雛形：對話、稽核紀錄、狀態（唯讀；不操控作業系統）。
 // Jiezi desktop prototype: chat, audit log, status (read-only; no OS control).
 import { useEffect, useRef, useState } from "react";
-import { BASE, getJSON, getKey, readDocument, setKey, stepText, streamChat, withDocuments } from "./api.js";
+import { BASE, firstPhase, getJSON, getKey, phaseAfter, phaseLabel, readDocument, setKey, stepText, streamChat, withDocuments } from "./api.js";
 
 const MAX_DOC_CHARS = 1500000;  // 附著文件的總字數上限（和 jiezi chat 相同）/ same cap as jiezi chat
 
@@ -37,6 +37,39 @@ function statusLine(m) {
   return parts.filter(Boolean).join(" · ");
 }
 
+// 開場動畫「芥子納須彌」（和終端機版同一個意境）/ Opening animation, same idea as the terminal
+const SEED_FRAMES = [
+  ["", "", "·", "", ""],
+  ["", "", "( · )", "", ""],
+  ["", "˙   ˙   ˙", "(  ●  )", "˙   ˙   ˙", ""],
+  ["          ✦", "      ▲", "    ▲▲▲", "～～( ● )～～", ""],
+  ["   ✧          ✦", "      ▲    ▲▲", "    ▲▲▲▲  ▲▲▲▲", "～～～～( ● )～～～～", ""],
+  ["✦      ✧    ☾     ✦", "    ▲     ▲▲▲", "  ▲▲▲▲  ▲▲▲▲▲▲  ▲▲", "～～～～～～( ● )～～～～～～", ""],
+];
+const WORLD = SEED_FRAMES[SEED_FRAMES.length - 1].slice(0, 4);
+const TITLE = "芥子納須彌";
+for (let n = 1; n <= TITLE.length; n++) SEED_FRAMES.push([...WORLD, TITLE.slice(0, n)]);
+SEED_FRAMES.push([...WORLD, "芥子納須彌 —— 一粒芥子，裝下一整個世界"]);
+
+function SeedBanner() {
+  const [f, setF] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setF((x) => { if (x >= SEED_FRAMES.length - 1) { clearInterval(t); return x; } return x + 1; }), 200);
+    return () => clearInterval(t);
+  }, []);
+  return <pre className="seed" aria-label="芥子納須彌">{SEED_FRAMES[f].join("\n")}</pre>;
+}
+
+const SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
+
+function Progress({ phase, t0, events }) {
+  const [now, setNow] = useState(performance.now());
+  useEffect(() => { const t = setInterval(() => setNow(performance.now()), 100); return () => clearInterval(t); }, []);
+  const s = (now - t0) / 1000;
+  return <div className="progress"><span className="spin">{SPINNER[Math.floor(s * 10) % SPINNER.length]}</span>
+    {phaseLabel(phase, s, events)}… {Math.floor(s)} 秒</div>;
+}
+
 function Chat() {
   const [policy, setPolicy] = useState("jiezi");
   const [msgs, setMsgs] = useState([]);
@@ -46,6 +79,7 @@ function Chat() {
   const [docs, setDocs] = useState([]);       // 附著的文件，每一題都帶 / attached documents, sent with every question
   const [reading, setReading] = useState("");
   const [agent, setAgent] = useState(false);  // 唯讀檔案代理（add-agent-readonly）/ read-only file agent
+  const [progress, setProgress] = useState(null);  // 送出後的狀態 / live status {phase, t0, events}
   const abort = useRef(null);
   const end = useRef(null);
   const picker = useRef(null);
@@ -93,17 +127,20 @@ function Chat() {
     setError("");
     abort.current = new AbortController();
     const t0 = performance.now();
+    setProgress({ phase: firstPhase(policy, { docs: docs.length > 0, agent }), t0, events: 0 });
+    const bump = (kind, value) => setProgress((p) => p && { ...p, phase: phaseAfter(kind, value, p.phase), events: p.events + 1 });
     try {
       await streamChat(outgoing, policy, {
         signal: abort.current.signal,
         agent,
-        onStep: (ev) => setMsgs((m) => {
+        onThinking: () => bump("thinking"),
+        onStep: (ev) => bump("agent", ev) || setMsgs((m) => {
           const c = [...m]; const last = c[c.length - 1];
           // 同一步「進行中」換成結果 / a running step is replaced by its outcome
           const steps = (last.steps || []).filter((s) => !(s.step === ev.step && s.status === "running" && ev.status !== "running"));
           c[c.length - 1] = { ...last, steps: [...steps, ev] }; return c;
         }),
-        onDelta: (t) => setMsgs((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + t }; return c; }),
+        onDelta: (t) => bump("delta", t) || setMsgs((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + t }; return c; }),
         onMeta: (meta) => setMsgs((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], meta }; return c; }),
       });
     } catch (e) {
@@ -113,6 +150,7 @@ function Chat() {
         setError(String(e.message || e));
       }
     } finally {
+      setProgress(null);
       setBusy(false);
       abort.current = null;
     }
@@ -146,12 +184,13 @@ function Chat() {
         </div>
       )}
       <div className="log">
-        {msgs.length === 0 && <p className="muted">輸入問題後按 Enter；Shift+Enter 換行；Esc 或「中止」立刻停止。</p>}
+        {msgs.length === 0 && <SeedBanner />}
         {msgs.map((m, i) => (
           <div key={i} className={`msg ${m.role}`}>
             {m.steps?.length > 0 && <ul className="steps">{m.steps.map((s, j) =>
               <li key={j} className={s.status}>{stepText(s)}</li>)}</ul>}
-            <div className="body">{m.content || (busy && i === msgs.length - 1 ? "…" : "")}</div>
+            <div className="body">{m.content}</div>
+            {busy && progress && i === msgs.length - 1 && <Progress {...progress} />}
             {m.meta && <div className="meta">{statusLine(m.meta)}</div>}
             {m.meta?.injection?.suspected?.length > 0 &&
               <div className="warn">注意：{m.meta.injection.warning}（{m.meta.injection.suspected.join("、")}）</div>}
@@ -163,7 +202,7 @@ function Chat() {
       <div className="composer">
         <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={3}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-          placeholder="問芥子…" />
+          placeholder="問芥子…（Enter 送出、Shift+Enter 換行、Esc 中止）" />
         {busy ? <button className="stop" onClick={() => abort.current?.abort()}>中止</button>
           : <button onClick={send} disabled={!input.trim()}>送出</button>}
       </div>

@@ -50,7 +50,7 @@ export function withDocuments(question, docs) {
 
 // 串流對話：每段文字呼叫 onDelta，最後的 jiezi 狀態呼叫 onMeta；signal 用來一鍵中止。
 // Streaming chat: onDelta per chunk, onMeta for the final jiezi status; signal aborts at once.
-export async function streamChat(messages, policy, { onDelta, onMeta, onStep, signal, agent = false }) {
+export async function streamChat(messages, policy, { onDelta, onMeta, onStep, onThinking, signal, agent = false }) {
   const r = await fetch(BASE + "/v1/chat/completions", {
     method: "POST",
     headers: headers(),
@@ -78,6 +78,7 @@ export async function streamChat(messages, policy, { onDelta, onMeta, onStep, si
         if (d.jiezi_agent) { onStep && onStep(d.jiezi_agent); continue; }  // 唯讀代理的一步 / an agent step
         if (d.jiezi) onMeta(d.jiezi);
         for (const ch of d.choices || []) {
+          if (ch.delta && ch.delta.reasoning_content) onThinking && onThinking();  // 只標示「思考中」/ status only
           const t = ch.delta && ch.delta.content;
           if (t) onDelta(t);
         }
@@ -97,4 +98,28 @@ export function stepText(ev) {
   if (ev.status === "running") return `第 ${ev.step} 步：正在${what} ${target} …`;
   const mark = { ok: "完成", refused: "被拒絕（未授權）", error: "失敗" }[ev.status] || ev.status;
   return `第 ${ev.step} 步：${what} ${target} ${mark}${ev.error && ev.status !== "ok" ? "：" + ev.error : ""}`;
+}
+
+// 送出後的狀態（和 chat 的文字一致，使用者 2026-11-18）/ Live status after sending (same wording as the TUI)
+export const SLOW_S = 8;
+export function firstPhase(policy, { docs = false, agent = false } = {}) {
+  if (policy === "jiezi-ask-claude") return "請教 Claude 中";
+  if (policy === "jiezi-cloud") return "詢問雲端模型中";
+  if (agent) return "準備查看你的檔案";
+  if (docs) return "閱讀文件中";
+  return "思考中";
+}
+export function phaseAfter(kind, value, current) {
+  if (kind === "thinking") return "思考中";
+  if (kind === "agent") return `查看檔案中：${stepText(value)}`;
+  if (kind === "delta") {
+    if (value.includes("本機答不出來")) return value.includes("Claude") ? "請教 Claude 中" : "詢問雲端模型中";
+    if (current.startsWith("請教") || current.startsWith("詢問")) return current;
+    return "回答中";
+  }
+  return current;
+}
+export function phaseLabel(phase, seconds, events) {
+  if (!events && seconds > SLOW_S && /^(思考|閱讀)/.test(phase)) return "處理中（準備模型或整理資料，第一次會久一點）";
+  return phase;
 }

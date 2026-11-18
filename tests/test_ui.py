@@ -89,6 +89,19 @@ class TestUi(unittest.TestCase):
         self.assertEqual(D.attach({"name": "a", "text": "t"}, "q"), "【文件：a】\nt\n【文件結束】\n\nq")
         self.assertIn("/v1/documents?name=", js)
 
+    def test_frontend_status_matches_chat(self):
+        """桌面和終端機的開場與狀態用同一套字（使用者 2026-11-18）。 / Same banner and status wording as the TUI."""
+        from jiezi.cli import chat
+        js = (ROOT / "ui" / "src" / "api.js").read_text(encoding="utf-8")
+        app = (ROOT / "ui" / "src" / "App.jsx").read_text(encoding="utf-8")
+        for zh in ("請教 Claude 中", "詢問雲端模型中", "閱讀文件中", "查看檔案中", "回答中", "處理中（準備模型或整理資料"):
+            self.assertIn(zh, js)
+        self.assertEqual(js.count("SLOW_S = 8"), 1)
+        self.assertEqual(chat.SLOW_S, 8.0)
+        self.assertIn("芥子納須彌 —— 一粒芥子，裝下一整個世界", app)
+        self.assertIn(chat.SEED_FRAMES[-1][-1], app)
+        self.assertNotIn("輸入問題後按 Enter；", app)                       # 開頭不再列說明 / no help lines
+
     def test_no_ui_without_build(self):
         from jiezi.runtime.gateway import ui_routes
         with tempfile.TemporaryDirectory() as d:
