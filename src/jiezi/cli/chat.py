@@ -1,7 +1,7 @@
 """`jiezi chat`：Textual 全螢幕對話（規格 cli：Interactive Chat；add-cli design D4）。
 `jiezi chat`: Textual full-screen chat (spec cli: Interactive Chat; design D4).
 
-按鍵 / Keys：Enter 送出 / send；Shift+Enter 或 Ctrl+J 換行 / newline；
+按鍵 / Keys：Enter 送出 / send；Shift+Enter 或 Ctrl+J 換行 / newline；↑／↓ 切換輸入過的句子 / earlier inputs；
 滑鼠拖曳選取，放開即自動複製（使用者 2026-11-15：跟 Claude Code 一樣）/ select by dragging, copied on release
 (user request: behave like Claude Code)；Ctrl+C 中斷生成 / stop generation；F3 複製最後一則回答 / copy the last
 answer；F2 切換策略 / switch policy；Ctrl+Q 離開 / quit。
@@ -33,6 +33,7 @@ from .herdr import HerdrReporter
 POLICIES = ("jiezi", "jiezi-local", "jiezi-ask-claude", "jiezi-cloud")
 # 聊天歷史（使用者 2026-11-15：重開時接續上次的對話）/ chat history, resumed on restart
 MAX_SAVED, MAX_SHOWN, MAX_CONTEXT = 200, 20, 12
+MAX_INPUTS = 500   # ↑／↓ 可切換的輸入紀錄 / input history for Up / Down
 MAX_DOC_CHARS = 1_500_000  # 附加文件的總字數上限（每題都會送到本機 gateway）/ total attached characters
 IMAGE_TYPES, MAX_IMAGE_BYTES = {"image/png", "image/jpeg", "image/webp", "image/gif"}, 5 << 20  # add-vision
 
@@ -74,12 +75,26 @@ def with_documents(messages: list[dict], docs: list[dict]) -> list[dict]:
 
 
 class PromptArea(TextArea):
-    """Enter 送出，Shift+Enter / Ctrl+J 換行。 / Enter sends; Shift+Enter / Ctrl+J insert a newline."""
+    """Enter 送出，Shift+Enter / Ctrl+J 換行；↑／↓ 在第一行／最後一行時切換輸入過的句子（使用者 2026-11-18：
+    跟 Claude Code 一樣），正在打的字會先保留，↓ 回到底時還原。
+    Enter sends; Shift+Enter / Ctrl+J insert a newline; Up / Down on the first / last line walk through earlier
+    inputs (like Claude Code); the unsent draft is kept and restored at the bottom."""
 
     class Submitted(Message):
         def __init__(self, text: str) -> None:
             self.text = text
             super().__init__()
+
+    def __init__(self, *args, inputs: list[str] | None = None, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.inputs: list[str] = inputs if inputs is not None else []
+        self.pos: int | None = None     # 正在看第幾筆；None = 正在打的新句子 / index browsed; None = the draft
+        self.draft = ""
+
+    def _recall(self, pos: int | None) -> None:
+        self.pos = pos
+        self.text = self.draft if pos is None else self.inputs[pos]
+        self.move_cursor(self.document.end)
 
     async def _on_key(self, event: events.Key) -> None:
         if event.key == "enter":
@@ -87,8 +102,24 @@ class PromptArea(TextArea):
             event.stop()
             text = self.text.strip()
             if text:
+                if not self.inputs or self.inputs[-1] != text:
+                    self.inputs.append(text)
+                self.pos, self.draft = None, ""
                 self.post_message(self.Submitted(text))
                 self.clear()
+            return
+        if event.key == "up" and self.inputs and self.cursor_location[0] == 0 and self.pos != 0:
+            event.prevent_default()
+            event.stop()
+            if self.pos is None:
+                self.draft = self.text
+            self._recall(len(self.inputs) - 1 if self.pos is None else self.pos - 1)
+            return
+        if (event.key == "down" and self.pos is not None
+                and self.cursor_location[0] == self.document.line_count - 1):
+            event.prevent_default()
+            event.stop()
+            self._recall(None if self.pos == len(self.inputs) - 1 else self.pos + 1)
             return
         if event.key in ("shift+enter", "ctrl+j"):
             event.prevent_default()
@@ -171,9 +202,9 @@ def phase_after(kind: str, value, current: str) -> str:
     return current
 
 
-HELP = ("輸入問題後按 Enter；拖曳選取即複製，F3 複製最後一則回答；Ctrl+C 中斷，F2 換策略，Ctrl+Q 離開。\n"
+HELP = ("輸入問題後按 Enter，↑／↓ 叫回輸入過的句子；拖曳選取即複製，F3 複製最後一則回答；Ctrl+C 中斷，F2 換策略，Ctrl+Q 離開。\n"
         "指令：/file 路徑（附文件，/file clear 取消）、/image 路徑、/agent on|off、/copy、/save 檔名、/clear、/help\n"
-        "Enter to send; drag to copy, F3 copies the last answer; Ctrl+C stops, F2 policy, Ctrl+Q quits.")
+        "Enter to send, Up/Down recall earlier inputs; drag to copy, F3 copies the last answer; Ctrl+C stops, F2 policy, Ctrl+Q quits.")
 
 
 class SeedBanner(Static):
@@ -229,7 +260,7 @@ class ChatApp(App):
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(SeedBanner(id="seed"), id="log")
-        yield PromptArea(id="prompt", soft_wrap=True, show_line_numbers=False)
+        yield PromptArea(id="prompt", soft_wrap=True, show_line_numbers=False, inputs=self._load_inputs())
         yield Static(id="bar")
         yield Footer()
 
@@ -241,6 +272,29 @@ class ChatApp(App):
             return [m for m in data if m.get("role") in ("user", "assistant") and isinstance(m.get("content"), str)]
         except (OSError, ValueError, AttributeError):
             return []
+
+    @property
+    def inputs_path(self) -> Path | None:
+        return self.history_path.with_name("inputs.json") if self.history_path else None
+
+    def _load_inputs(self) -> list[str]:
+        """輸入過的句子（含指令），/clear 不清；沒有紀錄時用對話歷史裡的問題。
+        Earlier inputs (commands included), kept across /clear; falls back to the questions in the history."""
+        try:
+            data = json.loads(self.inputs_path.read_text(encoding="utf-8"))
+            return [x for x in data if isinstance(x, str)][-MAX_INPUTS:]
+        except (OSError, ValueError, AttributeError, TypeError):
+            return [text_of(m["content"]) for m in self.history if m["role"] == "user"][-MAX_INPUTS:]
+
+    def _save_inputs(self, inputs: list[str]) -> None:
+        if not self.inputs_path:
+            return
+        try:
+            self.inputs_path.parent.mkdir(parents=True, exist_ok=True)
+            self.inputs_path.write_text(json.dumps(inputs[-MAX_INPUTS:], ensure_ascii=False, indent=0),
+                                        encoding="utf-8")
+        except OSError:
+            pass
 
     def _save_history(self) -> None:
         if not self.history_path:
@@ -315,14 +369,21 @@ class ChatApp(App):
             self._update_bar("還沒有回答可以複製 / no answer to copy yet")
 
     def copy_text(self, text: str) -> None:
-        """OSC 52（終端機）加系統剪貼簿。 / OSC 52 (terminal) plus the system clipboard."""
-        self.copy_to_clipboard(text)
+        """先寫系統剪貼簿；沒有系統工具才送 OSC 52。兩個都送時，多工器（Herdr 等）轉送的 OSC 52 會晚一步
+        蓋掉正確的內容，中文變亂碼（使用者 2026-11-18 回報）。
+        System clipboard first; OSC 52 only when no system tool exists. Sending both let a multiplexer's re-encoded
+        OSC 52 overwrite the correct text a moment later, garbling CJK (user report, 2026-11-18)."""
         tool = system_copy(text)
+        if tool:
+            self._clipboard = text      # 給 TextArea 的 Ctrl+V / for the TextArea's own paste
+        else:
+            self.copy_to_clipboard(text)
         self.copied = text
         self._update_bar(f"已複製 copied {len(text)} 字 chars" + (f" ({tool})" if tool else " (OSC 52)"))
 
     async def on_prompt_area_submitted(self, message: PromptArea.Submitted) -> None:
         text = message.text
+        self._save_inputs(self.query_one("#prompt", PromptArea).inputs)
         if text in ("/help", "/?"):
             log = self.query_one("#log", VerticalScroll)
             await log.mount(Static(HELP, classes="meta", markup=False))

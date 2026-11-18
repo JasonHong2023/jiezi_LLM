@@ -130,3 +130,27 @@ export function phaseLabel(phase, seconds, events) {
   if (!events && seconds > SLOW_S && /^(思考|閱讀)/.test(phase)) return "處理中（準備模型或整理資料，第一次會久一點）";
   return phase;
 }
+
+// 輸入紀錄：↑／↓ 切換輸入過的句子（使用者 2026-11-18；和 jiezi chat 相同），存在這台電腦的 localStorage。
+// Input history for Up / Down (same as jiezi chat), kept in localStorage on this machine.
+export const MAX_INPUTS = 500;
+export function loadInputs(store = globalThis.localStorage) {
+  try { const v = JSON.parse(store?.getItem("jiezi.inputs") || "[]"); return Array.isArray(v) ? v.filter((x) => typeof x === "string") : []; }
+  catch { return []; }
+}
+export function rememberInput(inputs, text, store = globalThis.localStorage) {
+  const next = inputs[inputs.length - 1] === text ? inputs : [...inputs, text].slice(-MAX_INPUTS);
+  try { store?.setItem("jiezi.inputs", JSON.stringify(next)); } catch { /* 存不下就只留在記憶體 / memory only */ }
+  return next;
+}
+// pos = null 表示正在打的新句子；回傳 [新 pos, 要顯示的文字]，不能再移動時回傳 null。
+// pos = null is the draft; returns [new pos, text to show], or null when there is nowhere to go.
+export function recallInput(inputs, pos, draft, dir) {
+  if (dir < 0) {
+    if (!inputs.length || pos === 0) return null;
+    const p = pos === null ? inputs.length - 1 : pos - 1;
+    return [p, inputs[p]];
+  }
+  if (pos === null) return null;
+  return pos === inputs.length - 1 ? [null, draft] : [pos + 1, inputs[pos + 1]];
+}

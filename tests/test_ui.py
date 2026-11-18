@@ -105,6 +105,25 @@ class TestUi(unittest.TestCase):
         self.assertIn(chat.SEED_FRAMES[-1][-1], app)
         self.assertNotIn("輸入問題後按 Enter；", app)                       # 開頭不再列說明 / no help lines
 
+    def test_frontend_input_recall(self):
+        """桌面的 ↑／↓ 和 jiezi chat 走同樣的順序（使用者 2026-11-18）。 / Same Up/Down order as the TUI."""
+        import shutil
+        import subprocess
+        if not shutil.which("node"):
+            self.skipTest("node not installed")
+        js = (ROOT / "ui" / "src" / "api.js").resolve().as_uri()
+        prog = ("globalThis.location = {protocol: 'http:', hostname: 'localhost'};"
+                f"const m = await import({js!r});"
+                "const ins = ['第一題', '/help', '第二題']; let pos = null, out = [];"
+                "for (const d of [-1, -1, -1, -1, 1, 1, 1]) {"
+                "  const g = m.recallInput(ins, pos, '草稿', d); if (g) { pos = g[0]; out.push(g[1]); } else out.push(null); }"
+                "const mem = {v: null, getItem() { return this.v; }, setItem(k, v) { this.v = v; }};"
+                "let all = m.rememberInput([], 'a', mem); all = m.rememberInput(all, 'a', mem);"
+                "console.log(JSON.stringify([out, m.loadInputs(mem)]));")
+        r = subprocess.run(["node", "--input-type=module", "-e", prog], capture_output=True, text=True, timeout=30)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout), [["第二題", "/help", "第一題", None, "/help", "第二題", "草稿"], ["a"]])
+
     def test_no_ui_without_build(self):
         from jiezi.runtime.gateway import ui_routes
         with tempfile.TemporaryDirectory() as d:

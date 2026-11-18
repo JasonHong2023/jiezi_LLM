@@ -326,6 +326,49 @@ class TestChatCopy(TestChat):
         self.assertEqual(copied, ["台北"])
         self.assertIn("已複製", r["bar"])
 
+    def test_system_copy_skips_osc52(self):
+        """系統剪貼簿成功就不送 OSC 52（多工器轉送的 OSC 52 會蓋掉、弄亂中文）；沒有工具才送。
+        No OSC 52 when the system clipboard worked; OSC 52 only as the fallback."""
+        sent = []
+
+        async def script(app, pilot):
+            with mock.patch.object(app, "copy_to_clipboard", lambda t: sent.append(t)):
+                with mock.patch.object(chat, "system_copy", lambda t: "clip.exe"):
+                    app.copy_text("中文")
+                with mock.patch.object(chat, "system_copy", lambda t: None):
+                    app.copy_text("後備")
+        self.run_app(script)
+        self.assertEqual(sent, ["後備"])
+
+    def test_up_down_recall_inputs(self):
+        """↑／↓ 切換輸入過的句子，草稿保留（使用者 2026-11-18）。 / Up/Down walk inputs; the draft is kept."""
+        seen = []
+
+        async def script(app, pilot):
+            for q in ("第一題", "/help", "第二題"):
+                await pilot.press(*q)
+                await pilot.press("enter")
+                await app.workers.wait_for_complete()
+            prompt = app.query_one("#prompt")
+            await pilot.press(*"草稿")
+            for key in ("up", "up", "up", "up", "down", "down", "down"):
+                await pilot.press(key)
+                seen.append(prompt.text)
+        self.run_app(script)
+        self.assertEqual(seen, ["第二題", "/help", "第一題", "第一題", "/help", "第二題", "草稿"])
+
+    def test_inputs_persist(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "history.json"
+            app = chat.ChatApp(CONN, history_path=path)
+            app._save_inputs(["甲", "/clear", "乙"])
+            again = chat.ChatApp(CONN, history_path=path)
+            self.assertEqual(again._load_inputs(), ["甲", "/clear", "乙"])
+            path.write_text('[{"role": "user", "content": "舊問題"}]', encoding="utf-8")
+            (Path(d) / "inputs.json").unlink()
+            self.assertEqual(chat.ChatApp(CONN, history_path=path)._load_inputs(), ["舊問題"])
+
 
 class TestService(unittest.TestCase):
     def test_already_running_and_remote_url_untouched(self):

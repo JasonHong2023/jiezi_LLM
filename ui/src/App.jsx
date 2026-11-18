@@ -1,7 +1,7 @@
 // 芥子桌面 App 雛形：對話、稽核紀錄、狀態（唯讀；不操控作業系統）。
 // Jiezi desktop prototype: chat, audit log, status (read-only; no OS control).
 import { useEffect, useRef, useState } from "react";
-import { BASE, firstPhase, getJSON, getKey, phaseAfter, phaseLabel, readDocument, setKey, stepText, streamChat, withDocuments } from "./api.js";
+import { BASE, firstPhase, getJSON, getKey, loadInputs, phaseAfter, phaseLabel, readDocument, recallInput, rememberInput, setKey, stepText, streamChat, withDocuments } from "./api.js";
 
 const MAX_DOC_CHARS = 1500000;  // 附著文件的總字數上限（和 jiezi chat 相同）/ same cap as jiezi chat
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;  // 和 jiezi chat 的 /image 相同 / same cap as /image in chat
@@ -75,6 +75,8 @@ function Chat() {
   const [policy, setPolicy] = useState("jiezi");
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
+  const inputs = useRef(loadInputs());   // ↑／↓ 輸入紀錄 / input history
+  const recall = useRef({ pos: null, draft: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [docs, setDocs] = useState([]);       // 附著的文件，每一題都帶 / attached documents, sent with every question
@@ -124,6 +126,8 @@ function Chat() {
   async function send() {
     const text = input.trim();
     if (!text || busy) return;
+    inputs.current = rememberInput(inputs.current, text);
+    recall.current = { pos: null, draft: "" };
     const history = [...msgs.map(({ role, content }) => ({ role, content })), { role: "user", content: text }];
     // 畫面與歷史只留問題；文件在送出時包進最新的問題，gateway 才能依這一題重新挑段落
     // The log keeps the bare question; documents are wrapped around the latest question when sending
@@ -217,8 +221,21 @@ function Chat() {
       <div className="composer">
         <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={3}
           onPaste={(e) => { const imgs = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith("image/")); if (imgs.length) { e.preventDefault(); attach(imgs); } }}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-          placeholder="問芥子…（Enter 送出、Shift+Enter 換行、Esc 中止；圖片可以直接貼上）" />
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); return; }
+            const t = e.currentTarget, up = e.key === "ArrowUp", down = e.key === "ArrowDown";
+            // 游標在第一行按 ↑、在最後一行按 ↓ 才切換，多行輸入仍可上下移動 / only on the first / last line
+            if ((up && !t.value.slice(0, t.selectionStart).includes("\n")) ||
+                (down && !t.value.slice(t.selectionEnd).includes("\n"))) {
+              const r = recall.current;
+              const got = recallInput(inputs.current, r.pos, r.draft, up ? -1 : 1);
+              if (!got) return;
+              e.preventDefault();
+              recall.current = { pos: got[0], draft: r.pos === null ? input : r.draft };
+              setInput(got[1]);
+            }
+          }}
+          placeholder="問芥子…（Enter 送出、Shift+Enter 換行、↑↓ 叫回輸入過的句子、Esc 中止；圖片可以直接貼上）" />
         {busy ? <button className="stop" onClick={() => abort.current?.abort()}>中止</button>
           : <button onClick={send} disabled={!input.trim()}>送出</button>}
       </div>

@@ -13,14 +13,14 @@ from typing import Callable
 def _candidates(which: Callable[[str], str | None]) -> list[tuple[list[str], str]]:
     """(指令, 編碼)；依偵測到的工具決定，不假設平台（R21）。 / (command, encoding), detected not assumed."""
     out = []
+    if which("clip.exe"):  # WSL → Windows；放第一個：WSLg 的剪貼簿同步會弄亂中文 / first: WSLg sync garbles CJK
+        out.append((["clip.exe"], "utf-16-le"))  # UTF-16、不加 BOM（實測 Get-Clipboard 完全相符）/ no BOM, verified
     if which("wl-copy"):
         out.append((["wl-copy"], "utf-8"))
     if which("xclip"):
         out.append((["xclip", "-selection", "clipboard"], "utf-8"))
     if which("xsel"):
         out.append((["xsel", "--clipboard", "--input"], "utf-8"))
-    if which("clip.exe"):  # WSL → Windows；clip.exe 讀 UTF-16 才能正確處理中文 / needs UTF-16 for CJK
-        out.append((["clip.exe"], "utf-16-le"))  # 不加 BOM，貼上時才不會多一個隱形字元 / no BOM
     if which("pbcopy"):
         out.append((["pbcopy"], "utf-8"))
     return out
