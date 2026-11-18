@@ -59,3 +59,4 @@ pre { background: var(--panel); border: 1px solid var(--line); padding: .5rem; o
 .progress .spin { display: inline-block; width: 1.2em; }
 select, input, a { color: inherit; }
 select { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+.crash pre { white-space: pre-wrap; font-size: .8rem; }
