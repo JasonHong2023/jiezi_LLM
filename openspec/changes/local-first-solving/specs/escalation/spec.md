@@ -14,3 +14,12 @@ For policy `jiezi`, in both streaming and non-streaming answers, when the local 
   Every local and hint step fails
 - **THEN** 才請教 Claude；過程列出所有步驟
   Only then is Claude consulted
+
+### Requirement: Experience Records
+When the ladder goes past the first local answer, the gateway SHALL write an experience record to the memory wiki — the question type, what failed, which step solved it, and a one- or two-sentence lesson summarised by the local model (never the text of a Claude answer) — and SHALL attach relevant experience records as hints to similar later questions, counting uses and successes and disabling a record after three unsuccessful uses.
+
+#### Scenario: 經驗讓下次一次答對 / An experience helps next time
+- **WHEN** 「2027 國定假日」本機第一次答錯、重答後才對，之後又有人問「2028 年國定假日」
+  A question was solved only on retry and a similar question comes later
+- **THEN** 第二題作答前附上那筆經驗（例如「先查補假規則，不要自己推算」），過程顯示用了哪筆經驗
+  The lesson is attached before answering and the process shows which record was used
