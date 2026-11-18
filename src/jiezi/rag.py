@@ -24,7 +24,7 @@ EMBED_MODEL = "qwen3-embedding-0.6b-q8_0"
 QUERY_INSTRUCT = ("Instruct: Given a question in Traditional Chinese, retrieve passages from a Taiwan knowledge base "
                   "that answer it\nQuery: ")
 DOC_CHARS, CANDIDATES, BATCH, SCAN_DIM, RERANK = 800, 200, 16, 256, 50
-DEFAULT_MIN = 0.5
+DEFAULT_MIN = 0.6   # tune-knowledge-relevance（2026-11-18）
 # 重排序（add-reranker）：向量階段的前 N 名交給「問題＋段落一起讀」的模型重新排序
 # Reranking: the top N of the vector stage are re-scored by a model that reads question and passage together
 RERANK_MODEL, RERANK_TOP, RERANK_SLACK, RERANK_TIMEOUT_S = "qwen3-reranker-0.6b-q8_0", 20, 0.1, 10.0

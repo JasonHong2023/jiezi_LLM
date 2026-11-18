@@ -269,7 +269,7 @@ class Gateway:
                 store = VectorStore(law_vectors(settings.root))
                 if store.count():
                     lw = self.laws
-                    self.laws_hybrid = HybridRetriever(lw, store, embedder, settings.rag_min,
+                    self.laws_hybrid = HybridRetriever(lw, store, embedder, settings.laws_rag_min,
                                                        reranker=self.reranker,
                                                        text_of=lambda i: law_text(lw, i))
                     self.rag_note += f"; laws {store.count()} vectors"
