@@ -196,6 +196,29 @@ class TestChat(unittest.TestCase):
         self.assertLessEqual(cell_len(r["bar"].splitlines()[0]), 60 * 2)
 
 
+class TestSeedBanner(TestChat):
+    """開場動畫取代操作說明（使用者 2026-11-18）；說明改在 /help。 / Opening animation; help moved to /help."""
+
+    def test_animation_plays_once_and_help_moves(self):
+        self.assertTrue(all(len(f) == len(chat.SEED_FRAMES[0]) for f in chat.SEED_FRAMES))   # 不跳動 / steady height
+        self.assertIn("芥子納須彌", chat.SEED_FRAMES[-1][-1])
+
+        async def script(app, pilot):
+            banner = app.query_one("#seed")
+            texts = {str(w.render()) for w in app.query("Static")}
+            self.assertFalse(any("Type a question" in t for t in texts))   # 不再顯示操作說明 / no help lines
+            with mock.patch.object(chat, "FRAME_S", 0.01):
+                for _ in range(len(chat.SEED_FRAMES) + 2):
+                    banner.advance()
+            self.assertEqual(banner.frame, len(chat.SEED_FRAMES) - 1)
+            self.assertIn("一粒芥子", str(banner.render()))
+            await pilot.press(*"/help")
+            await pilot.press("enter")
+            await pilot.pause()
+            self.assertTrue(any("F3" in str(w.render()) for w in app.query("Static")))
+        self.run_app(script)
+
+
 class TestClipboard(unittest.TestCase):
     def test_picks_detected_tool_and_utf16_for_clip_exe(self):
         from jiezi.cli import clipboard

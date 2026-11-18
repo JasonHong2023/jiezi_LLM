@@ -103,6 +103,47 @@ class PromptArea(TextArea):
             self.app.copy_text(self.selected_text)
 
 
+# 開場動畫：一粒芥子展開成山海星月，再收回成一粒——「芥子納須彌」（使用者 2026-11-18：取代開頭的操作說明，
+# 操作說明留在下方的按鍵列與 /help）。每格行數相同，畫面才不會跳動。
+# Opening animation: a mustard seed unfolds into a world and holds it ("a mustard seed contains Mount Sumeru");
+# replaces the help lines at the top (user request); key help stays in the footer and /help.
+SEED_FRAMES: list[list[str]] = [
+    ["", "", "·", "", ""],
+    ["", "", "( · )", "", ""],
+    ["", "˙   ˙   ˙", "(  ●  )", "˙   ˙   ˙", ""],
+    ["          ✦", "      ▲", "    ▲▲▲", "～～( ● )～～", ""],
+    ["   ✧          ✦", "      ▲    ▲▲", "    ▲▲▲▲  ▲▲▲▲", "～～～～( ● )～～～～", ""],
+    ["✦      ✧    ☾     ✦", "    ▲     ▲▲▲", "  ▲▲▲▲  ▲▲▲▲▲▲  ▲▲", "～～～～～～( ● )～～～～～～", ""],
+]
+_WORLD = SEED_FRAMES[-1][:4]
+TITLE = "芥子納須彌"
+SUBTITLE = "芥子納須彌 —— 一粒芥子，裝下一整個世界"
+SEED_FRAMES += [[*_WORLD, TITLE[:n]] for n in range(1, len(TITLE) + 1)] + [[*_WORLD, SUBTITLE]]
+FRAME_S = 0.2
+HELP = ("輸入問題後按 Enter；拖曳選取即複製，F3 複製最後一則回答；Ctrl+C 中斷，F2 換策略，Ctrl+Q 離開。\n"
+        "指令：/file 路徑（附文件，/file clear 取消）、/image 路徑、/agent on|off、/copy、/save 檔名、/clear、/help\n"
+        "Enter to send; drag to copy, F3 copies the last answer; Ctrl+C stops, F2 policy, Ctrl+Q quits.")
+
+
+class SeedBanner(Static):
+    """播一次就停在最後一格。 / Plays once and rests on the last frame."""
+    DEFAULT_CSS = "SeedBanner { width: 100%; text-align: center; color: $text-muted; margin: 1 0; }"
+
+    def __init__(self, **kw):
+        super().__init__("\n".join(SEED_FRAMES[0]), markup=False, **kw)
+        self.frame = 0
+
+    def on_mount(self) -> None:
+        self.timer = self.set_interval(FRAME_S, self.advance)
+
+    def advance(self) -> None:
+        if self.frame >= len(SEED_FRAMES) - 1:      # 停在最後一格 / rest on the last frame
+            self.timer.stop()
+            return
+        self.frame += 1
+        self.update("\n".join(SEED_FRAMES[self.frame]))
+
+
 class ChatApp(App):
     TITLE = "芥子 Jiezi"
     CSS = """
@@ -136,10 +177,7 @@ class ChatApp(App):
         self.agent = False                                 # /agent on：唯讀檔案代理（add-agent-readonly）/ read-only agent
 
     def compose(self) -> ComposeResult:
-        yield VerticalScroll(Static("輸入問題後按 Enter / Type a question and press Enter. "
-                                    "拖曳選取即複製，F3 複製最後一則回答 / drag to select and copy, "
-                                    "F3 copies the last answer. Ctrl+C 中斷 / stop; F2 策略 / policy; Ctrl+Q 離開 / quit.",
-                                    classes="meta"), id="log")
+        yield VerticalScroll(SeedBanner(id="seed"), id="log")
         yield PromptArea(id="prompt", soft_wrap=True, show_line_numbers=False)
         yield Static(id="bar")
         yield Footer()
@@ -234,6 +272,11 @@ class ChatApp(App):
 
     async def on_prompt_area_submitted(self, message: PromptArea.Submitted) -> None:
         text = message.text
+        if text in ("/help", "/?"):
+            log = self.query_one("#log", VerticalScroll)
+            await log.mount(Static(HELP, classes="meta", markup=False))
+            log.scroll_end(animate=False)
+            return
         if text.startswith("/save"):
             self._save(text[5:].strip())
             return
