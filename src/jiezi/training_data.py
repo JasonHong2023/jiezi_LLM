@@ -23,7 +23,7 @@ from pathlib import Path
 SEED = 20261117
 # 不可訓練的來源（授權禁止改作、或是第三方輸出）/ non-trainable sources
 NON_TRAINABLE = {"moedict-revised", "moedict-twblg", "moedict-hakka", "rocknovels-teachlist", "hackmd-chemistry"}
-LOCAL_TIERS = {0, 1}
+LOCAL_TIERS = {0, 1, "think"}   # 本機作答、帶錯誤重答、思考模式重答（local-first-solving）
 # 夠強、可以當教材的驗證：工具呼叫 schema。答案查核只看數字與引號（「刈包是四川菜」也會通過），
 # 程式只檢查語法，都不足以證明答案正確（2026-11-16）。
 # Strong enough to make teaching material: tool-call schema checks. The grounded check only covers numbers and
@@ -99,7 +99,10 @@ def from_trajectories(root: Path, days: int = 3650) -> tuple[list[dict], Counter
         if meta.get("verification") != "pass":  # R20.3：只收驗證通過的 / verified only
             why["not_verified"] += 1
             continue
-        tier = next((t for t in reversed(rec.get("tiers") or []) if t.get("tier") in LOCAL_TIERS and t.get("answer")), None)
+        # 取最後一個「通過檢查」的本機答案：階梯裡先答錯、重答才對時，要的是對的那一次（使用者 2026-11-18：本機在階梯
+        # 自己答對的答案當訓練資料）/ the last local answer that passed: on the ladder, the corrected one
+        tier = next((t for t in reversed(rec.get("tiers") or []) if t.get("tier") in LOCAL_TIERS and t.get("answer")
+                     and (t.get("verification") or {}).get("status") == "pass"), None)
         if not tier:
             why["no_answer"] += 1
             continue
@@ -114,7 +117,8 @@ def from_trajectories(root: Path, days: int = 3650) -> tuple[list[dict], Counter
             continue
         msgs = [m for m in (rec.get("request") or {}).get("messages") or [] if m.get("role") in ("system", "user", "assistant")]
         ex = _ex(msgs, answer, "trajectory", "local-model-output (Qwen3 Apache-2.0)", "trajectory",
-                 trajectory_id=rec.get("id"), sources=[s.get("source") for s in rec.get("sources") or []])
+                 trajectory_id=rec.get("id"), sources=[s.get("source") for s in rec.get("sources") or []],
+                 **({"ladder_step": (rec.get("ladder") or {}).get("solved_by")} if rec.get("ladder") else {}))
         if calls:
             ex["messages"][-1]["tool_calls"] = calls
             ex["tools"] = (rec.get("request") or {}).get("tools")

@@ -46,6 +46,26 @@ class TestTrainingData(unittest.TestCase):
         self.assertEqual(m["excluded"]["non_trainable_source"], 1)
         self.assertEqual(m["excluded"]["not_verified"], 1)
 
+    def test_ladder_keeps_the_corrected_local_answer(self):
+        """階梯中本機重答才對：匯出對的那一次（使用者 2026-11-18：本機自己答對的答案當訓練資料）。
+        On the ladder, the corrected local answer is exported, not the first failed one."""
+        fail = {"status": "fail", "checks": [{"check": "tool_schema", "status": "fail"}]}
+        r = rec("查高雄天氣", "[get_weather()]", ver=fail)
+        r["final_tier"] = 1
+        r["jiezi"]["verification"] = "pass"
+        r["ladder"] = {"first_error": "x", "solved_by": "think"}
+        r["tiers"] += [{"tier": 1, "step": "retry", "answer": {"content": "[get_weather(c='x')]"}, "verification": fail},
+                       {"tier": "think", "step": "think", "answer": {"content": "[get_weather(city='高雄')]"},
+                        "verification": TOOL_OK}]
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "var" / "trajectories").mkdir(parents=True)
+            (root / "var" / "trajectories" / f"{date.today().isoformat()}.jsonl").write_text(json.dumps(r, ensure_ascii=False))
+            out, _ = T.export(root, limit_per_source=5)
+            kept = [json.loads(x) for x in out.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(kept[0]["messages"][-1]["content"], "[get_weather(city='高雄')]")
+        self.assertEqual(kept[0]["ladder_step"], "think")
+
     def test_evaluation_overlap(self):
         with tempfile.TemporaryDirectory() as d:
             qs, targets = T.eval_targets(Path(d))
