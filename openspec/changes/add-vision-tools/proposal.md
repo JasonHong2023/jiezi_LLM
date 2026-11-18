@@ -1,4 +1,4 @@
-> **狀態 / Status**：草案，待使用者審閱（2026-11-18）。/ Draft, awaiting review.
+> **狀態 / Status**：2026-11-18 使用者審閱：OQ1 寬鬆授權工具（RAM++、OWLv2、Florence-2／D-FINE），OQ2 不用 YOLO，OQ3 核對不過的**保留但標「不確定」**。/ Approved: permissive tools, no YOLO, unconfirmed objects kept and marked uncertain.
 
 ## Why
 
@@ -21,7 +21,7 @@ Small VLMs mostly hallucinate. Small specialist models give labels, scores and b
 - **看圖流程**（`JIEZI_VISION_TOOLS=on`）：
   1. 附圖時先跑 `image_tags` + `detect`，結果（標籤、數量、信心）當**資料**附給核心模型（不當指令，沿用 injection-guard）；
   2. 核心模型看圖＋看工具結果作答；也可以在回答中途**自己呼叫** `find`／`ocr`／`detect` 追問細節（走 strong-tool-calling 的工具迴圈）；
-  3. **核對**：答案裡提到的物體名稱逐一用 `find` 核對，信心低於門檻的刪掉或改成「可能有（不確定）」，回應 metadata 記下 `vision_check`。
+  3. **核對**：答案裡提到的物體名稱逐一用 `find` 核對，信心低於門檻的**保留但標「（不確定）」**（使用者 2026-11-18），回應 metadata 記下 `vision_check`。
 - 新增**看圖評測**：用授權允許的已標註圖片（候選 Open Images V7 驗證集子集，標註 CC BY 4.0、圖片 CC BY 2.0 ⚠️待查證），量「說出的物體」的精確率（有沒有捏造）與召回率（有沒有漏），先量現況，再量加工具後；精確率沒有提升就不預設開（R20）。
 
 ## Non-Goals

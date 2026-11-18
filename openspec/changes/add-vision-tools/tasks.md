@@ -7,7 +7,7 @@
 
 - [ ] 2.1 `image_tags`、`detect`、`find`、`ocr` 四個 CPU 工具，延遲、記憶體上限與逾時（逾時就略過工具，照原本看圖）
 - [ ] 2.2 看圖流程：工具結果當資料附給核心；核心可在回答中呼叫工具
-- [ ] 2.3 核對：答案提到的物體逐一 `find`，不過門檻的刪掉並註明；metadata `vision_check`
+- [ ] 2.3 核對：答案提到的物體逐一 `find`，不過門檻的保留並標「（不確定）」；metadata `vision_check`
 
 ## 3. 量測與預設 / Measure and default
 

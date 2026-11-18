@@ -1,4 +1,4 @@
-> **狀態 / Status**：草案，待使用者審閱（2026-11-18）。/ Draft, awaiting review.
+> **狀態 / Status**：2026-11-18 使用者審閱：OQ1 第 4 層做、排在第 2 輪結果之後；OQ2 加 BFCL；OQ3 文法約束對所有用戶端開。/ Approved: layer 4 after round 2, add BFCL, grammar for all clients.
 
 ## Why
 
