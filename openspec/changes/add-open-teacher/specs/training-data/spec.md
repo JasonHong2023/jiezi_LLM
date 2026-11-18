@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Teacher Answers
-When a teacher model whose terms allow training is configured, after each escalated question the system SHALL ask the teacher the same question in the background with provider fallbacks disabled, SHALL keep the answer as a training candidate only when the responding model is the configured teacher, the answer passes the existing checks and its key facts agree with the delivered answer, and SHALL record the teacher's license; consulted Claude answers SHALL NOT be stored as training data.
+When one or more teacher models whose terms allow training are configured, after each escalated question the system SHALL ask each teacher the same question in the background with provider fallbacks disabled, SHALL keep the answer as a training candidate only when the responding model (and, for routed services, the provider) is the configured teacher, the answer passes the existing checks and its key facts agree with the delivered answer or with another teacher, and SHALL record the teacher's license; consulted Claude answers SHALL NOT be stored as training data.
 
 #### Scenario: 老師與 Claude 一致 / Teacher agrees
 - **WHEN** 「2027 年的國定假日」轉給 Claude 回答，老師 gpt-oss-120b 的答案關鍵日期一致

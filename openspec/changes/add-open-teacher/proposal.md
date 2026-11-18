@@ -1,4 +1,4 @@
-> **狀態 / Status**：2026-11-18 提案，等使用者審閱。/ Proposed, awaiting review.
+> **狀態 / Status**：2026-11-18 提案；使用者：「老師不只一個」→ 改成多位老師。等使用者審閱。/ Revised for several teachers.
 
 ## Why
 
@@ -10,14 +10,19 @@ Training data comes from the local model's own solved answers and from a teacher
 
 ## What Changes
 
-- 老師模型：LiteLLM 的 `cloudflare-gpt-oss-120b`（`JIEZI_TEACHER_MODEL`，預設空＝關；使用者同意後設定）。
-  請求帶 `disable_fallbacks`，並核對回應的 `model`，**確定是 gpt-oss** 才收（避免 LiteLLM 換成條款未查的模型）。
-- 何時問老師：每次轉交（Claude 或雲端回答了使用者）後，在背景把同一題問老師；老師的答案通過現有查核（工具 schema、
+- 老師模型（多位，`JIEZI_TEACHER_MODELS`，逗號分隔；只列條款查證過的，見 docs/licenses.md）：
+  1. `cloudflare-gpt-oss-120b`（gpt-oss Apache-2.0；Cloudflare 輸出屬客戶）；
+  2. `openrouter-deepseek`（DeepSeek 權重 MIT；DeepSeek 官方條款明文允許蒸餾）——**必須固定 DeepSeek 官方為供應商**
+     （OpenRouter `provider.order=["DeepSeek"]`、`allow_fallbacks=false`），回應核對不到供應商就不收；
+  3. NVIDIA、GLM、Qwen 等：條款讀不到，先不用；查證後加入。
+  每個請求都關 LiteLLM fallback，並核對回應的 `model`。
+- 何時問老師：每次轉交（Claude 或雲端回答了使用者）後，在背景把同一題問每一位老師；老師的答案通過現有查核（工具 schema、
   程式語法、依附上資料）才存成訓練候選 `var/training/teacher.jsonl`（license 欄記 gpt-oss Apache-2.0 / Cloudflare），
   不影響使用者看到的回答。
-- 和 Claude 的答案比對：關鍵數字、名稱不一致就標 `disagree`，不收（Claude 只用來把關，內容不進訓練集）。
+- 把關：每位老師的答案和交給使用者的答案比關鍵數字、名稱；也比老師之間。和交付答案一致、或兩位老師彼此一致的才收，
+  各自存一筆（多位老師＝多種寫法，訓練更穩）；不一致標 `disagree` 不收。Claude 只用來把關，內容不進訓練集。
 - `scripts/jiezi dataset export` 加入 teacher 來源，照現有規則（評測重疊排除、每來源上限）。
-- 每天上限（`JIEZI_TEACHER_DAILY_MAX`，預設 100），用量計入雲端統計。
+- 每天上限（`JIEZI_TEACHER_DAILY_MAX`，預設 100 題，每位老師各算），用量計入雲端統計。
 
 ## Non-Goals
 
