@@ -46,6 +46,33 @@ class TestRestore(unittest.TestCase):
         self.assertEqual(toolargs.restore_calls(m, [{"role": "user", "content": "阅读"}]), [])
 
 
+class TestValueChecks(unittest.TestCase):
+    """巢狀物件、陣列項目、範圍也要檢查（add-strong-tool-calling 1.2）。 / Nested values, items and ranges."""
+    TOOL = [{"type": "function", "function": {"name": "gen", "parameters": {"type": "object", "properties": {
+        "prefs": {"type": "object", "properties": {
+            "sound": {"type": "string", "enum": ["ocean", "rain"]},
+            "volume": {"type": "integer", "minimum": 0, "maximum": 100}}, "required": ["sound"]},
+        "tags": {"type": "array", "items": {"type": "string"}}}, "required": ["prefs"]}}}]
+
+    def check(self, args):
+        from jiezi.runtime import escalation
+        return escalation.verify_tools(self.TOOL, call_named("gen", args))
+
+    def test_nested(self):
+        self.assertEqual(self.check({"prefs": {"sound": "ocean", "volume": 45}, "tags": ["a"]})["status"], "pass")
+        for bad, word in (({"prefs": {"sound": "海浪"}}, "one of"), ({"prefs": {"sound": "rain", "volume": 300}}, "maximum"),
+                          ({"prefs": {"volume": 3}}, "missing required"), ({"prefs": {"sound": "rain"}, "tags": [1]},
+                                                                           "expected string")):
+            r = self.check(bad)
+            self.assertEqual(r["status"], "fail", bad)
+            self.assertIn(word, r["error"])
+
+
+def call_named(name, args):
+    return {"role": "assistant", "content": "", "tool_calls": [
+        {"type": "function", "function": {"name": name, "arguments": json.dumps(args, ensure_ascii=False)}}]}
+
+
 class TestToolNote(unittest.TestCase):
     def test_note_only_with_tools_and_switchable(self):
         from jiezi.runtime.gateway import TOOL_NOTE

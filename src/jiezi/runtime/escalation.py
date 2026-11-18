@@ -92,6 +92,9 @@ def verify_tools(tools: list[dict], message: dict) -> dict:
                 errors.append(f"{name}: unknown parameter {k!r}")
             elif not _type_ok(v, props[k]):
                 errors.append(f"{name}: parameter {k!r} does not match type {props[k].get('type')!r}")
+            else:  # 巢狀物件、陣列項目、範圍、長度（add-strong-tool-calling 1.2）/ nested, items, ranges, lengths
+                from .jsonout import validate
+                errors += validate(v, props[k], f"{name}.{k}")
     return {"check": "tool_schema", "status": "fail" if errors else "pass", "error": "; ".join(errors) or None,
             "calls": len(calls)}
 
