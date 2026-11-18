@@ -675,12 +675,20 @@ class TestAutoConsult(unittest.TestCase):
         self.assertEqual((fn["name"], json.loads(fn["arguments"])), ("get_weather", {"city": "台北", "days": 2}))
         # 不是整段呼叫、或函式不在清單裡：照文字回 / prose or unknown functions stay text
         from jiezi.runtime.escalation import text_calls_to_tool_calls
-        for text in ("先查一下：[get_weather(city='x')]", "[rm_rf(path='/')]", "[1, 2]"):
+        for text in ("先查一下：[rm_rf(path='/')]", "[rm_rf(path='/')]", "[1, 2]", "答案是 [1]"):
             msg = {"role": "assistant", "content": text}
             self.assertFalse(text_calls_to_tool_calls(msg, TOOLS), text)
             self.assertEqual(msg["content"], text)
         msg = {"role": "assistant", "content": "```\n[get_weather(city='x')]\n```"}
         self.assertTrue(text_calls_to_tool_calls(msg, TOOLS))
+        # 呼叫前夾了漏出的思考（2026-11-18 Hermes 第二次停住）：丟掉前文、轉成呼叫 / leaked reasoning before the call
+        msg = {"role": "assistant", "content": "Next sensible step: try [x] first. Output the function call."
+                                               "[get_weather(city='台北')]"}
+        self.assertTrue(text_calls_to_tool_calls(msg, TOOLS))
+        self.assertIsNone(msg["content"])
+        self.assertEqual(json.loads(msg["tool_calls"][0]["function"]["arguments"]), {"city": "台北"})
+        msg = {"role": "assistant", "content": "[get_weather(city='x')] 是我會用的呼叫。"}  # 呼叫不在結尾 / not at the end
+        self.assertFalse(text_calls_to_tool_calls(msg, TOOLS))
 
     def test_engine_unavailable_consults(self):
         r = self.run_one([], {"messages": [{"role": "user", "content": "x"}]}, engine_ok=False)

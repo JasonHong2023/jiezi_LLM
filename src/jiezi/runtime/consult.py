@@ -58,8 +58,9 @@ def render_prompt(body: dict) -> str:
     if body.get("tools"):
         specs = [t.get("function") or t for t in body["tools"]]
         parts.append("[可用的函式 / Available functions]\n" + json.dumps(specs, ensure_ascii=False, indent=1) +
-                     "\n若要呼叫函式，只輸出 [函式名(參數=值, ...)]；否則直接回答。\n"
-                     "To call a function, output only [name(arg=value, ...)]; otherwise answer directly.")
+                     "\n若要呼叫函式，整個回覆只能是 [函式名(參數=值, ...)] 這一段，前後不要有任何說明或思考；否則直接回答。\n"
+                     "To call a function, the whole reply must be only [name(arg=value, ...)], with no explanation or "
+                     "reasoning before or after it; otherwise answer directly.")
     if body.get("response_format"):  # add-json-output：CLI 沒有結構化輸出，改用文字要求 / the CLI has no JSON mode
         from . import jsonout
         try:

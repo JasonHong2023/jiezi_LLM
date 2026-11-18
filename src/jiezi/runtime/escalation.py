@@ -65,24 +65,43 @@ def _calls_from_message(message: dict) -> list[tuple[str, dict]] | None:
     return [(name, args) for c in calls for name, args in c.items()]
 
 
-_ONLY_CALLS = re.compile(r"^\s*(?:```\w*\s*)?(\[.*\])\s*(?:```)?\s*$", re.S)
+_FENCE_END = re.compile(r"\s*(?:```)?\s*$")
+_CALL_START = re.compile(r"\[\s*[A-Za-z_][\w.\-]*\s*\(")
+
+
+def _trailing_calls(text: str) -> tuple[list[tuple[str, dict]], str] | None:
+    """回答結尾的 `[f(a=1), ...]` → (呼叫, 前面的文字)；結尾不是呼叫就回傳 None。
+    The `[f(a=1), ...]` that ends the answer → (calls, text before it); None when the answer does not end with one."""
+    body = _FENCE_END.sub("", text)
+    if not body.endswith("]"):
+        return None
+    for m in _CALL_START.finditer(body):           # 從最前面的候選開始，取第一個能完整解析到結尾的 / earliest full parse
+        try:
+            calls = tool_call.parse_calls(body[m.start():])
+        except tool_call.Unparsed:
+            continue
+        if tool_call.extract_outermost_bracket_content(body[m.start():]) != body[m.start():]:
+            continue                                # 解析到的不是延伸到結尾的那一段 / must reach the end
+        return [(n, a) for c in calls for n, a in c.items()], body[:m.start()]
+    return None
 
 
 def text_calls_to_tool_calls(message: dict, tools: list[dict]) -> bool:
-    """整段回答只有 `[f(a=1)]` 時，就地改成 OpenAI `tool_calls`（請教 Claude 走文字格式，用戶端只認 tool_calls；
-    2026-11-18 Hermes 收到文字 `[browser_navigate(...)]` 當成最終回答而停住）。函式名都在 tools 裡才轉。回傳有沒有轉。
-    When the whole answer is `[f(a=1)]`, rewrite it in place as OpenAI tool_calls (consulted answers use the text
-    format; clients only act on tool_calls). Only when every name is a listed tool. Returns whether it converted."""
+    """回答以 `[f(a=1)]` 結尾時，就地改成 OpenAI `tool_calls`（請教 Claude 走文字格式，用戶端只認 tool_calls）。
+    2026-11-18 Hermes 兩次停住：文字 `[browser_navigate(...)]` 被當成最終回答；Claude 在呼叫前夾了自言自語
+    （「Next sensible step... Output the function call.[browser_get_images()]」）。前面的文字是請教時漏出的思考，丟掉。
+    函式名都在 tools 裡才轉。回傳有沒有轉。
+    When the answer ends with `[f(a=1)]`, rewrite it in place as OpenAI tool_calls; any text before the call is leaked
+    reasoning and is dropped. Only when every name is a listed tool. Returns whether it converted."""
     import uuid
-    text = message.get("content") or ""
-    m = _ONLY_CALLS.match(text) if isinstance(text, str) and not message.get("tool_calls") else None
-    if not m:
+    text = message.get("content")
+    if not isinstance(text, str) or message.get("tool_calls"):
         return False
+    found = _trailing_calls(text)
+    if not found:
+        return False
+    calls, _ = found
     names = {(t.get("function") or t).get("name") for t in tools or []}
-    try:
-        calls = [(n, a) for c in tool_call.parse_calls(m.group(1)) for n, a in c.items()]
-    except tool_call.Unparsed:
-        return False
     if not calls or any(n not in names or not isinstance(a, dict) for n, a in calls):
         return False
     message["tool_calls"] = [{"id": f"call_{uuid.uuid4().hex[:24]}", "type": "function",
