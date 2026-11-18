@@ -12,6 +12,14 @@ The core scores 60% on ACEBench-zh; 9/50 answers are unparseable, all of them fo
 另外參數型別錯（`guest_count="8"` 應為整數）、漏必填參數也是常見錯誤。這些都可以**由程式保證**，不必靠模型「學會」。
 Type errors and missing required parameters are also common; all of these can be guaranteed by code.
 
+## 實作前查證與第一步結果（2026-11-18）/ Findings before implementing
+
+- **原生 `tools` 路徑本來就有文法約束**：llama.cpp 依工具 schema 建 lazy grammar；Hermes、OpenCode 走的就是這條。上面「9 題解析不了」出自 E0 的**文字格式**評測（`[f(a=1)]`），不是用戶端的路徑。走 gateway 的 toolcheck（ACEBench-zh 50 題、原生 tools）11-17 是 **32/50**，只有 1 題解析不了。
+- **32/50 的 17 題錯誤分析**：6 題是模型把參數值轉成繁體（預設系統提示要求繁體回答；使用者寫「阅读量」→「閱讀量」）、2 題把地名翻成英文、7 題自己補了使用者沒給的選填參數、2 題是平行呼叫／單位。
+- **已做（第 1.4 項）**：帶工具的請求加「參數照原文、不補選填參數、數值照給的、多件事各呼叫一次」的規則，並把被轉成繁體／異體的參數值逐字還原成使用者原文。**32 → 44/50（64% → 88%）**；剩下 5 題是補了選填參數（要靠第 4 層訓練）。
+- 第 3 層（只讓通過檢查的樣本投票）add-sampling 已經是這樣。
+Native tool calls are already grammar-constrained by llama.cpp; the E0 parse failures came from the text-format eval. Error analysis of the gateway run led to the argument rules and wording restoration: 32 → 44/50.
+
 ## What Changes
 
 分四層，從最便宜、最確定的開始：

@@ -164,7 +164,9 @@ class TestGateway(unittest.TestCase):
                                                                        {"role": "user", "content": "台北天氣"}]}
         out, seen, recs, _, _ = self.run_gateway([plain, tools], headers={"X-Jiezi-Eval": "1"})
         self.assertEqual(seen[0]["messages"], plain["messages"])            # 一字不改 / byte-identical
-        self.assertEqual(seen[1]["messages"], tools["messages"])
+        from jiezi.runtime.gateway import TOOL_NOTE    # 帶工具時只多工具規則（add-strong-tool-calling）/ only the tool note
+        self.assertEqual(seen[1]["messages"], [{"role": "system", "content": "身分\n\n" + TOOL_NOTE},
+                                               tools["messages"][1]])
         for o, r in zip(out, recs):
             self.assertIsNone(o.json()["jiezi"]["injection"])
             self.assertNotIn("injection", r)
@@ -186,7 +188,7 @@ class TestGateway(unittest.TestCase):
         out, seen, recs, rows, _ = self.run_gateway([body("晴天，25 度")], answer="[get_weather(city='高雄')]")
         self.assertIsNone(out[0].json()["jiezi"]["injection"])
         self.assertEqual(len(rows), 1)                                      # 乾淨的照常學 / clean ones still learn
-        self.assertEqual(seen[-1]["messages"][0]["content"], I.GUARD_PROMPT)  # 工具結果一律加安全規則 / always reminded
+        self.assertTrue(seen[-1]["messages"][0]["content"].startswith(I.GUARD_PROMPT))  # 一律加安全規則 / always reminded
 
     def test_injected_answer_is_not_remembered(self):
         from test_runtime_gateway import cloud_handler

@@ -66,6 +66,18 @@ TICK_S = 5.0
 COST_HEADER = "x-litellm-response-cost"
 
 
+# 帶工具的請求給本機模型的提醒（add-strong-tool-calling）：2026-11-17 ACEBench 走 gateway 錯的 17 題裡，6 題是把參數值
+# 轉成繁體（預設系統提示要求繁體回答）、2 題把地名翻成英文、7 題自己補了使用者沒給的選填參數。
+# Note for tool requests: of 17 misses, 6 converted argument values to Traditional (the default prompt asks for
+# Traditional answers), 2 translated values to English and 7 invented optional parameters.
+TOOL_NOTE = ("[呼叫工具的規則]\n"
+             "1. 參數值照使用者的原文填：使用者寫簡體就填簡體、寫中文就填中文，不要翻譯、不要轉成繁體或換成同義詞"
+             "（「用繁體中文回答」只適用於一般文字回答，不適用於參數值）。\n"
+             "2. 只填必填參數和使用者明確提供的參數；使用者沒提到的選填參數一律省略，不要自己補預設值或猜測值。\n"
+             "3. 數值照使用者給的數字填（使用者說 25% 就填 25），除非參數說明明確要求別的格式。\n"
+             "4. 使用者一次要求多件事時，每件事各呼叫一次。")
+
+
 def _err(status: int, message: str, code: str) -> JSONResponse:
     return JSONResponse({"error": {"message": message, "type": code, "code": code}}, status_code=status)
 
@@ -282,6 +294,8 @@ class Gateway:
         out = {k: v for k, v in body.items() if k not in ("model", "stream", "stream_options", "jiezi_translate")}
         out["model"] = self.sup.core["name"] if self.sup.core else self.s.core_model
         msgs = messages if messages is not None else body["messages"]
+        if body.get("tools") and self.s.tool_note:  # add-strong-tool-calling；放在用戶端的 system 之後 / after the client's
+            msgs = [*msgs, {"role": "system", "content": TOOL_NOTE}]  # merge_system 會併到開頭 / merged to the front
         # 每個槽位 4096 token：超出就裁（最舊對話 → 最長資料 → 問題）/ fit the 4096-token slot
         from .context import fit, merge_system
         out["messages"], trim = fit(msgs, body.get("tools"), body.get("max_tokens") or body.get("max_completion_tokens"))
@@ -305,6 +319,10 @@ class Gateway:
                 msg["content"] = convert_values(msg["content"], conv)
             else:
                 msg["content"] = conv(msg.get("content"))
+            if msg.get("tool_calls") and self.s.tool_note:  # 參數值還原成使用者原文 / user's wording for argument values
+                from .toolargs import restore_calls
+                if fixed := restore_calls(msg, body["messages"]):
+                    self.log(f"tool args: restored {len(fixed)} value(s) to the user's wording")
         return data
 
     async def _cloud_once(self, body: dict) -> tuple[dict, dict]:

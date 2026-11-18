@@ -86,6 +86,7 @@ class Settings:
     rerank_timeout_s: float = 10.0  # 逾時就退回向量排序 / fall back to vector order on timeout
     samples: int = 4                # 可驗證的問題（工具呼叫、程式）平行取樣幾個；1 = 關閉（add-sampling）
     sample_temperature: float = 0.7
+    tool_note: bool = True          # 帶工具的請求加參數填寫規則（add-strong-tool-calling）/ argument rules for tool requests
     tools: bool = True              # 計算、單位換算、日期由程式算好（add-tools）/ computed by code
     memory: bool = True             # 記憶 wiki：請教過的答案、記住的事、更正（add-memory）/ memory wiki
     tw_phrases: bool = True         # 本機輸出換成台灣用語（OpenCC TWPhrases 篩選）/ Taiwan phrasing for local output
@@ -140,6 +141,7 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         tw_phrases=_onoff(env, "JIEZI_TW_PHRASES", True),
         memory=_onoff(env, "JIEZI_MEMORY", True),
         tools=_onoff(env, "JIEZI_TOOLS", True),
+        tool_note=_onoff(env, "JIEZI_TOOL_NOTE", True),
         samples=max(1, min(8, _int(env, "JIEZI_SAMPLES", 4))),
         rag=_onoff(env, "JIEZI_RAG", True),
         laws=_onoff(env, "JIEZI_LAWS", True),
