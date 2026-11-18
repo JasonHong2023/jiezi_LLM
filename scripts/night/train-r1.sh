@@ -15,6 +15,12 @@ run="qwen3.5-4b-r1"
 hold() { curl -s -m 30 -X POST "http://127.0.0.1:36100/admin/unload" -H "Authorization: Bearer $key" \
   -H 'Content-Type: application/json' -d "$1" >> "$log" 2>&1; echo >> "$log"; }
 echo "=== $(date -Iseconds) start" >> "$log"
+# add-chunk-recall 2.1：有 todo 標記就先量段落召回（約 30 分鐘，要用 GPU，所以在保留 GPU 之前）
+# Chunk-recall measurement first when flagged (needs the engine, so before the GPU hold)
+if [ -f var/eval/recall-ab/todo ]; then
+  scripts/night/recall-ab.sh >> "$log" 2>&1 && rm -f var/eval/recall-ab/todo
+  echo "--- recall-ab done $(date -Iseconds)" >> "$log"
+fi
 hold "{\"hold_until\": \"$(date +%F)T07:00\", \"reason\": \"nightly training and evaluation\"}"
 if [ ! -f "var/train/$run/adapter/adapter_config.json" ]; then
   HF_HUB_OFFLINE=1 scripts/jiezi train sft --config "src/jiezi/train/configs/$run.json" >> "$log" 2>&1
