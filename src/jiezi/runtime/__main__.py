@@ -438,10 +438,25 @@ def main(argv: list[str] | None = None) -> int:
                 print("npm not found; install Node.js LTS first", file=sys.stderr)
                 return 1
             ui = root / "ui"
-            for cmd in ([npm, "ci", "--no-fund"], [npm, "audit", "--audit-level=high"], [npm, "run", "build"]):
-                if subprocess.run(cmd, cwd=ui).returncode != 0:
-                    print(f"failed: {' '.join(cmd[1:])}", file=sys.stderr)
-                    return 1
+            if subprocess.run([npm, "ci", "--no-fund"], cwd=ui).returncode != 0:
+                print("failed: ci", file=sys.stderr)
+                return 1
+            # 高風險漏洞擋下建置；security/accepted.toml 已評估並寫理由的除外（R23；使用者 2026-11-18 同意）
+            # High-severity advisories stop the build unless assessed with a reason in security/accepted.toml (R23)
+            import json as _json
+            from ..audit import accepted, npm_unaccepted
+            rep = subprocess.run([npm, "audit", "--json"], cwd=ui, capture_output=True, text=True)
+            try:
+                bad = npm_unaccepted(_json.loads(rep.stdout or "{}"), accepted(root))
+            except ValueError:
+                bad = ["npm audit output unreadable"]
+            if bad:
+                print(f"failed: audit — high-severity advisories not in security/accepted.toml: {', '.join(bad)}",
+                      file=sys.stderr)
+                return 1
+            if subprocess.run([npm, "run", "build"], cwd=ui).returncode != 0:
+                print("failed: run build", file=sys.stderr)
+                return 1
             print("built ui/dist; restart the gateway, then open http://127.0.0.1:36100/ui/")
             return 0
         if args.cmd == "skills":

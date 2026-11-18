@@ -66,3 +66,7 @@ reason = "CVE-2026-41163，只影響 setuid 模式的 0.11.0（0.11.2 修正）�
 [[accepted]]
 id = "GHSA-j2qp-rvxj-43vj"
 reason = "CVE-2020-5291，只影響 setuid 模式的 0.4.0（0.4.1 修正）；鎖定 0.13.1 且非 setuid / fixed; not setuid"
+
+[[accepted]]
+id = "GHSA-fc5q-39xc-vjpf"
+reason = "picomatch ReDoS（high，2026-11-18 所有版本都受影響、未列修正版；使用者 2026-11-18 同意登記）。只是 vite 建置時的相依：不進 ui/dist（npm audit --omit=dev 為 0），比對的 glob 是專案自己寫的、不吃外部輸入。有修正版就升級 / build-time only via vite, not shipped, globs are our own; upgrade when fixed"

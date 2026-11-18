@@ -82,6 +82,24 @@ def accepted(root: Path) -> dict[str, str]:
     return {a["id"]: a["reason"] for a in tomllib.loads(p.read_text(encoding="utf-8")).get("accepted", [])}
 
 
+_SEVERITY = {"info": 0, "low": 1, "moderate": 2, "high": 3, "critical": 4}
+
+
+def npm_unaccepted(report: dict, ok: dict[str, str], level: str = "high") -> list[str]:
+    """`npm audit --json` 裡達到等級、又不在 accepted.toml 的公告編號（`scripts/jiezi ui build` 用）。
+    Advisory IDs at or above the level in an `npm audit --json` report that are not accepted."""
+    out = set()
+    for v in (report.get("vulnerabilities") or {}).values():
+        if _SEVERITY.get(v.get("severity"), 0) < _SEVERITY[level]:
+            continue
+        for via in v.get("via") or []:
+            if isinstance(via, dict):          # 字串表示「經由某套件」，那個套件自己會列出公告 / strings point at another entry
+                ident = (via.get("url") or "").rstrip("/").rsplit("/", 1)[-1] or str(via.get("source"))
+                if ident not in ok:
+                    out.add(ident)
+    return sorted(out)
+
+
 def query(root: Path, post=_post) -> list[dict]:
     """回傳 [{component, version, ids}]，只列有漏洞的。 / Components with vulnerabilities."""
     pk = pypi_packages(root)

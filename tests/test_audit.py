@@ -40,6 +40,17 @@ class TestAudit(unittest.TestCase):
         self.assertEqual(A.pypi_packages(self.root), [("httpx", "0.28.1")])        # 只算 registry 套件 / registry only
         self.assertEqual(A.git_pins(self.root), {"llama.cpp": "a" * 40})
 
+    def test_npm_build_gate(self):
+        """`ui build` 的稽核：高風險且沒登記的才擋；經由別的套件的條目不重複算。 / The UI build gate."""
+        rep = {"vulnerabilities": {
+            "picomatch": {"severity": "high", "via": [{"source": 1, "url": "https://github.com/advisories/GHSA-aaaa"}]},
+            "vite": {"severity": "high", "via": ["picomatch"]},
+            "x": {"severity": "moderate", "via": [{"source": 2, "url": "https://github.com/advisories/GHSA-low"}]},
+            "y": {"severity": "critical", "via": [{"source": 3, "url": "https://github.com/advisories/GHSA-bbbb"}]}}}
+        self.assertEqual(A.npm_unaccepted(rep, {}), ["GHSA-aaaa", "GHSA-bbbb"])
+        self.assertEqual(A.npm_unaccepted(rep, {"GHSA-aaaa": "reason"}), ["GHSA-bbbb"])
+        self.assertEqual(A.npm_unaccepted({}, {}), [])
+
     def test_unaccepted_fails(self):
         post = lambda url, body: {"results": [{"vulns": [{"id": "PYSEC-1"}]}, {}]}  # noqa: E731
         get = lambda url: [{"ghsa_id": "GHSA-old"}, {"ghsa_id": "GHSA-new"}] if "llama" in url else []  # noqa: E731
