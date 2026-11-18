@@ -272,7 +272,13 @@ class TestClipboard(unittest.TestCase):
         tool = clipboard.system_copy("中文", which=lambda n: "/x" if n == "clip.exe" else None,
                                      run=lambda cmd, input=None, **k: calls.append((cmd, input)) or P())
         self.assertEqual(tool, "clip.exe")
-        self.assertEqual(calls[0][1], "中文".encode("utf-16-le"))  # 沒有 BOM / no BOM
+        self.assertEqual(calls[0][1], b"\xff\xfe" + "中文".encode("utf-16-le"))  # 要有 BOM（沒有會被猜成 ANSI）/ BOM
+        calls.clear()
+        tool = clipboard.system_copy("抱歉，剛才的回答", which=lambda n: "/x" if n in ("clip.exe", "powershell.exe") else None,
+                                     run=lambda cmd, input=None, **k: calls.append((cmd, input)) or P())
+        self.assertEqual(tool, "powershell.exe")                    # PowerShell 優先 / PowerShell first
+        self.assertEqual(calls[0][1], "抱歉，剛才的回答".encode("utf-8"))
+        self.assertIn("Set-Clipboard", calls[0][0][-1])
         self.assertIsNone(clipboard.system_copy("x", which=lambda n: None))
 
     def test_failure_tries_next(self):
