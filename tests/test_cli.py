@@ -170,6 +170,8 @@ class TestChat(unittest.TestCase):
             self.assertEqual(app.query_one("#prompt").text, "a\nb")
             await pilot.press("f2")
             self.assertEqual(app.policy, "jiezi-local")
+            await pilot.press("f2", "f2", "f2")       # 不經過 jiezi-ask-claude（使用者 2026-11-18）/ skips ask-Claude
+            self.assertEqual(app.policy, "jiezi-local")
             await pilot.press("enter")
             await pilot.pause(0.2)
             await pilot.press("ctrl+c")

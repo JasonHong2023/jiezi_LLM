@@ -6,10 +6,11 @@ import { BASE, THEME_LABEL, firstPhase, getJSON, getKey, loadInputs, loadTheme, 
 const MAX_DOC_CHARS = 1500000;  // 附著文件的總字數上限（和 jiezi chat 相同）/ same cap as jiezi chat
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;  // 和 jiezi chat 的 /image 相同 / same cap as /image in chat
 
+// 選單不列「直接請教 Claude」（使用者 2026-11-18：拿掉）；預設的「芥子」答不出來時仍會自動請教
+// The menu omits ask-Claude (user request); the default policy still consults Claude when needed
 const POLICIES = [
   ["jiezi", "芥子（本機優先，答不出來請教 Claude）"],
   ["jiezi-local", "只用本機"],
-  ["jiezi-ask-claude", "直接請教 Claude"],
   ["jiezi-cloud", "雲端模型"],
 ];
 

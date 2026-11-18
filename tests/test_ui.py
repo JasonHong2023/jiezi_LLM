@@ -124,6 +124,13 @@ class TestUi(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(json.loads(r.stdout), [["第二題", "/help", "第一題", None, "/help", "第二題", "草稿"], ["a"]])
 
+    def test_policy_menu_without_ask_claude(self):
+        """策略選單拿掉「直接請教 Claude」（使用者 2026-11-18）。 / The policy menu omits ask-Claude."""
+        app = (ROOT / "ui" / "src" / "App.jsx").read_text(encoding="utf-8")
+        menu = app[app.index("const POLICIES"):app.index("];", app.index("const POLICIES"))]
+        self.assertNotIn("jiezi-ask-claude", menu)
+        self.assertIn('"jiezi-local"', menu)
+
     def test_frontend_dark_mode(self):
         """夜間模式：自動→淺色→深色循環、記住選擇；樣式沒有寫死的白底（使用者 2026-11-18）。
         Dark mode cycles auto → light → dark and is remembered; no hard-coded white backgrounds remain."""

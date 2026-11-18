@@ -30,7 +30,9 @@ from .client import (Connection, GatewayError, GatewayUnreachable, agent_step_te
 from .clipboard import system_copy
 from .herdr import HerdrReporter
 
-POLICIES = ("jiezi", "jiezi-local", "jiezi-ask-claude", "jiezi-cloud")
+# F2 切換不含 jiezi-ask-claude（使用者 2026-11-18：拿掉）；`jiezi chat --claude` 仍可用
+# F2 no longer cycles to jiezi-ask-claude (user request); `--claude` still works
+POLICIES = ("jiezi", "jiezi-local", "jiezi-cloud")
 # 聊天歷史（使用者 2026-11-15：重開時接續上次的對話）/ chat history, resumed on restart
 MAX_SAVED, MAX_SHOWN, MAX_CONTEXT = 200, 20, 12
 MAX_INPUTS = 500   # ↑／↓ 可切換的輸入紀錄 / input history for Up / Down
@@ -337,7 +339,8 @@ class ChatApp(App):
 
     # ── 動作 / Actions ──
     def action_cycle_policy(self) -> None:
-        self.policy = POLICIES[(POLICIES.index(self.policy) + 1) % len(POLICIES)]
+        self.policy = POLICIES[(POLICIES.index(self.policy) + 1) % len(POLICIES)] if self.policy in POLICIES \
+            else POLICIES[0]
         self._update_bar()
 
     def action_stop(self) -> None:
