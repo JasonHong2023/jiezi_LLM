@@ -358,6 +358,8 @@ class ChatApp(App):
         if self.worker and self.worker.is_running:
             self._update_bar("上一題還在回答 / still answering")
             return
+        if not text.startswith("/"):
+            text = await self._auto_attach(text)
         log = self.query_one("#log", VerticalScroll)
         content = text
         if self.docs:  # 文件在送出時才附上（_answer），歷史只存問題 / attached when sending; history keeps the question
@@ -448,7 +450,8 @@ class ChatApp(App):
             return
         self._update_bar(f"讀取中 reading: {Path(path).name}……")
         try:
-            d = await anyio.to_thread.run_sync(read, path)
+            from ..localpaths import to_local
+            d = await anyio.to_thread.run_sync(read, str(to_local(path)))
         except DocumentError as exc:
             self._update_bar(f"無法讀取 cannot read: {exc}")
             return
@@ -465,9 +468,34 @@ class ChatApp(App):
         self._update_bar(f"已附文件 attached: {d['name']}（{d['chars']} 字{extra}）；可以一直追問，/file clear 取消 / "
                          "stays attached for follow-up questions")
 
+    async def _auto_attach(self, text: str) -> str:
+        """問題裡直接打的檔案路徑（Windows 的 D:\\… 也可以）：圖片附在這一題、文件照 /file 附著，問題裡的路徑換成
+        「這張圖」「這份文件」（使用者 2026-11-18）。找不到的檔案照原樣送出，gateway 會提醒模型別猜。
+        File paths typed in a question (Windows paths too): images go with this question, documents attach like /file."""
+        from ..localpaths import find_paths, is_image, strip_paths, to_local
+        done, missing = [], []
+        for raw in find_paths(text):
+            local = to_local(raw)
+            if not local.is_file():
+                missing.append(f"{raw}（{local}）" if str(local) != raw else raw)
+                continue
+            if is_image(raw):
+                self._attach_image(str(local))
+                if self.pending_image:
+                    done.append(raw)
+            else:
+                before = len(self.docs)
+                await self._attach_file(str(local))
+                if any(d["name"] == local.name for d in self.docs) and len(self.docs) >= before:
+                    done.append(raw)
+        if missing:
+            self._update_bar(f"找不到檔案 not found: {'、'.join(missing)}")
+        return strip_paths(text, done) if done else text
+
     def _attach_image(self, path: str) -> None:
         """`/image 路徑`：下一個問題附上這張圖（add-vision）。 / Attach an image to the next question."""
-        p = Path(path).expanduser()
+        from ..localpaths import to_local
+        p = to_local(path) if path else Path(path)
         kind = mimetypes.guess_type(p.name)[0]
         if not path or not p.is_file():
             self._update_bar("用法 usage: /image 圖片路徑（png、jpg、webp、gif）")

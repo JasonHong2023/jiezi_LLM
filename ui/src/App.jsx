@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { BASE, firstPhase, getJSON, getKey, phaseAfter, phaseLabel, readDocument, setKey, stepText, streamChat, withDocuments } from "./api.js";
 
 const MAX_DOC_CHARS = 1500000;  // 附著文件的總字數上限（和 jiezi chat 相同）/ same cap as jiezi chat
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;  // 和 jiezi chat 的 /image 相同 / same cap as /image in chat
 
 const POLICIES = [
   ["jiezi", "芥子（本機優先，答不出來請教 Claude）"],
@@ -79,7 +80,8 @@ function Chat() {
   const [docs, setDocs] = useState([]);       // 附著的文件，每一題都帶 / attached documents, sent with every question
   const [reading, setReading] = useState("");
   const [agent, setAgent] = useState(false);  // 唯讀檔案代理（add-agent-readonly）/ read-only file agent
-  const [progress, setProgress] = useState(null);  // 送出後的狀態 / live status {phase, t0, events}
+  const [progress, setProgress] = useState(null);
+  const [image, setImage] = useState(null);   // 下一題附的圖 {name, url}（使用者 2026-11-18）/ image for the next question  // 送出後的狀態 / live status {phase, t0, events}
   const abort = useRef(null);
   const end = useRef(null);
   const picker = useRef(null);
@@ -87,6 +89,12 @@ function Chat() {
   async function attach(files) {
     setError("");
     for (const f of files) {
+      if (f.type?.startsWith("image/")) {     // 圖片附在下一題 / images go with the next question
+        if (f.size > MAX_IMAGE_BYTES) { setError(`${f.name}：圖片超過 5 MB`); continue; }
+        const url = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
+        setImage({ name: f.name || "貼上的圖片", url });
+        continue;
+      }
       setReading(f.name);
       try {
         const d = await readDocument(f);
@@ -120,14 +128,18 @@ function Chat() {
     // 畫面與歷史只留問題；文件在送出時包進最新的問題，gateway 才能依這一題重新挑段落
     // The log keeps the bare question; documents are wrapped around the latest question when sending
     const outgoing = [...history.slice(-12)];
-    outgoing[outgoing.length - 1] = { role: "user", content: withDocuments(text, docs) };
+    const asked = withDocuments(text, docs);
+    outgoing[outgoing.length - 1] = { role: "user", content: image
+      ? [{ type: "text", text: asked }, { type: "image_url", image_url: { url: image.url } }] : asked };
+    if (image) history[history.length - 1] = { role: "user", content: `${text}  [圖片：${image.name}]` };
+    setImage(null);
     setMsgs([...history, { role: "assistant", content: "", meta: null, steps: [] }]);
     setInput("");
     setBusy(true);
     setError("");
     abort.current = new AbortController();
     const t0 = performance.now();
-    setProgress({ phase: firstPhase(policy, { docs: docs.length > 0, agent }), t0, events: 0 });
+    setProgress({ phase: image ? "看圖中" : firstPhase(policy, { docs: docs.length > 0, agent }), t0, events: 0 });
     const bump = (kind, value) => setProgress((p) => p && { ...p, phase: phaseAfter(kind, value, p.phase), events: p.events + 1 });
     try {
       await streamChat(outgoing, policy, {
@@ -165,15 +177,17 @@ function Chat() {
         </select></label>
         <button onClick={() => { setMsgs([]); setDocs([]); }} disabled={busy}>清除對話</button>
         <input ref={picker} type="file" multiple hidden
-          accept=".pdf,.docx,.pptx,.xlsx,.doc,.ppt,.xls,.rtf,.odt,.odp,.ods,.html,.htm,.txt,.md,.csv,.json,.log"
+          accept="image/png,image/jpeg,image/webp,image/gif,.pdf,.docx,.pptx,.xlsx,.doc,.ppt,.xls,.rtf,.odt,.odp,.ods,.html,.htm,.txt,.md,.csv,.json,.log"
           onChange={(e) => { attach([...e.target.files]); e.target.value = ""; }} />
-        <button onClick={() => picker.current?.click()} disabled={busy || !!reading}>附加文件</button>
+        <button onClick={() => picker.current?.click()} disabled={busy || !!reading}>附加檔案／圖片</button>
         <label title="讓芥子列出、尋找、讀取你授權的資料夾（scripts/jiezi agent grant 資料夾）；只能讀，不能改">
           <input type="checkbox" checked={agent} onChange={(e) => setAgent(e.target.checked)} disabled={busy} /> 讀我的檔案（唯讀）
         </label>
       </div>
-      {(docs.length > 0 || reading) && (
+      {(docs.length > 0 || reading || image) && (
         <div className="docs">
+          {image && <span className="doc">🖼 {image.name}（下一題）
+            <button aria-label={`移除 ${image.name}`} onClick={() => setImage(null)} disabled={busy}>×</button></span>}
           {docs.map((d) => (
             <span key={d.name} className="doc" title={d.ocr_pages ? `OCR ${d.ocr_pages} 頁` : ""}>
               {d.name}（{d.chars} 字）
@@ -202,8 +216,9 @@ function Chat() {
       {error && <div className="error">{error}</div>}
       <div className="composer">
         <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={3}
+          onPaste={(e) => { const imgs = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith("image/")); if (imgs.length) { e.preventDefault(); attach(imgs); } }}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-          placeholder="問芥子…（Enter 送出、Shift+Enter 換行、Esc 中止）" />
+          placeholder="問芥子…（Enter 送出、Shift+Enter 換行、Esc 中止；圖片可以直接貼上）" />
         {busy ? <button className="stop" onClick={() => abort.current?.abort()}>中止</button>
           : <button onClick={send} disabled={!input.trim()}>送出</button>}
       </div>

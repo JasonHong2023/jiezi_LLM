@@ -470,6 +470,26 @@ class Gateway:
             rec["training_use"] = False
             self.log(f"injection guard: suspected {info['suspected']} in {info['where']}")
 
+    def _path_note(self, body: dict, rec: dict) -> None:
+        """問題裡只打了本機檔案路徑、沒附檔：提醒模型看不到內容、不要猜（使用者 2026-11-18：模型憑 iStock 檔名猜了圖片內容）。
+        A local path typed without attaching the file: tell the model it cannot see it and must not guess."""
+        from ..documents import DOC_RE
+        from ..localpaths import PATH_NOTE, find_paths
+        if body.get("tools") or has_images(body):
+            return
+        msgs = body["messages"]
+        idx = next((i for i in range(len(msgs) - 1, -1, -1) if msgs[i].get("role") == "user"), None)
+        if idx is None:
+            return
+        text = message_text(msgs[idx])
+        if DOC_RE.search(text):          # 已附文件 / documents attached
+            return
+        paths = find_paths(text)
+        if not paths:
+            return
+        msgs.insert(idx, {"role": "system", "content": PATH_NOTE.format(paths="、".join(paths[:3]))})
+        rec["path_note"] = paths[:3]
+
     @staticmethod
     def _injected(rec: dict) -> bool:
         return bool((rec.get("injection") or {}).get("suspected"))
@@ -738,7 +758,7 @@ class Gateway:
             task.cancel()
             started.cancel()
             raise
-        if task.done():
+        if task.done() and not p.started.is_set():
             started.cancel()
             return task.result()
         return StreamingResponse(self._progress_stream(task, p), media_type="text/event-stream")
@@ -821,6 +841,7 @@ class Gateway:
         data: list[dict] = []  # gateway 自己附加的資料訊息 / data messages the gateway attached
         await anyio.to_thread.run_sync(self._ground, body, rec, data)
         self._attach_skills(body, rec, data)
+        self._path_note(body, rec)
         if self.s.injection_guard:
             self._guard(body, rec, data)
         t0 = time.monotonic()
@@ -901,6 +922,7 @@ class Gateway:
 
         if stream and not body.get("tools") and not json_mode and not body.get("jiezi_translate") \
                 and not self._sample_kind(body):
+            _stage("thinking")        # 第一個字前還要處理提示（附圖時可能幾十秒）/ prompt processing before the first token
             return StreamingResponse(self._relay_stream(base, body, rec, t0, policy), media_type="text/event-stream")
         try:
             return await self._tiered(base, body, rec, t0, policy, stream)
@@ -1518,9 +1540,6 @@ class Gateway:
         append Claude's (or the cloud's) answer to the same stream."""
         content, last, status, finish, released = [], {}, "ok", None, False
         conv = TaiwanStream() if self.s.tw_phrases else None
-        early = _inline_progress("thinking")
-        if early:
-            yield early
         try:
             async with self.local.stream("POST", f"{base}/v1/chat/completions",
                                          json=self._local_body(body, stream=True)) as r:
