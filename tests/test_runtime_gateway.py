@@ -779,3 +779,27 @@ class TestConsultModelPick(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestHistoryAppendix(unittest.TestCase):
+    """對話紀錄裡系統加的附錄要拿掉、問芥子自己不附知識庫（使用者 2026-11-18：「回答怪怪的」）。
+    Gateway appendices are stripped from the history; questions about Jiezi get no knowledge-base text."""
+
+    def test_strip_appendix(self):
+        from jiezi.runtime.gateway import strip_appendix
+        a = "除夕是 2/5。\n\n---\n【計算】\n- 國曆 2027 年裡的除夕是 2027-02-05\n\n---\n【參考資料】\n- x"
+        self.assertEqual(strip_appendix(a), "除夕是 2/5。")
+        self.assertEqual(strip_appendix("分隔線\n---\n不是附錄"), "分隔線\n---\n不是附錄")
+        self.assertEqual(strip_appendix("模型自己寫的\n---\n【計算】\n- 根據已知資料"), "模型自己寫的")
+
+    def test_self_question_skips_grounding(self):
+        from jiezi.runtime.gateway import Gateway
+        import types
+        gw = Gateway.__new__(Gateway)
+        gw.s = types.SimpleNamespace(tools=True)
+        gw.memory = gw.dictionary = gw.curriculum = gw.knowledge = gw.writing = gw.laws = None
+        body = {"messages": [{"role": "user", "content": "你好!! 你自我介紹一下"}]}
+        rec = {}
+        gw._ground(body, rec, [])
+        self.assertEqual(rec.get("grounding_skipped"), "about_jiezi")
+        self.assertEqual(len(body["messages"]), 1)

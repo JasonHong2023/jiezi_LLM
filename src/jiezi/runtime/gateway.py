@@ -52,6 +52,17 @@ def message_text(m: dict) -> str:
     return c if isinstance(c, str) else ""
 
 
+# 系統附在回答後面的附錄（辭典原文、計算、參考資料…）。對話紀錄送回模型前要拿掉，否則模型會照抄格式自己寫一段，
+# 系統再附一段，變成兩個「【計算】」（使用者 2026-11-18：「對話紀錄怎麼回答怪怪的」）
+# Appendices the gateway adds after answers; removed from the history before the model sees it, or the model imitates
+# them and the user gets two of each
+APPENDIX = re.compile(r"\n*-{3,}[ \t]*\n【(?:字詞轉換|辭典原文|法規原文|參考資料|計算|記憶|課綱資料原文|延伸閱讀)】[\s\S]*\Z")
+
+
+def strip_appendix(text: str) -> str:
+    return APPENDIX.sub("", text) if isinstance(text, str) else text
+
+
 def has_images(body: dict) -> bool:
     return any(isinstance(m.get("content"), list) and any(
         isinstance(p, dict) and p.get("type") in ("image_url", "input_image") for p in m["content"])
@@ -435,6 +446,13 @@ class Gateway:
                 if not q:
                     return
                 last = {"role": "user", "content": q, "_target": last, "_doc": True}
+        from ..memory import SELF
+        if SELF.search(last["content"] or ""):
+            # 問芥子自己：系統提示已經寫好，不附知識庫（2026-11-18 實測：「自我介紹」撈到 Taiwan.md 的自我介紹文章，
+            # 芥子說自己能查「創始人吳哲宇」，被判沒有依據而轉給 Claude）
+            # Questions about Jiezi itself use the system prompt only (a live test pulled in Taiwan.md's self-introduction)
+            rec["grounding_skipped"] = "about_jiezi"
+            return
         found = []
         # 附了長文件：問題是在問文件，不用語意向量去知識庫／法規撈「看起來相關」的段落（2026-11-17 實測會蓋過文件、
         # 佔掉上下文）；問題裡直接點名的文章或法條照樣附。
@@ -934,6 +952,9 @@ class Gateway:
             rec["agent"] = {"enabled": False}  # 關閉時照一般請求處理 / handled as a normal request when off
         # 查資料可能要啟動 embedding 引擎，放到執行緒以免卡住其他請求 / may start the embedder; off the event loop
         data: list[dict] = []  # gateway 自己附加的資料訊息 / data messages the gateway attached
+        for m in body["messages"]:
+            if m.get("role") == "assistant" and isinstance(m.get("content"), str):
+                m["content"] = strip_appendix(m["content"])
         await self._read_paths(body, rec)
         await anyio.to_thread.run_sync(self._ground, body, rec, data)
         self._attach_skills(body, rec, data)
@@ -1725,7 +1746,7 @@ class Gateway:
         elif rec.get("dict_appendix"):
             for ch in resp.get("choices") or []:
                 msg = ch.get("message") or {}
-                msg["content"] = (msg.get("content") or "") + rec["dict_appendix"]
+                msg["content"] = strip_appendix(msg.get("content") or "").rstrip() + rec["dict_appendix"]
         rec.update(final_tier=meta["tier"], jiezi=meta)
         self.traj.write(rec)
         if not stream:
