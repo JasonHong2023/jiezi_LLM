@@ -68,6 +68,9 @@ class Settings:
     consult_web: bool = True        # 請教時可讀網頁與搜尋（使用者 2026-11-15）/ web reading and search when consulting
     dictionary: bool = True         # 詞語問題先查本機辭典（add-dictionary）/ consult the local dictionary for word questions
     longdoc: bool = True            # 長文件先分段濃縮（add-long-documents）/ condense long documents first
+    ladder: bool = True             # 本機先試到底：重答 → 思考模式 → 雲端提示 → 最後才 Claude（local-first-solving）
+    ladder_think: bool = True       # 階梯的思考模式那一步 / the think-mode rung
+    experience: bool = True         # 解題經驗記錄與提示（local-first-solving）/ experience records
     tier2: bool = False             # 第 2 層：只向協助者要回饋、本機重答（add-partial-escalation；量測後才預設開啟）
     translate: bool = True          # 整份文件逐段翻譯、譯文檢查、簡轉繁（add-translation）/ chunked translation with checks
     injection_guard: bool = True    # 文件、工具結果、附加資料只當資料（add-injection-guard）/ external content is data
@@ -155,6 +158,9 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         injection_guard=_onoff(env, "JIEZI_INJECTION_GUARD", True),
         translate=_onoff(env, "JIEZI_TRANSLATE", True),
         tier2=_onoff(env, "JIEZI_TIER2", False),
+        ladder=_onoff(env, "JIEZI_LADDER", True),
+        ladder_think=_onoff(env, "JIEZI_LADDER_THINK", True),
+        experience=_onoff(env, "JIEZI_EXPERIENCE", True),
         rag_min=float(env.get("JIEZI_RAG_MIN") or 0.6),
         laws_rag_min=float(env.get("JIEZI_LAWS_RAG_MIN") or 0.5),
         doc_semantic=_onoff(env, "JIEZI_DOC_SEMANTIC", True),

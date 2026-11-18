@@ -103,6 +103,10 @@ TOOL_NOTE = ("[呼叫工具的規則]\n"
 VISION_TIMEOUT_S = 45.0  # 看圖工具（含第一次載入模型）最多等多久 / vision tools, first model load included
 TILE_TIMEOUT_S = 30.0    # 切塊逐塊看：每塊的時限 / per tile
 TILE_BUDGET_S = 90.0     # 切塊逐塊看：全部的時限，超過的塊略過 / all tiles; later tiles are skipped
+THINK_MAX_TOKENS = 3072  # 階梯的思考模式：思考加回答的 token 上限 / think rung: tokens for thinking plus the answer
+# 本機說「不確定」時重答的提醒 / the note for retrying an "unsure" answer
+UNSURE_NOTE = ("你上一次回答說不確定。請再仔細想一次：先看附上的資料與題目，用你確實知道的知識回答；"
+               "如果真的不知道，才說不確定，並說明缺什麼資訊。")
 
 
 def _err(status: int, message: str, code: str) -> JSONResponse:
@@ -118,7 +122,8 @@ def _sse(obj) -> bytes:
 # 之後的階段以 object="jiezi.progress"、choices=[] 的事件送出，一般 OpenAI 用戶端會略過。
 # Streamed requests start streaming at the first reported stage (earlier errors keep their HTTP codes); stages are
 # sent as object="jiezi.progress" events with empty choices, which generic OpenAI clients skip.
-STAGES = ("loading_model", "reading_documents", "looking", "thinking", "retrying", "asking_claude", "asking_cloud",
+STAGES = ("loading_model", "reading_documents", "looking", "thinking", "retrying", "thinking_hard", "asking_claude",
+          "asking_cloud",
           "asking_feedback")
 
 
@@ -231,6 +236,11 @@ class Gateway:
                 self.memory = Memory(wiki_path(settings.root))
             except Exception as exc:  # noqa: BLE001 - 記憶壞了不影響回答 / a broken memory never blocks answers
                 self.memory_note = str(exc)
+        self.experience = None
+        if settings.memory and getattr(settings, "experience", False):
+            from ..experience import Experience
+            from ..memory import wiki_path as _wp
+            self.experience = Experience(_wp(settings.root))
         self.knowledge, self.knowledge_note = None, None
         if settings.knowledge:
             from ..knowledge import Knowledge, db_path as knowledge_db
@@ -505,6 +515,18 @@ class Gateway:
         if self.memory is not None and not last.get("_img") and not CREATIVE.search(last["content"] or ""):  # 記憶最優先
             from ..memory import recall_block
             found.append(recall_block(last["content"], self.memory))
+        if getattr(self, "experience", None) is not None and not last.get("_img") \
+                and not CREATIVE.search(last["content"] or ""):
+            # 過去解題的經驗當提示（local-first-solving）/ lessons from earlier questions as hints
+            try:
+                from ..experience import hint_text
+                lessons = self.experience.relevant(last["content"] or "")
+            except OSError:
+                lessons = []
+            if lessons:
+                rec["experience_used"] = [e.id for e in lessons]
+                rec["experience_lessons"] = [e.lesson for e in lessons]
+                found.append((hint_text(lessons), [], True, ""))
         if self.s.tools:  # 程式算好的數字 / numbers computed by code
             from ..tools import grounding as tool_grounding
             found.append(tool_grounding(last["content"]))
@@ -1517,40 +1539,168 @@ class Gateway:
         final, tier, escalate_reason = resp, 0, None
         help_reason = escalation.needs_help(_message(resp), (resp.get("choices") or [{}])[0].get("finish_reason"))
         help_reason = self._keep_local(help_reason, body, rec)
-        if help_reason and ver["status"] != "fail":
-            # 本機自己表示不會：本機重試沒有幫助，直接轉交 / the local model says it can't: retrying won't help
-            rec["tiers"][-1]["needs_help"] = help_reason
-            if policy == "jiezi" and self._auto_route():
-                return await self._escalate(body, rec, t0, stream, reason=help_reason)
-            escalate_reason = "local_only_policy" if policy != "jiezi" else self._no_route_reason()
-        if ver["status"] == "fail":
-            msgs = escalation.retry_messages(body["messages"], _message(resp), ver["error"])
-            _stage("retrying")
-            try:
-                resp1 = await self._local_once(base, body, msgs)
-                ver1 = escalation.verify(body, _message(resp1), self._grounding(body, rec))
-                rec["tiers"].append({"tier": 1, "answer": _message(resp1), "verification": ver1,
-                                     "model": resp1.get("model"), "tps": _tps(resp1), "usage": resp1.get("usage")})
-                final, tier, ver = resp1, 1, ver1
-            except httpx.HTTPError as exc:
-                rec["tiers"].append({"tier": 1, "error": str(exc)})
-            if ver["status"] == "fail":
-                if policy == "jiezi":
-                    if self._auto_route():
-                        if self.s.tier2:  # 第 2 層：先只要回饋，本機再答一次（add-partial-escalation）
-                            done = await self._tier2(base, body, rec, t0, stream, final, ver)
-                            if done is not None:
-                                return done
-                        return await self._escalate(body, rec, t0, stream, reason="verification_failed")
-                    escalate_reason = self._no_route_reason()
-                else:
-                    escalate_reason = "local_only_policy"
+        if help_reason or ver["status"] == "fail":
+            if help_reason:
+                rec["tiers"][-1]["needs_help"] = help_reason
+            reason = help_reason or "verification_failed"
+            got = None
+            if self.s.ladder and policy in ("jiezi", "jiezi-local"):
+                # 本機先試到底（local-first-solving）/ the local model tries every rung first
+                got = await self._ladder(base, body, rec, policy, _message(resp), ver, help_reason)
+            elif ver["status"] == "fail":   # 舊行為：帶錯誤重答一次 / previous behaviour: one retry with the error
+                msgs = escalation.retry_messages(body["messages"], _message(resp), ver["error"])
+                _stage("retrying")
+                try:
+                    resp1 = await self._local_once(base, body, msgs)
+                    ver1 = escalation.verify(body, _message(resp1), self._grounding(body, rec))
+                    rec["tiers"].append({"tier": 1, "answer": _message(resp1), "verification": ver1,
+                                         "model": resp1.get("model"), "tps": _tps(resp1), "usage": resp1.get("usage")})
+                    final, tier, ver = resp1, 1, ver1
+                    if ver1["status"] != "fail":
+                        got = (resp1, ver1, 1)
+                except httpx.HTTPError as exc:
+                    rec["tiers"].append({"tier": 1, "error": str(exc)})
+            if got:
+                final, ver, tier = got
+                tier = 1 if tier == "think" else tier
+            else:
+                last_local = next((t for t in reversed(rec["tiers"]) if t.get("answer") and not t.get("provider")
+                                   and t.get("tier") != 2), None)
+                if policy == "jiezi" and self._auto_route():
+                    if not self.s.ladder and self.s.tier2 and ver["status"] == "fail":
+                        done = await self._tier2(base, body, rec, t0, stream, final, ver)
+                        if done is not None:
+                            return done
+                    return await self._escalate(body, rec, t0, stream, reason=reason)
+                escalate_reason = "local_only_policy" if policy != "jiezi" else self._no_route_reason()
+                if last_local and last_local is not rec["tiers"][0]:
+                    final = {"model": last_local.get("model"), "choices": [
+                        {"index": 0, "message": last_local["answer"], "finish_reason": "stop"}]}
+                    ver = last_local.get("verification") or ver
         if not escalate_reason:
             self._learn_skill(body, rec, final, ver)
         if rec["id"] in self._seen:
             await self._vision_check(base, rec, final)
         meta = self._meta(rec, tier, final, ver, t0, escalation=escalate_reason)
         return self._deliver(final, meta, rec, stream)
+
+    # ── 本機先試到底（local-first-solving）/ Local-first ladder ──
+    def _ok(self, resp: dict, body: dict, rec: dict) -> tuple[dict, str | None]:
+        msg = _message(resp)
+        ver = escalation.verify(body, msg, self._grounding(body, rec))
+        help_reason = self._keep_local(escalation.needs_help(msg, (resp.get("choices") or [{}])[0].get("finish_reason")),
+                                       body, rec)
+        return ver, help_reason
+
+    async def _ladder(self, base: str, body: dict, rec: dict, policy: str, answer: dict, ver: dict,
+                      help_reason: str | None) -> tuple[dict, dict, object] | None:
+        """答不好時，本機先試到底再轉交（使用者 2026-11-18：「請教 Claude 是最後手段，要讓模型學會自己解決問題」）：
+        1 帶著錯誤訊息重答；2 開思考模式再答；3 雲端免費模型只給提示，本機依提示再答（只在 jiezi 策略、雲端開著時）。
+        成功回傳 (回應, 查核, 層)；都不行回傳 None。
+        Before escalating: retry with the error, retry in think mode, then answer with cloud hints. Returns
+        (response, verification, tier) on success, None when every rung fails."""
+        error = (ver.get("error") if ver.get("status") == "fail" else None) or UNSURE_NOTE
+        rec.setdefault("ladder", {"first_error": (help_reason or "verification_failed") + "：" + error[:200]})
+        last = answer
+        steps = [("retry", 1, "retrying", None)]
+        if self.s.ladder_think:
+            steps.append(("think", "think", "thinking_hard", {"chat_template_kwargs": {"enable_thinking": True},
+                                                              "max_tokens": THINK_MAX_TOKENS}))
+        for name, tier, stage, extra in steps:
+            _stage(stage)
+            try:
+                resp = await self._local_once(base, {**body, **(extra or {})},
+                                              escalation.retry_messages(body["messages"], last, error))
+            except httpx.HTTPError as exc:
+                rec["tiers"].append({"tier": tier, "step": name, "error": str(exc)})
+                continue
+            msg = _message(resp)
+            if isinstance(msg.get("content"), str):   # 思考內容不給使用者 / thinking never reaches the user
+                msg["content"] = re.sub(r"<think>.*?</think>\s*", "", msg["content"], flags=re.S).strip()
+            ver2, help2 = self._ok(resp, body, rec)
+            rec["tiers"].append({"tier": tier, "step": name, "answer": msg, "verification": ver2,
+                                 "model": resp.get("model"), "tps": _tps(resp), "usage": resp.get("usage"),
+                                 **({"needs_help": help2} if help2 else {})})
+            if ver2["status"] != "fail" and not help2:
+                rec["ladder"]["solved_by"] = name
+                return resp, ver2, tier
+            last, error = msg, (ver2.get("error") if ver2.get("status") == "fail" else None) or UNSURE_NOTE
+        if policy == "jiezi" and self._can_escalate() is None:     # 雲端只給提示 / the cloud gives hints only
+            _stage("asking_feedback")
+            try:
+                self.cap.take()
+                hint, info = await self._cloud_once({"messages": escalation.feedback_request(body, last, error),
+                                                     "max_tokens": escalation.FEEDBACK_MAX_TOKENS})
+                feedback = _message(hint).get("content") or ""
+                if feedback.strip():
+                    resp = await self._local_once(base, body, escalation.feedback_messages(
+                        body["messages"], last, error, feedback))
+                    ver2, help2 = self._ok(resp, body, rec)
+                    rec["training_use"] = False      # 受雲端提示影響 / shaped by the cloud hint
+                    rec["tiers"].append({"tier": 2, "step": "hint", "answer": _message(resp), "verification": ver2,
+                                         "model": resp.get("model"), "helper": "cloud", "helper_model": info["model"],
+                                         "feedback": feedback[:escalation.FEEDBACK_MAX_CHARS], "training_use": False,
+                                         **({"needs_help": help2} if help2 else {})})
+                    if ver2["status"] != "fail" and not help2:
+                        rec["ladder"]["solved_by"] = "hint"
+                        return resp, ver2, 2
+            except (httpx.HTTPError, KeyError) as exc:
+                rec["tiers"].append({"tier": 2, "step": "hint", "error": f"hint unavailable: {exc}"})
+        return None
+
+    def _experience_done(self, rec: dict, tier, escalation_reason: str | None, provider: str | None) -> None:
+        """回答定案後：附上的經驗記一次有效／無效；走過階梯的題目在背景寫一筆新經驗。
+        When an answer is final: count the attached lessons, and write a new lesson for a question that needed the ladder."""
+        if getattr(self, "experience", None) is None or rec.get("_experience_done") or rec.get("eval"):
+            return
+        rec["_experience_done"] = True
+        solved_locally = provider is None and tier != 3 and not escalation_reason
+        try:
+            self.experience.outcome(rec.get("experience_used") or [], solved_locally)
+        except OSError as exc:
+            self.log(f"experience: {exc}")
+        lad = rec.get("ladder")
+        if not lad:
+            return
+        step = lad.get("solved_by") or ("claude" if provider == "claude" else "cloud" if provider == "cloud" else None)
+        if not step:
+            return
+        users = [m for m in (rec.get("request") or {}).get("messages") or [] if m.get("role") == "user"]
+        q = _bare_question(message_text(users[-1]))[:300] if users else ""
+        if not q:
+            return
+        try:
+            final = next((t["answer"].get("content") for t in reversed(rec.get("tiers") or [])
+                          if isinstance(t, dict) and isinstance(t.get("answer"), dict) and t["answer"].get("content")), "")
+            asyncio.get_running_loop().create_task(self._write_lesson(q, lad["first_error"], step,
+                                                                      strip_appendix(final or "")[:600]))
+        except RuntimeError:
+            pass
+
+    async def _write_lesson(self, question: str, error: str, step: str, answer: str = "") -> None:
+        """本機把解題過程摘要成一兩句「下次要注意」；失敗就用規則寫一句。 / The local model summarises the lesson."""
+        from ..experience import LESSON_PROMPT, STEPS
+        lesson = ""
+        try:
+            base = await self.sup.acquire()
+            try:
+                r = await self.local.post(f"{base}/v1/chat/completions", json={
+                    "model": self.sup.core["name"] if self.sup.core else self.s.core_model,
+                    "messages": [{"role": "user", "content": LESSON_PROMPT.format(
+                        question=question, error=error, step=STEPS.get(step, step), answer=answer or "（無）")}],
+                    "temperature": 0, "max_tokens": 220, "chat_template_kwargs": {"enable_thinking": False}})
+                r.raise_for_status()
+                lesson = (_message(r.json()).get("content") or "").strip()
+            finally:
+                self.sup.release()
+        except Exception as exc:  # noqa: BLE001 - 經驗寫不出來不影響回答 / never blocks answers
+            self.log(f"experience: lesson summary failed: {type(exc).__name__}: {exc}")
+        if not lesson:
+            lesson = f"類似問題第一次容易出錯（{error[:60]}）；要{STEPS.get(step, step)}才解決，作答前先仔細核對資料。"
+        try:
+            await anyio.to_thread.run_sync(self.experience.record, question, error, step, lesson)
+        except OSError as exc:
+            self.log(f"experience: {exc}")
 
     # ── 本機看圖工具（add-vision-tools）/ Local vision tools ──
     async def _vision_look(self, base: str, body: dict, rec: dict):
@@ -1782,7 +1932,17 @@ class Gateway:
                 "confidence": rec.get("confidence"),
                 **({"vision_check": rec["vision_check"]} if rec.get("vision_check") else {}),
                 **({"image_paths": rec["image_paths"]} if rec.get("image_paths") else {}),
-                "process": self._process(rec)}
+                "process": self._process(rec), **self._experience_meta(rec, tier, escalation)}
+
+    def _experience_meta(self, rec: dict, tier, escalation_reason: str | None) -> dict:
+        """經驗的結算（附上的經驗記有效／無效、寫新經驗）；回傳要放進 meta 的欄位。 / Settle lessons for this answer."""
+        provider = next((t.get("provider") for t in reversed(rec.get("tiers") or [])
+                         if isinstance(t, dict) and t.get("answer") and t.get("tier") == 3), None)
+        try:
+            self._experience_done(rec, tier, escalation_reason, provider)
+        except Exception as exc:  # noqa: BLE001
+            self.log(f"experience: {type(exc).__name__}: {exc}")
+        return {"experience": rec["experience_used"]} if rec.get("experience_used") else {}
 
     def _process(self, rec: dict) -> list[dict]:
         """回答的過程（add-answer-process）；整理失敗不影響回答。 / Steps behind the answer; never blocks it."""
@@ -1888,6 +2048,27 @@ class Gateway:
                 yield _sse({"id": last.get("id"), "object": "chat.completion.chunk", "created": int(time.time()),
                             "model": last.get("model"),
                             "choices": [{"index": 0, "delta": {"content": rec["dict_appendix"]}, "finish_reason": None}]})
+            if help_reason and self.s.ladder and policy in ("jiezi", "jiezi-local"):
+                # 串流也先本機試到底；成功就接上新的回答，畫面會換成新的（local-first-solving）
+                # Streaming also tries the local rungs first; a success is appended and replaces the shown answer
+                stage = _inline_progress("retrying")
+                if stage:
+                    yield stage
+                got = await self._ladder(base, body, rec, policy, {"role": "assistant", "content": text}, ver,
+                                         help_reason)
+                if got:
+                    resp2, ver2, tier2 = got
+                    sep = "\n\n—— 本機重新想過，以下是新的回答 / The local model reconsidered; new answer below ——\n\n"
+                    yield _sse({"id": last.get("id"), "object": "chat.completion.chunk", "created": int(time.time()),
+                                "model": resp2.get("model"), "choices": [{"index": 0, "delta": {
+                                    "content": sep + strip_appendix(_message(resp2).get("content") or "")},
+                                    "finish_reason": None}]})
+                    meta = self._meta(rec, 1 if tier2 == "think" else tier2, resp2, ver2, t0)
+                    rec.update(final_tier=meta["tier"], jiezi=meta)
+                    yield _sse({"id": last.get("id"), "object": "chat.completion.chunk", "created": int(time.time()),
+                                "model": resp2.get("model"), "choices": [], "jiezi": meta})
+                    yield b"data: [DONE]\n\n"
+                    return
             route = self._auto_route() if policy == "jiezi" and help_reason else None
             if route:
                 async for chunk in self._stream_escalation(body, rec, t0, last, help_reason, route):

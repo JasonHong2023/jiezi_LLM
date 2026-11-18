@@ -16,7 +16,7 @@ For policy `jiezi`, in both streaming and non-streaming answers, when the local 
   Only then is Claude consulted
 
 ### Requirement: Experience Records
-When the ladder goes past the first local answer, the gateway SHALL write an experience record to the memory wiki — the question type, what failed, which step solved it, and a one- or two-sentence lesson summarised by the local model (never the text of a Claude answer) — and SHALL attach relevant experience records as hints to similar later questions, counting uses and successes and disabling a record after three unsuccessful uses.
+When the ladder goes past the first local answer, the gateway SHALL write an experience record to the memory wiki — the question type, what failed, which step solved it, the key points of the final answer whoever solved it, and a short lesson summarised by the local model — and SHALL attach relevant experience records as hints to similar later questions, counting uses and successes and disabling a record after three unsuccessful uses.
 
 #### Scenario: 經驗讓下次一次答對 / An experience helps next time
 - **WHEN** 「2027 國定假日」本機第一次答錯、重答後才對，之後又有人問「2028 年國定假日」

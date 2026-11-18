@@ -118,8 +118,8 @@ export function firstPhase(policy, { docs = false, agent = false } = {}) {
 }
 export const STAGE_TEXT = {  // gateway 回報的階段（add-progress-events）/ stages reported by the gateway
   loading_model: "載入模型中", reading_documents: "閱讀文件中", looking: "辨識圖中物體", thinking: "思考中",
-  retrying: "答案沒通過檢查，重新作答", asking_claude: "請教 Claude 中", asking_cloud: "詢問雲端模型中",
-  asking_feedback: "請教建議後重答",
+  retrying: "本機重新作答", thinking_hard: "本機深入思考中", asking_claude: "請教 Claude 中", asking_cloud: "詢問雲端模型中",
+  asking_feedback: "向雲端要提示後重答",
 };
 export function phaseAfter(kind, value, current) {
   if (kind === "progress") return STAGE_TEXT[value] || current;
@@ -182,11 +182,14 @@ const CHECK_NOTE = /\n*［查核：([^］]*)］/g;
 // 串流時本機答不出來，gateway 在同一個串流接著送「—— 本機答不出來，以下由 X 回答 ——」與 X 的回答：
 // 畫面只顯示 X 的回答，本機草稿在「過程」裡；本機查到的參考資料保留（使用者 2026-11-18：Claude 的回答跑進參考資料框）
 // When a streamed local answer is handed over, show only the helper's answer; the local draft lives in the process
-const HANDOFF = /\n*—— 本機答不出來，以下由 .+? 回答[^\n]*——\n*/;
+// 本機重想成功時是「—— 本機重新想過，以下是新的回答 ——」；有好幾段時以最後一段為準
+// A local retry uses "本機重新想過"; with several separators the last one wins
+const HANDOFF = /\n*—— (?:本機答不出來，以下由 .+? 回答|本機重新想過，以下是新的回答)[^\n]*——\n*/g;
 export function splitAppendix(text) {
   const s = String(text || "");
-  const h = s.match(HANDOFF);
-  if (!h) return splitOne(s);
+  const all = [...s.matchAll(HANDOFF)];
+  if (!all.length) return splitOne(s);
+  const h = all[all.length - 1];
   const before = splitOne(s.slice(0, h.index)), after = splitOne(s.slice(h.index + h[0].length));
   return { ...after, refs: [...before.refs, ...after.refs], handedOver: true };
 }
@@ -225,7 +228,7 @@ export function refParts(line) {
   if (last < line.length) out.push({ text: line.slice(last) });
   return out;
 }
-const STEP_SHORT = { files: "讀檔", lookup: "查資料", look: "看圖工具" };
+const STEP_SHORT = { files: "讀檔", lookup: "查資料", look: "看圖工具", experience: "參考經驗" };
 export function processSummary(process, latency) {
   const parts = [];
   for (const st of process || []) {

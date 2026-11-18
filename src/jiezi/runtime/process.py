@@ -31,6 +31,10 @@ def _who(t: dict) -> str:
         return "請教 Claude"
     if provider == "cloud":
         return "雲端模型"
+    if t.get("step") == "think" or tier == "think":
+        return "本機深入思考後重答"
+    if t.get("step") == "hint":
+        return "依雲端提示本機重答"
     return {0: "本機作答", 1: "本機重答（附上錯誤）", 2: "依回饋本機重答"}.get(tier, f"第 {tier} 層")
 
 
@@ -71,6 +75,8 @@ def steps(rec: dict) -> list[dict]:
         if v.get("error"):
             items.append(f"工具失敗：{_short(v['error'], ERROR_MAX)}")
         out.append({"kind": "look", "label": "看圖工具", "items": items})
+    if rec.get("experience_lessons"):
+        out.append({"kind": "experience", "label": "參考過去的經驗", "items": rec["experience_lessons"]})
     tiers = [t for t in rec.get("tiers") or [] if isinstance(t, dict)]
     for i, t in enumerate(tiers):
         step = {"kind": "answer", "label": _who(t), "model": t.get("model"), "t_s": t.get("t_s")}

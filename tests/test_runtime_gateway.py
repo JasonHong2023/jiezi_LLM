@@ -122,7 +122,10 @@ class FakeEngine:
 
 
 def settings(tmp: Path, **kw) -> Settings:
-    return Settings(root=tmp, key=KEY, gateway_port=36100, engine_port=36101, models_dir=tmp, **kw)
+    # 階梯（local-first-solving）預設開；舊測試測的是沒有階梯時的各層，明確關掉，階梯另有測試
+    # The ladder is on by default; older tests cover the tiers without it and switch it off
+    return Settings(root=tmp, key=KEY, gateway_port=36100, engine_port=36101, models_dir=tmp,
+                    **{"ladder": False, **kw})
 
 
 class Clock:
@@ -867,3 +870,114 @@ class TestFewerClaudeEscalations(unittest.TestCase):
         self.assertEqual(out["days"][0]["reasons"], {"claude:needs_web": 1, "cloud:context_too_large": 1,
                                                      "cloud:unsupported_claims": 1})
         self.assertEqual(out["days"][1]["reasons"], {"claude:policy": 1})
+
+
+class TestLadder(unittest.TestCase):
+    """本機先試到底、Claude 最後；解題過程變成經驗（local-first-solving，使用者 2026-11-18）。
+    The local model tries every rung before Claude, and the solving process becomes experience."""
+
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._t.name)
+        self.addCleanup(self._t.cleanup)
+
+    def gateway(self, local, consult_out=None, stream_local=None, **kw):
+        from jiezi.runtime.consult import ClaudeCliConsultant
+        self.asked = []
+
+        async def run(cmd, input=None, cwd=None, check=False):
+            self.asked.append(input.decode())
+            return FakeProc(consult_out or TestConsult.OK)
+        sup, _, patch = make_supervisor(self.tmp, consult="claude-cli", ladder=True, memory=True, **kw)
+        handler, self.seen = local_handler(local)
+        if stream_local is not None:
+            plain = handler
+
+            def handler(request):                       # noqa: F811 - 第一次串流、之後非串流 / stream first
+                body = json.loads(request.content)
+                if body.get("stream"):
+                    self.seen.append(body)
+                    lines = ['data: ' + json.dumps({"id": "x", "model": "core", "choices": [
+                        {"index": 0, "delta": {"content": stream_local}, "finish_reason": "stop"}]}), "data: [DONE]"]
+                    return httpx.Response(200, text="\n\n".join(lines) + "\n\n",
+                                          headers={"content-type": "text/event-stream"})
+                return plain(request)
+        gw = Gateway(sup.s, sup, TrajectoryWriter(self.tmp / "traj", log=lambda *_: None),
+                     local_http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+                     consultant=ClaudeCliConsultant(self.tmp / "cwd", binary="/usr/bin/claude", run_process=run),
+                     log=lambda *_: None)
+        return gw, patch
+
+    def ask(self, gw, patch, q):
+        with patch, TestClient(create_app(gw)) as c:
+            r = c.post("/v1/chat/completions", headers={"Authorization": f"Bearer {KEY}"},
+                       json={"messages": [{"role": "user", "content": q}]}).json()
+            import time as _t
+            for _ in range(50):                             # 等背景寫經驗 / wait for the lesson writer
+                if list((self.tmp / "var" / "memory" / "wiki" / "experience").glob("*.md")):
+                    break
+                _t.sleep(0.02)
+        return r
+
+    def test_unsure_then_local_retry_solves_it(self):
+        gw, patch = self.gateway([{"role": "assistant", "content": "抱歉，我不確定。"},
+                                  {"role": "assistant", "content": "梅花"},
+                                  {"role": "assistant", "content": "國花題要先想清楚官方核定的是哪一種花。"}])
+        r = self.ask(gw, patch, "中華民國的國花是什麼？")
+        self.assertEqual((r["choices"][0]["message"]["content"], r["jiezi"]["tier"]), ("梅花", 1))
+        self.assertEqual(self.asked, [])                                           # 沒請教 Claude / no Claude
+        self.assertEqual([s["label"] for s in r["jiezi"]["process"]], ["本機作答", "本機重答（附上錯誤）"])
+        files = list((self.tmp / "var" / "memory" / "wiki" / "experience").glob("*.md"))
+        self.assertEqual(len(files), 1)
+        text = files[0].read_text(encoding="utf-8")
+        self.assertIn("國花題要先想清楚", text)
+        self.assertIn("帶著錯誤重答", text)
+
+    def test_every_rung_fails_then_claude(self):
+        unsure = {"role": "assistant", "content": "我不知道"}
+        gw, patch = self.gateway([unsure, unsure, unsure, {"role": "assistant", "content": "要先查清楚。"}])
+        r = self.ask(gw, patch, "薛影仪的单曲是哪一年发行的？")
+        self.assertEqual((r["jiezi"]["tier"], r["jiezi"]["provider"]), (3, "claude"))
+        self.assertEqual([s["label"] for s in r["jiezi"]["process"]],
+                         ["本機作答", "本機重答（附上錯誤）", "本機深入思考後重答", "請教 Claude"])
+        think = [b for b in self.seen if (b.get("chat_template_kwargs") or {}).get("enable_thinking")]
+        self.assertEqual(len(think), 1)                                            # 只有那一步開思考 / one rung only
+        self.assertEqual(len(self.asked), 1)
+
+    def test_experience_is_attached_next_time(self):
+        from jiezi.experience import Experience
+        from jiezi.memory import wiki_path
+        Experience(wiki_path(self.tmp)).record("2027 年台灣的國定假日有哪些？", "unsupported_claims：x", "retry",
+                                               "國定假日要先查補假規則，不要自己推算。")
+        gw, patch = self.gateway([{"role": "assistant", "content": "元旦、春節……"}])
+        r = self.ask(gw, patch, "2028 年台灣的國定假日有哪些？")
+        sent = json.dumps(self.seen[0]["messages"], ensure_ascii=False)
+        self.assertIn("國定假日要先查補假規則", sent)
+        self.assertIn("參考過去的經驗", [s["label"] for s in r["jiezi"]["process"]])
+        e = Experience(wiki_path(self.tmp)).load()[0]
+        self.assertEqual((e.uses, e.wins), (1, 1))                                 # 用了、答對 / used and helped
+
+    def test_streaming_retry_replaces_the_answer(self):
+        # 串流請求也佔一個順位 / the streamed request takes the first slot
+        gw, patch = self.gateway([{"role": "assistant", "content": "（串流）"}, {"role": "assistant", "content": "梅花"},
+                                  {"role": "assistant", "content": "要先想清楚。"}], stream_local="我不確定")
+        with patch, TestClient(create_app(gw)) as c:
+            with c.stream("POST", "/v1/chat/completions", headers={"Authorization": f"Bearer {KEY}"},
+                          json={"messages": [{"role": "user", "content": "中華民國的國花是什麼？"}],
+                                "stream": True}) as r:
+                text = "".join(line for line in r.iter_lines())
+        self.assertIn("本機重新想過，以下是新的回答", text)
+        self.assertIn("梅花", text)
+        self.assertEqual(self.asked, [])
+
+    def test_experience_store_counts_and_disables(self):
+        from jiezi.experience import FAIL_LIMIT, Experience
+        ex = Experience(self.tmp / "wiki")
+        e = ex.record("台北101有多高？", "x", "retry", "高度題用資料裡的數字。")
+        ex.record("台北101有多高", "y", "think", "")                              # 同一種題目合併 / merged
+        self.assertEqual([x.seen for x in ex.load()], [2])
+        self.assertEqual([x.id for x in ex.relevant("台北101大樓多高？")], [e.id])
+        ex.outcome([e.id], False)
+        for _ in range(FAIL_LIMIT - 1):
+            ex.outcome([e.id], False)
+        self.assertEqual(ex.relevant("台北101大樓多高？"), [])                     # 無效三次停用 / disabled
