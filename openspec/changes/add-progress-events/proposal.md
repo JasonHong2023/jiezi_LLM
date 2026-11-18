@@ -1,4 +1,7 @@
-> **狀態 / Status**：提案，**尚未實作**，待使用者審閱（R4）。Proposal only, not implemented; awaiting review.
+> **狀態 / Status**：2026-11-18 使用者審閱：OQ1 預設開、OQ2 不顯示字數。已實作。/ Approved (on by default, no token counts); implemented.
+>
+> **實作差異**：`searching`（查知識庫）沒有做——查資料在檢查請求大小（413）之前，若在那裡就開始串流，413 會變成串流裡的錯誤，違反下面「送出前能判斷的錯誤照回 HTTP 錯誤碼」；另加 `retrying`（答案沒過檢查、本機重答）與 `asking_feedback`（第 2 層請教建議）。處理得比第一個階段事件還快時直接回應、不送階段。
+> Not done: `searching` (it runs before the 413 check). Added: `retrying`, `asking_feedback`. Answers faster than the first stage skip stages.
 
 ## Why
 

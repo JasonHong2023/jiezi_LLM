@@ -143,8 +143,21 @@ def first_phase(policy: str, docs: bool, image: bool, agent: bool) -> str:
     return "思考中 / thinking"
 
 
+STAGE_TEXT = {      # gateway 回報的階段（add-progress-events）/ stages reported by the gateway
+    "loading_model": "載入模型中 / loading the model",
+    "reading_documents": "閱讀文件中 / reading the documents",
+    "thinking": "思考中 / thinking",
+    "retrying": "答案沒通過檢查，重新作答 / answer failed a check, retrying",
+    "asking_claude": "請教 Claude 中 / asking Claude",
+    "asking_cloud": "詢問雲端模型中 / asking the cloud model",
+    "asking_feedback": "請教建議後重答 / getting feedback to retry",
+}
+
+
 def phase_after(kind: str, value, current: str) -> str:
     """依串流事件換階段。 / The next phase for a stream event."""
+    if kind == "progress":
+        return STAGE_TEXT.get(value, current)
     if kind == "thinking":
         return "思考中 / thinking"
     if kind == "agent":
@@ -376,6 +389,7 @@ class ChatApp(App):
             el = time.monotonic() - state["t0"]
             label = state["phase"]
             if not state["events"] and el > SLOW_S and label.startswith(("思考", "閱讀", "看圖")):
+                # 沒收到 gateway 的階段（舊版或關閉 JIEZI_PROGRESS）時才猜 / guess only without reported stages
                 label = "處理中（準備模型或整理資料，第一次會久一點）/ processing"
             meta_w.update(f"{SPINNER[int(el / TICK_S) % len(SPINNER)]} {label}… {el:.0f} 秒")
         tick()

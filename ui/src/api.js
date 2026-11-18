@@ -50,7 +50,7 @@ export function withDocuments(question, docs) {
 
 // 串流對話：每段文字呼叫 onDelta，最後的 jiezi 狀態呼叫 onMeta；signal 用來一鍵中止。
 // Streaming chat: onDelta per chunk, onMeta for the final jiezi status; signal aborts at once.
-export async function streamChat(messages, policy, { onDelta, onMeta, onStep, onThinking, signal, agent = false }) {
+export async function streamChat(messages, policy, { onDelta, onMeta, onStep, onThinking, onProgress, signal, agent = false }) {
   const r = await fetch(BASE + "/v1/chat/completions", {
     method: "POST",
     headers: headers(),
@@ -75,6 +75,7 @@ export async function streamChat(messages, policy, { onDelta, onMeta, onStep, on
       try {
         const d = JSON.parse(payload);
         if (d.error) throw new Error(d.error.message || "error");
+        if (d.jiezi_progress) { onProgress && onProgress(d.jiezi_progress.stage); continue; }  // gateway 回報的階段
         if (d.jiezi_agent) { onStep && onStep(d.jiezi_agent); continue; }  // 唯讀代理的一步 / an agent step
         if (d.jiezi) onMeta(d.jiezi);
         for (const ch of d.choices || []) {
@@ -109,7 +110,13 @@ export function firstPhase(policy, { docs = false, agent = false } = {}) {
   if (docs) return "閱讀文件中";
   return "思考中";
 }
+export const STAGE_TEXT = {  // gateway 回報的階段（add-progress-events）/ stages reported by the gateway
+  loading_model: "載入模型中", reading_documents: "閱讀文件中", thinking: "思考中",
+  retrying: "答案沒通過檢查，重新作答", asking_claude: "請教 Claude 中", asking_cloud: "詢問雲端模型中",
+  asking_feedback: "請教建議後重答",
+};
 export function phaseAfter(kind, value, current) {
+  if (kind === "progress") return STAGE_TEXT[value] || current;
   if (kind === "thinking") return "思考中";
   if (kind === "agent") return `查看檔案中：${stepText(value)}`;
   if (kind === "delta") {

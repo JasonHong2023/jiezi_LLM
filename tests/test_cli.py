@@ -235,6 +235,9 @@ class TestProgress(TestChat):
         self.assertTrue(chat.phase_after("delta", "台北", "思考中").startswith("回答中"))
         self.assertTrue(chat.phase_after("thinking", "嗯", "閱讀文件中").startswith("思考中"))
         self.assertIn("查看檔案中", chat.phase_after("agent", {"type": "call", "tool": "list_dir"}, "x"))
+        self.assertTrue(chat.phase_after("progress", "loading_model", "思考中").startswith("載入模型中"))
+        self.assertEqual(chat.phase_after("progress", "unknown_stage", "思考中"), "思考中")
+        self.assertEqual(set(chat.STAGE_TEXT), set(__import__("jiezi.runtime.gateway", fromlist=["STAGES"]).STAGES))
 
     def test_status_shows_while_waiting_then_final_line(self):
         gate = anyio.Event()

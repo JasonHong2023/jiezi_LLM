@@ -418,6 +418,39 @@ class TestGateway(unittest.TestCase):
         self.assertEqual(self.sup.in_flight, 0)
         self.assertEqual(len(self.traj()), 2)
 
+    def stream_events(self, c, body):
+        with c.stream("POST", "/v1/chat/completions", headers={"Authorization": f"Bearer {KEY}"},
+                      json={**body, "stream": True}) as r:
+            return r.status_code, [json.loads(line[6:]) for line in r.iter_lines()
+                                   if line.startswith("data: ") and line[6:] != "[DONE]"]
+
+    def test_progress_events(self):
+        """add-progress-events：回答前送階段、一般 chunk 不變、錯誤碼照舊、可關閉。"""
+        with self.client([{"role": "assistant", "content": "你好"}, {"role": "assistant", "content": "[get_weather(city='台北')]"}]) as c:
+            code, events = self.stream_events(c, {"messages": [{"role": "user", "content": "hi"}]})
+            stages = [e["jiezi_progress"]["stage"] for e in events if e.get("object") == "jiezi.progress"]
+            self.assertEqual(stages, ["loading_model", "thinking"])                  # 冷啟動 / cold start
+            self.assertTrue(all(e["choices"] == [] for e in events if e.get("object") == "jiezi.progress"))
+            answer = [e for e in events if e.get("object") != "jiezi.progress"]
+            text = "".join((e["choices"][0]["delta"].get("content") or "") for e in answer if e.get("choices"))
+            self.assertEqual(text, "你好")                                           # 回答不變 / answer unchanged
+            self.assertEqual(answer[-1]["jiezi"]["tier"], 0)
+            code, events = self.stream_events(c, {"messages": [{"role": "user", "content": "x"}], "tools": TOOLS})
+            stages = [e["jiezi_progress"]["stage"] for e in events if e.get("object") == "jiezi.progress"]
+            self.assertIn(stages, ([], ["thinking"]))     # 處理完得比事件快時直接回應 / instant answers skip stages
+            self.assertEqual(events[-1]["jiezi"]["verification"], "pass")
+            code, _ = self.stream_events(c, {"model": "jiezi-cloud", "messages": [{"role": "user", "content": "x"}]})
+            self.assertEqual(code, 503)                                               # 送出前的錯誤照舊 / HTTP code kept
+            r = self.post(c, {"messages": [{"role": "user", "content": "hi"}]}).json()
+            self.assertNotIn("jiezi_progress", json.dumps(r))                        # 非串流沒有 / not for non-stream
+        self.assertEqual(self.sup.in_flight, 0)
+
+    def test_progress_off(self):
+        with self.client([{"role": "assistant", "content": "你好"}]) as c:
+            self.sup.s.progress = False
+            _, events = self.stream_events(c, {"messages": [{"role": "user", "content": "hi"}]})
+        self.assertFalse(any(e.get("object") == "jiezi.progress" for e in events))
+
     def test_request_size_limit_and_admin_unload(self):
         with self.client([{"role": "assistant", "content": "x"}]) as c:
             big = {"messages": [{"role": "user", "content": "x" * (9 << 20)}]}  # 上限 8 MB / limit is 8 MB

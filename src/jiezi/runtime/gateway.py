@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+from contextvars import ContextVar
 import re
 import secrets
 import time
@@ -71,6 +72,60 @@ def _err(status: int, message: str, code: str) -> JSONResponse:
 
 def _sse(obj) -> bytes:
     return b"data: " + json.dumps(obj, ensure_ascii=False).encode("utf-8") + b"\n\n"
+
+
+# ── 進度事件（add-progress-events）/ Progress events ──
+# 串流請求一進來就等著：處理過程第一次回報階段時才開始串流（之前發生的錯誤照樣回 HTTP 錯誤碼），
+# 之後的階段以 object="jiezi.progress"、choices=[] 的事件送出，一般 OpenAI 用戶端會略過。
+# Streamed requests start streaming at the first reported stage (earlier errors keep their HTTP codes); stages are
+# sent as object="jiezi.progress" events with empty choices, which generic OpenAI clients skip.
+STAGES = ("loading_model", "reading_documents", "thinking", "retrying", "asking_claude", "asking_cloud",
+          "asking_feedback")
+
+
+class _Progress:
+    def __init__(self) -> None:
+        self.loop = asyncio.get_running_loop()
+        self.queue: asyncio.Queue[str] = asyncio.Queue()
+        self.started = asyncio.Event()
+        self.enabled = False            # 只有串流請求才開 / streamed requests only
+        self.relaying = False           # 已在轉送內層串流：改由內層直接送事件 / the inner stream emits directly
+
+    def emit(self, stage: str) -> None:
+        if not self.enabled or self.relaying:
+            return
+
+        def put() -> None:
+            self.queue.put_nowait(stage)
+            self.started.set()
+        try:
+            if asyncio.get_running_loop() is self.loop:
+                put()
+                return
+        except RuntimeError:
+            pass
+        self.loop.call_soon_threadsafe(put)   # 從工作執行緒回報 / from a worker thread
+
+
+_PROGRESS: ContextVar[_Progress | None] = ContextVar("jiezi_progress", default=None)
+
+
+def _stage(stage: str) -> None:
+    p = _PROGRESS.get()
+    if p is not None:
+        p.emit(stage)
+
+
+def _progress_chunk(stage: str) -> bytes:
+    return _sse({"id": f"progress-{int(time.time() * 1000)}", "object": "jiezi.progress", "created": int(time.time()),
+                 "choices": [], "jiezi_progress": {"stage": stage}})
+
+
+def _inline_progress(stage: str) -> bytes | None:
+    """內層串流（轉送本機、接著轉交）自己送的進度事件；沒開進度時回傳 None。
+    A progress event emitted by an inner stream; None when progress is off for this request."""
+    p = _PROGRESS.get()
+    return _progress_chunk(stage) if p is not None and p.enabled else None
 
 
 def _bare_question(text: str) -> str:
@@ -301,6 +356,7 @@ class Gateway:
         """自動轉交（design D5、D9）：Claude 失敗時改用雲端，再不行就回本機答案。
         Automatic escalation: on Claude failure try the cloud, else return the local answer."""
         if self._auto_route() == "consult":
+            _stage("asking_claude")
             try:
                 resp, info = await self._consult_once(body)
             except consult_mod.ConsultError as exc:
@@ -667,6 +723,69 @@ class Gateway:
         return JSONResponse(await self.sup.unload(hold, data.get("reason")))
 
     async def chat(self, request: Request) -> Response:
+        if not self.s.progress:
+            return await self._chat(request)
+        p = _Progress()
+        token = _PROGRESS.set(p)
+        try:
+            task = asyncio.ensure_future(self._chat(request))      # 複製目前的 context / copies the context
+        finally:
+            _PROGRESS.reset(token)
+        started = asyncio.ensure_future(p.started.wait())
+        try:
+            await asyncio.wait({task, started}, return_when=asyncio.FIRST_COMPLETED)
+        except asyncio.CancelledError:
+            task.cancel()
+            started.cancel()
+            raise
+        if task.done():
+            started.cancel()
+            return task.result()
+        return StreamingResponse(self._progress_stream(task, p), media_type="text/event-stream")
+
+    async def _progress_stream(self, task: asyncio.Future, p: _Progress) -> AsyncIterator[bytes]:
+        """先送階段，處理完再接上真正的回應（串流照轉；錯誤改成串流裡的 error）。
+        Stages first, then the real response (streams relayed; errors become an in-stream error)."""
+        it = None
+        try:
+            while True:
+                getter = asyncio.ensure_future(p.queue.get())
+                await asyncio.wait({task, getter}, return_when=asyncio.FIRST_COMPLETED)
+                if getter.done():
+                    yield _progress_chunk(getter.result())
+                    continue
+                getter.cancel()
+                break
+            while not p.queue.empty():
+                yield _progress_chunk(p.queue.get_nowait())
+            resp = task.result()
+            if isinstance(resp, StreamingResponse):
+                p.relaying = True
+                _PROGRESS.set(p)                 # 內層串流在這個 context 裡跑 / the inner stream runs here
+                it = resp.body_iterator
+                async for chunk in it:
+                    yield chunk if isinstance(chunk, bytes) else chunk.encode("utf-8")
+                return
+            payload = json.loads(bytes(resp.body) or b"{}")
+            if resp.status_code >= 400:
+                yield _sse({"error": payload.get("error") or {"message": f"HTTP {resp.status_code}"}})
+            else:                                 # 完整答案轉成串流格式 / a complete answer as chunks
+                msg = ((payload.get("choices") or [{}])[0].get("message") or {})
+                base = {"id": payload.get("id"), "object": "chat.completion.chunk", "created": int(time.time()),
+                        "model": payload.get("model")}
+                yield _sse({**base, "choices": [{"index": 0, "delta": {"role": "assistant",
+                                                                        "content": msg.get("content") or ""},
+                                                  "finish_reason": "stop"}]})
+                if payload.get("jiezi"):
+                    yield _sse({**base, "choices": [], "jiezi": payload["jiezi"]})
+            yield b"data: [DONE]\n\n"
+        finally:
+            if not task.done():
+                task.cancel()                     # 用戶端中斷 / client went away
+            if it is not None and hasattr(it, "aclose"):
+                await it.aclose()
+
+    async def _chat(self, request: Request) -> Response:
         if not self._authorized(request):
             return _err(401, "invalid or missing gateway key", "unauthorized")
         body = await self._read_json(request)
@@ -676,6 +795,8 @@ class Gateway:
         if policy not in POLICIES:
             return _err(400, f"model must be one of {', '.join(POLICIES)}", "invalid_model")
         stream = bool(body.get("stream"))
+        if stream and _PROGRESS.get() is not None:
+            _PROGRESS.get().enabled = True
         from . import jsonout
         try:
             json_mode = jsonout.spec(body) is not None  # add-json-output
@@ -761,6 +882,8 @@ class Gateway:
             # Router v0 (rules): questions the local model cannot answer go straight to escalation
             return await self._escalate(body, rec, t0, stream, reason=route)
 
+        if self.sup.status == "unloaded":
+            _stage("loading_model")
         try:
             base = await self.sup.acquire()
         except EngineUnavailable as exc:
@@ -802,6 +925,8 @@ class Gateway:
         rec["agent"] = {"steps": []}
         t0 = time.monotonic()
         folders = [str(f) for f in Grants(self.s.root).folders()]
+        if self.sup.status == "unloaded":
+            _stage("loading_model")
         try:
             base = await self.sup.acquire()
         except EngineUnavailable as exc:
@@ -973,6 +1098,8 @@ class Gateway:
                     "This translation needs confirmation first; run the command above.")
             return self._translated(rec, t0, stream, text, "translate-estimate", "jiezi-translate",
                                     {**base_info, "needs_confirmation": True, "estimate_s": est})
+        if self.sup.status == "unloaded":
+            _stage("loading_model")
         try:
             base = await self.sup.acquire()
         except EngineUnavailable as exc:
@@ -1047,6 +1174,7 @@ class Gateway:
         if not needed(msgs[idx].get("content"), budget):
             return
         hint = "\n".join(DOC_RE.sub("", message_text(m))[:400] for m in prev)
+        _stage("reading_documents")
 
         async def complete(msgs: list[dict], max_tokens: int) -> str:
             r = await self._local_once(base, {"messages": msgs, "max_tokens": max_tokens, "temperature": 0.3}, msgs)
@@ -1180,6 +1308,7 @@ class Gateway:
 
     async def _tiered(self, base: str, body: dict, rec: dict, t0: float, policy: str, stream: bool) -> Response:
         kind = self._sample_kind(body)
+        _stage("thinking")
         try:
             if kind:
                 resp, ver = await self._sampled(base, body, rec, kind)
@@ -1201,6 +1330,7 @@ class Gateway:
             escalate_reason = "local_only_policy" if policy != "jiezi" else self._no_route_reason()
         if ver["status"] == "fail":
             msgs = escalation.retry_messages(body["messages"], _message(resp), ver["error"])
+            _stage("retrying")
             try:
                 resp1 = await self._local_once(base, body, msgs)
                 ver1 = escalation.verify(body, _message(resp1), self._grounding(body, rec))
@@ -1230,6 +1360,7 @@ class Gateway:
         """第 2 層：協助者只給回饋，本機帶著回饋重答一次。通過就回覆；回傳 None 表示繼續第 3 層。
         Tier 2: the helper gives feedback only and the local model answers once more. None means go on to tier 3."""
         msgs = escalation.feedback_request(body, _message(last), ver.get("error") or "")
+        _stage("asking_feedback")
         try:
             if self._auto_route() == "consult":
                 ans = await self.consultant.ask({"messages": msgs})
@@ -1265,6 +1396,7 @@ class Gateway:
         return self._deliver(resp2, meta, rec, stream)
 
     async def _respond_cloud(self, body: dict, rec: dict, t0: float, stream: bool, reason: str) -> Response:
+        _stage("asking_cloud")
         self.cap.take()
         try:
             resp, info = await self._cloud_once(body)
@@ -1323,6 +1455,7 @@ class Gateway:
                                       "consult_off")
         if self.consult_cap and not self.consult_cap.available():
             return self._finish_error(rec, 503, "today's Claude consultations are used up", "consult_daily_cap")
+        _stage("asking_claude")
         try:
             resp, ans = await self._consult_once(body)
         except consult_mod.ConsultError as exc:
@@ -1385,6 +1518,9 @@ class Gateway:
         append Claude's (or the cloud's) answer to the same stream."""
         content, last, status, finish, released = [], {}, "ok", None, False
         conv = TaiwanStream() if self.s.tw_phrases else None
+        early = _inline_progress("thinking")
+        if early:
+            yield early
         try:
             async with self.local.stream("POST", f"{base}/v1/chat/completions",
                                          json=self._local_body(body, stream=True)) as r:
@@ -1473,6 +1609,9 @@ class Gateway:
         base = {"id": last.get("id"), "object": "chat.completion.chunk", "created": int(time.time())}
         yield _sse({**base, "model": last.get("model"),
                     "choices": [{"index": 0, "delta": {"content": sep}, "finish_reason": None}]})
+        stage = _inline_progress("asking_claude" if route == "consult" else "asking_cloud")
+        if stage:
+            yield stage
         try:
             if route == "consult":
                 resp, ans = await self._consult_once(body)

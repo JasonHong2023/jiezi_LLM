@@ -134,6 +134,7 @@ function Chat() {
         signal: abort.current.signal,
         agent,
         onThinking: () => bump("thinking"),
+        onProgress: (stage) => bump("progress", stage),
         onStep: (ev) => bump("agent", ev) || setMsgs((m) => {
           const c = [...m]; const last = c[c.length - 1];
           // 同一步「進行中」換成結果 / a running step is replaced by its outcome

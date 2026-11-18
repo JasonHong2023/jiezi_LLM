@@ -71,6 +71,9 @@ async def stream_chat(conn: Connection, messages: list[dict], policy: str = "jie
                     continue
                 if chunk.get("error"):
                     raise GatewayError(str(chunk["error"].get("message")))
+                if chunk.get("jiezi_progress"):  # gateway 回報的階段（add-progress-events）/ reported stage
+                    yield "progress", chunk["jiezi_progress"].get("stage")
+                    continue
                 if chunk.get("jiezi_agent"):  # 唯讀代理的步驟（add-agent-readonly）/ agent steps
                     yield "agent", chunk["jiezi_agent"]
                     continue

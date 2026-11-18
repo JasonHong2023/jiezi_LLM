@@ -97,6 +97,9 @@ class TestUi(unittest.TestCase):
         for zh in ("請教 Claude 中", "詢問雲端模型中", "閱讀文件中", "查看檔案中", "回答中", "處理中（準備模型或整理資料"):
             self.assertIn(zh, js)
         self.assertEqual(js.count("SLOW_S = 8"), 1)
+        from jiezi.runtime.gateway import STAGES
+        for st in STAGES:
+            self.assertIn(f"{st}:", js)                                       # 每個階段都有中文 / every stage labelled
         self.assertEqual(chat.SLOW_S, 8.0)
         self.assertIn("芥子納須彌 —— 一粒芥子，裝下一整個世界", app)
         self.assertIn(chat.SEED_FRAMES[-1][-1], app)
