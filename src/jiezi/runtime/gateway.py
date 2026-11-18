@@ -1787,7 +1787,7 @@ class Gateway:
             try:
                 r = await self.cloud.post(f"{self.s.cloud_base}/v1/chat/completions", headers=headers, json={
                     "model": model, "messages": msgs, "max_tokens": T.MAX_TOKENS, "stream": False,
-                    "disable_fallbacks": True}, timeout=120)
+                    "disable_fallbacks": True}, timeout=T.TIMEOUT_S)
                 r.raise_for_status()
                 data = r.json()
                 got = str(data.get("model") or "")

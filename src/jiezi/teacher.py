@@ -18,6 +18,7 @@ from pathlib import Path
 # 條款明文禁止用輸出訓練其他模型：不論設定都不當老師 / never teachers, whatever the configuration
 FORBIDDEN = re.compile(r"claude|anthropic|gemini|google|gpt-4|gpt-5|openai/gpt-(?!oss)|o[134]-|chatgpt", re.I)
 MAX_TOKENS = 1500
+TIMEOUT_S = 300.0    # 背景執行；推理型老師（kimi-k3.1-pro 實測 227 秒）要等久一點 / reasoning teachers are slow
 DAILY_MAX = 100
 AGREE = 0.5          # 關鍵事實重疊 / overlap of key facts
 TEXT_AGREE = 0.3     # 沒有關鍵事實時，文字相似度 / text similarity when there are no key facts
