@@ -60,6 +60,7 @@ EMBED_MAX_INPUTS, EMBED_MAX_CHARS = 64, 8000  # 問題和更正過的問題相�
 from .supervisor import EngineUnavailable, Supervisor
 from .trajectory import TrajectoryWriter, elapsed, new_id, now_iso
 
+MAX_PATH_DOC_CHARS = 1_500_000  # gateway 讀路徑附上的文件總字數（同 jiezi chat）/ total characters of documents read from paths
 MAX_WARM_BYTES = 8 * 1024 * 1024  # 預先建向量的文字上限 / text limit for warming
 TOO_LARGE_ROOM = 128            # 至少要留這麼多 token 給回答 / tokens that must remain for an answer
 TICK_S = 5.0
@@ -501,6 +502,64 @@ class Gateway:
             rec["training_use"] = False
             self.log(f"injection guard: suspected {info['suspected']} in {info['where']}")
 
+    async def _read_paths(self, body: dict, rec: dict) -> None:
+        """使用者訊息裡打的本機檔案路徑由 gateway 讀檔附上（add-image-paths，使用者 2026-11-18「把你的方法教她，也加入
+        base64」）：圖片轉 base64 data URL 附在同一則訊息，文件在受限子行程讀成文字、照 /file 的格式包進問題。
+        只看最後一則使用者訊息、已附文件以外的文字；system／assistant／tool 訊息裡的路徑不讀。
+        Paths typed in the last user message are read here: images become base64 data URLs, documents are read in the
+        limited child process and wrapped like /file. Paths in other roles or inside attached documents are never read."""
+        if not self.s.image_paths:
+            return
+        from .. import documents as D
+        from ..localpaths import MAX_PATHS, PathError, find_paths, image_data_url, is_image, strip_paths, to_local
+        msgs = body["messages"]
+        idx = next((i for i in range(len(msgs) - 1, -1, -1) if msgs[i].get("role") == "user"), None)
+        if idx is None:
+            return
+        m = msgs[idx]
+        text = message_text(m)
+        paths = find_paths(D.DOC_RE.sub(" ", text))[:MAX_PATHS]
+        if not paths:
+            return
+        images, docs, done, log = [], [], [], []
+        for raw in paths:
+            local, entry = to_local(raw), {"path": raw}
+            try:
+                if is_image(raw):
+                    images.append(await anyio.to_thread.run_sync(image_data_url, local))
+                else:
+                    if not local.is_file():
+                        raise PathError("not_found")
+                    if local.stat().st_size > D.MAX_FILE_BYTES:
+                        raise PathError("too_large")
+                    async with self._doc_limit:
+                        d = await anyio.to_thread.run_sync(D.read, local)
+                    if not d["text"].strip():
+                        raise PathError("no_text")
+                    if sum(len(x["text"]) for x in docs) + len(d["text"]) > MAX_PATH_DOC_CHARS:
+                        raise PathError("too_large")
+                    docs.append(d)
+                entry["ok"] = True
+                done.append(raw)
+            except PathError as exc:
+                entry["why"] = str(exc)
+            except D.DocumentError as exc:
+                entry["why"] = f"unreadable: {str(exc)[:120]}"
+            except OSError as exc:
+                entry["why"] = type(exc).__name__
+            log.append(entry)
+        rec["image_paths"] = log
+        if not done:
+            return
+        question = strip_paths(text, done)
+        for d in docs:
+            question = D.attach(d, question)
+        others = [p for p in m["content"] if isinstance(p, dict) and p.get("type") != "text"] \
+            if isinstance(m.get("content"), list) else []
+        pics = [{"type": "image_url", "image_url": {"url": u}} for u in images]
+        m["content"] = [{"type": "text", "text": question}, *others, *pics] if others or pics else question
+        self.log(f"read paths: {len(images)} image(s), {len(docs)} document(s)")
+
     def _path_note(self, body: dict, rec: dict) -> None:
         """問題裡只打了本機檔案路徑、沒附檔：提醒模型看不到內容、不要猜（使用者 2026-11-18：模型憑 iStock 檔名猜了圖片內容）。
         A local path typed without attaching the file: tell the model it cannot see it and must not guess."""
@@ -873,6 +932,7 @@ class Gateway:
             rec["agent"] = {"enabled": False}  # 關閉時照一般請求處理 / handled as a normal request when off
         # 查資料可能要啟動 embedding 引擎，放到執行緒以免卡住其他請求 / may start the embedder; off the event loop
         data: list[dict] = []  # gateway 自己附加的資料訊息 / data messages the gateway attached
+        await self._read_paths(body, rec)
         await anyio.to_thread.run_sync(self._ground, body, rec, data)
         self._attach_skills(body, rec, data)
         self._path_note(body, rec)
@@ -1601,7 +1661,8 @@ class Gateway:
                 "cloud": {"tokens": usage.get("total_tokens"), "cost": (cloud or {}).get("cost")} if cloud else None,
                 "trajectory_id": rec["id"], "sources": rec.get("sources") or [],
                 "confidence": rec.get("confidence"),
-                **({"vision_check": rec["vision_check"]} if rec.get("vision_check") else {})}
+                **({"vision_check": rec["vision_check"]} if rec.get("vision_check") else {}),
+                **({"image_paths": rec["image_paths"]} if rec.get("image_paths") else {})}
 
     def _deliver(self, resp: dict, meta: dict, rec: dict, stream: bool) -> Response:
         if rec.get("json_mode"):

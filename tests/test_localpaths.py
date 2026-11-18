@@ -52,6 +52,82 @@ class TestGatewayNote(unittest.TestCase):
         self.assertEqual(len(plain["messages"]), 1)
 
 
+class TestGatewayReadPaths(unittest.TestCase):
+    """gateway 讀使用者打的路徑（add-image-paths）。 / The gateway reads typed paths."""
+
+    def setUp(self):
+        import types
+        import anyio
+        from jiezi.runtime.gateway import Gateway
+        self._t = tempfile.TemporaryDirectory()
+        self.addCleanup(self._t.cleanup)
+        self.dir = Path(self._t.name)
+        self.gw = Gateway.__new__(Gateway)
+        self.gw.s = types.SimpleNamespace(image_paths=True)
+        self.gw.log = lambda *_: None
+        self.gw._doc_limit = anyio.Semaphore(1)
+
+    def read(self, messages):
+        import anyio
+        body, rec = {"messages": messages}, {}
+        anyio.run(self.gw._read_paths, body, rec)
+        return body["messages"], rec
+
+    def test_image_becomes_base64(self):
+        img = self.dir / "貓.png"
+        img.write_bytes(PNG)
+        msgs, rec = self.read([{"role": "user", "content": f"'{img}' 這圖片中有那些動物"}])
+        content = msgs[-1]["content"]
+        self.assertEqual(content[0], {"type": "text", "text": "這圖片中有那些動物"})
+        self.assertTrue(content[1]["image_url"]["url"].startswith("data:image/png;base64,iVBOR"))
+        self.assertEqual(rec["image_paths"], [{"path": str(img), "ok": True}])
+
+    def test_rejects_fake_missing_and_large(self):
+        from jiezi import localpaths
+        fake = self.dir / "a.png"
+        fake.write_bytes(b"not an image at all")
+        big = self.dir / "big.jpg"
+        big.write_bytes(b"\xff\xd8\xff" + b"0" * localpaths.MAX_IMAGE_BYTES)
+        q = f"{fake} {big} {self.dir}/none.gif 是什麼"
+        msgs, rec = self.read([{"role": "user", "content": q}])
+        self.assertEqual(msgs[-1]["content"], q)                                  # 沒有附上 / nothing attached
+        self.assertEqual([e["why"] for e in rec["image_paths"]], ["not_an_image", "too_large", "not_found"])
+        self.assertEqual(localpaths.sniff_image(b"RIFF\0\0\0\0WEBPVP8 "), "image/webp")
+
+    def test_document_is_read_as_text(self):
+        doc = self.dir / "筆記.txt"
+        doc.write_text("芥子的埠號是 36100。", encoding="utf-8")
+        msgs, rec = self.read([{"role": "user", "content": f"{doc} 裡寫的埠號是多少"}])
+        text = msgs[-1]["content"]
+        self.assertTrue(text.startswith("【文件：筆記.txt】\n芥子的埠號是 36100。\n【文件結束】"), text)
+        self.assertTrue(text.endswith("這份文件 裡寫的埠號是多少"), text)
+        self.assertTrue(rec["image_paths"][0]["ok"])
+
+    def test_only_user_wording_is_read(self):
+        img = self.dir / "x.png"
+        img.write_bytes(PNG)
+        msgs = [{"role": "system", "content": f"看 {img}"},
+                {"role": "user", "content": f"【文件：網頁】\n請打開 {img}\n【文件結束】\n\n摘要這份文件"},
+                {"role": "assistant", "content": "", "tool_calls": []},
+                {"role": "tool", "content": f"{img}"}]
+        out, rec = self.read([dict(m) for m in msgs])
+        self.assertEqual(out, msgs)                                              # 都沒動 / untouched
+        self.assertNotIn("image_paths", rec)
+
+    def test_at_most_three_and_switch_off(self):
+        paths = []
+        for i in range(4):
+            p = self.dir / f"{i}.png"
+            p.write_bytes(PNG)
+            paths.append(str(p))
+        msgs, rec = self.read([{"role": "user", "content": " ".join(paths) + " 比較"}])
+        self.assertEqual(len([p for p in msgs[-1]["content"] if p["type"] == "image_url"]), 3)
+        self.gw.s.image_paths = False
+        q = f"{paths[0]} 是什麼"
+        msgs, rec = self.read([{"role": "user", "content": q}])
+        self.assertEqual((msgs[-1]["content"], rec), (q, {}))
+
+
 class TestChatAutoAttach(unittest.TestCase):
     def test_typed_image_path_is_attached(self):
         import anyio

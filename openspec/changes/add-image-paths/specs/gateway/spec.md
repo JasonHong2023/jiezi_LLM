@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
-### Requirement: Image Paths
-When `JIEZI_IMAGE_PATHS` is on and the last user message names local image files, the gateway SHALL read each file that is a regular PNG, JPEG, WebP or GIF file (checked by extension and file header) of at most 5 MB, at most 3 per question, and attach it to that message as a base64 `image_url`; paths in system, assistant or tool messages and in attached documents SHALL NOT be read; files that fail the checks SHALL get the existing path note and the reason SHALL be recorded in metadata `image_paths`.
+### Requirement: Typed File Paths
+When `JIEZI_IMAGE_PATHS` is on and the last user message names local image files, the gateway SHALL read each file that is a regular PNG, JPEG, WebP or GIF file (checked by extension and file header) of at most 5 MB, at most 3 per question, and attach it to that message as a base64 `image_url`, and SHALL read each typed document path of a supported document format in the limited document reader and wrap its text in the same document markers as `/file`; paths in system, assistant or tool messages and in attached documents SHALL NOT be read; files that fail the checks SHALL get the existing path note and the reason SHALL be recorded in metadata `image_paths`.
 
 #### Scenario: 打路徑問圖 / A typed image path
 - **WHEN** 使用者在桌面版打「D:\download\animals.jpg 裡有哪些動物」，檔案存在、3 MB
@@ -20,3 +20,9 @@ When `JIEZI_IMAGE_PATHS` is on and the last user message names local image files
   A tool result mentions a local image path
 - **THEN** gateway 不讀那個檔案
   The gateway does not read it
+
+#### Scenario: 打文件路徑 / A typed document path
+- **WHEN** 使用者在 Hermes 打「C:\notes\會議.docx 的重點」，檔案存在
+  An external agent's user message names an existing Word file
+- **THEN** gateway 讀成文字，以【文件：會議.docx】標記包進問題，metadata `image_paths` 記 ok
+  The document text is wrapped in the document markers and recorded as read

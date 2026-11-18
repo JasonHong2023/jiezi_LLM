@@ -1,4 +1,4 @@
-> **狀態 / Status**：2026-11-18 提案，等使用者審閱。/ Proposed, awaiting review.
+> **狀態 / Status**：2026-11-18 使用者審閱：OQ1 **預設開**；OQ2 **文件也一起做**；OQ3 Hermes 等外部 agent **照樣讀**。/ Approved: default on, documents too, external agents too.
 
 ## Why
 
@@ -13,6 +13,7 @@ Jiezi chat already turns typed image paths into base64; the gateway does not, so
 
 ## What Changes
 
+- 文件路徑（PDF、Word、PowerPoint、Excel、純文字等，同 `/file` 支援的格式）：在受限子行程讀成文字，用 `/file` 相同的【文件：…】標記包進問題（之後照長文件、段落召回、injection-guard 處理）；文件合計 ≤ 150 萬字（同 jiezi chat）。（OQ2）
 - gateway 在**最後一則使用者訊息**找本機檔案路徑；路徑指向圖片檔時：
   1. 讀檔並檢查：一般檔案、副檔名與檔頭（magic bytes）都是 PNG／JPEG／WebP／GIF、≤ 5 MB（同 `/image`）；
   2. 編成 base64 data URL，以 OpenAI 格式 `image_url` 附在同一則訊息；一題最多 3 張；
@@ -24,7 +25,6 @@ Jiezi chat already turns typed image paths into base64; the gateway does not, so
 
 ## Non-Goals
 
-- 讀非圖片檔（文件仍走 `/file`、附加檔案；見 OQ2）。
 - 用 Claude 的回答訓練芥子（Claude 答案不當訓練資料的規則不變）。
 - 截取使用者桌面畫面。
 
