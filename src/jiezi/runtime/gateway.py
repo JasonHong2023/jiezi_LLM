@@ -684,7 +684,7 @@ class Gateway:
                     rec.pop("dict_appendix", None)
                     return self._memory_reply(
                         rec, t0, stream, e.text + f"\n\n---\n【記憶】{e.at[:10]} 請教{e.provider}的答案（[[{e.title}]]）；"
-                        "要重新請教，請用 --claude 或在聊天中按 F2 切到 jiezi-ask-claude。", training=False)
+                        "要重新請教，請說「這個不對」並附上正確說法，或用 jiezi chat --claude。", training=False)
             notes = notes_prompt(self.memory)
         except Exception as exc:  # noqa: BLE001 - 記憶壞了照常回答 / answer normally if memory fails
             self.log(f"memory: {exc}")
@@ -938,7 +938,8 @@ class Gateway:
         tid = new_id() if self.traj.enabled else None
         # training_use：None 表示訓練前要依授權表確認；請教 Claude 的回答一律 False（design D9）
         # training_use: None means check the license registry before training; Claude consultations are always False
-        rec = {"id": tid, "at": now_iso(), "policy": policy, "stream": stream, "request": body, "tiers": [],
+        from .process import TimedTiers
+        rec = {"id": tid, "at": now_iso(), "policy": policy, "stream": stream, "request": body, "tiers": TimedTiers(),
                "final_tier": None, "status": "ok", "training_use": None, "sources": []}
         # 評測流量（selftest、toolcheck）：不學技能、不存記憶，避免評測污染自己（2026-11-16）
         # Evaluation traffic: no skill learning, no memory saving, so evaluations never contaminate themselves
@@ -962,6 +963,8 @@ class Gateway:
         if self.s.injection_guard:
             self._guard(body, rec, data)
         t0 = time.monotonic()
+        if hasattr(rec["tiers"], "t0"):
+            rec["tiers"].t0 = t0       # 過程的時間和 latency_s 同一個起點 / process times share latency_s's start
         try:
             plan = self._translate_plan(body, policy, json_mode)  # add-translation
         except Exception as exc:  # noqa: BLE001 - TranslateError 等：寫錯的翻譯選項 / malformed translation options
@@ -1732,7 +1735,17 @@ class Gateway:
                 "trajectory_id": rec["id"], "sources": rec.get("sources") or [],
                 "confidence": rec.get("confidence"),
                 **({"vision_check": rec["vision_check"]} if rec.get("vision_check") else {}),
-                **({"image_paths": rec["image_paths"]} if rec.get("image_paths") else {})}
+                **({"image_paths": rec["image_paths"]} if rec.get("image_paths") else {}),
+                "process": self._process(rec)}
+
+    def _process(self, rec: dict) -> list[dict]:
+        """回答的過程（add-answer-process）；整理失敗不影響回答。 / Steps behind the answer; never blocks it."""
+        from .process import steps
+        try:
+            return steps(rec)
+        except Exception as exc:  # noqa: BLE001
+            self.log(f"process: {type(exc).__name__}: {exc}")
+            return []
 
     def _deliver(self, resp: dict, meta: dict, rec: dict, stream: bool) -> Response:
         if rec.get("json_mode"):

@@ -173,3 +173,29 @@ export function nextTheme(theme, store = globalThis.localStorage) {
   try { store?.setItem("jiezi.theme", t); } catch { /* 存不下就只用這次 / this session only */ }
   return t;
 }
+
+// 回答與附錄分開、過程摘要（add-answer-process，使用者 2026-11-18）。附錄格式見 gateway 的 APPENDIX。
+// Split the gateway appendix from the answer and summarise the process (add-answer-process).
+const APPENDIX_HEAD = /\n*-{3,}[ \t]*\n【(字詞轉換|辭典原文|法規原文|參考資料|計算|記憶|課綱資料原文|延伸閱讀)】\n?/g;
+export function splitAppendix(text) {
+  const s = String(text || "");
+  const heads = [...s.matchAll(APPENDIX_HEAD)];
+  if (!heads.length) return { body: s, refs: [] };
+  const refs = heads.map((m, i) => ({
+    title: m[1],
+    text: s.slice(m.index + m[0].length, i + 1 < heads.length ? heads[i + 1].index : s.length).trim(),
+  }));
+  return { body: s.slice(0, heads[0].index).trimEnd(), refs };
+}
+const STEP_SHORT = { files: "讀檔", lookup: "查資料", look: "看圖工具" };
+export function processSummary(process, latency) {
+  const parts = [];
+  for (const st of process || []) {
+    parts.push(STEP_SHORT[st.kind] || st.label);
+    if (st.kind === "answer" && st.check?.startsWith("沒通過")) parts.push("檢查沒過");
+    else if (st.kind === "answer" && st.check && st.check !== "通過") parts.push(st.check);
+    if (st.kind === "answer" && st.error) parts.push("失敗");
+  }
+  const total = latency != null ? `，共 ${Math.round(latency * 10) / 10} 秒` : "";
+  return `過程：${parts.join(" → ") || "直接回答"}${total}`;
+}

@@ -124,6 +124,29 @@ class TestUi(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(json.loads(r.stdout), [["第二題", "/help", "第一題", None, "/help", "第二題", "草稿"], ["a"]])
 
+    def test_answer_appendix_and_process_summary(self):
+        """附錄拆到參考資料、過程摘要（add-answer-process）。 / Appendix split and process summary."""
+        import shutil
+        import subprocess
+        if not shutil.which("node"):
+            self.skipTest("node not installed")
+        js = (ROOT / "ui" / "src" / "api.js").resolve().as_uri()
+        prog = ("globalThis.location = {protocol: 'http:', hostname: 'localhost'};"
+                f"const m = await import({js!r});"
+                "const a = m.splitAppendix('除夕是 2/5。\\n\\n---\\n【計算】\\n- 2027-02-05\\n\\n---\\n【參考資料】\\n- Taiwan.md');"
+                "const b = m.splitAppendix('沒有附錄');"
+                "const p = [{kind: 'lookup', label: '查資料'}, {kind: 'answer', label: '本機作答', check: '沒通過：x'},"
+                " {kind: 'answer', label: '請教 Claude'}];"
+                "console.log(JSON.stringify([a, b, m.processSummary(p, 85.42), m.processSummary([], 2)]));")
+        r = subprocess.run(["node", "--input-type=module", "-e", prog], capture_output=True, text=True, timeout=30)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        a, b, s1, s2 = json.loads(r.stdout)
+        self.assertEqual(a, {"body": "除夕是 2/5。", "refs": [{"title": "計算", "text": "- 2027-02-05"},
+                                                             {"title": "參考資料", "text": "- Taiwan.md"}]})
+        self.assertEqual(b, {"body": "沒有附錄", "refs": []})
+        self.assertEqual(s1, "過程：查資料 → 本機作答 → 檢查沒過 → 請教 Claude，共 85.4 秒")
+        self.assertEqual(s2, "過程：直接回答，共 2 秒")
+
     def test_pasted_key_is_cleaned(self):
         """貼上整行 `JIEZI_GATEWAY_KEY=...` 也能用（使用者 2026-11-18 得到 401）。 / A pasted .env line still works."""
         import shutil

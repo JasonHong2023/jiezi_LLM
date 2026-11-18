@@ -1,7 +1,7 @@
 // 芥子桌面 App 雛形：對話、稽核紀錄、狀態（唯讀；不操控作業系統）。
 // Jiezi desktop prototype: chat, audit log, status (read-only; no OS control).
 import { useEffect, useRef, useState } from "react";
-import { BASE, THEME_LABEL, firstPhase, getJSON, getKey, loadInputs, loadTheme, nextTheme, phaseAfter, phaseLabel, readDocument, recallInput, rememberInput, setKey, stepText, streamChat, withDocuments } from "./api.js";
+import { BASE, THEME_LABEL, firstPhase, processSummary, splitAppendix, getJSON, getKey, loadInputs, loadTheme, nextTheme, phaseAfter, phaseLabel, readDocument, recallInput, rememberInput, setKey, stepText, streamChat, withDocuments } from "./api.js";
 
 const MAX_DOC_CHARS = 1500000;  // 附著文件的總字數上限（和 jiezi chat 相同）/ same cap as jiezi chat
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;  // 和 jiezi chat 的 /image 相同 / same cap as /image in chat
@@ -70,6 +70,48 @@ function Progress({ phase, t0, events }) {
   const s = (now - t0) / 1000;
   return <div className="progress"><span className="spin">{SPINNER[Math.floor(s * 10) % SPINNER.length]}</span>
     {phaseLabel(phase, s, events)}… {Math.floor(s)} 秒</div>;
+}
+
+// 一則訊息：回答本文、參考資料（一直顯示）、過程（預設收合）（add-answer-process，使用者 2026-11-18）
+// One message: the answer, its references (always shown) and the process (folded)
+function Message({ m, live }) {
+  if (m.role !== "assistant") return <div className={`msg ${m.role}`}><div className="body">{m.content}</div></div>;
+  const { body, refs } = splitAppendix(m.content);
+  const steps = m.steps?.length > 0 && <ul className="steps">{m.steps.map((s, j) =>
+    <li key={j} className={s.status}>{stepText(s)}</li>)}</ul>;
+  const proc = m.meta?.process || [];
+  return (
+    <div className="msg assistant">
+      {!m.meta && steps}
+      {m.meta && (proc.length > 0 || steps) && (
+        <details className="process">
+          <summary>{processSummary(proc, m.meta.latency_s)}</summary>
+          <ol>{proc.map((st, j) => (
+            <li key={j}>
+              <b>{st.label}</b>{st.model && <span className="muted"> · {st.model}</span>}
+              {st.t_s != null && <span className="muted"> · {st.t_s} 秒</span>}
+              {st.items?.length > 0 && <div className="muted">{st.items.join("；")}</div>}
+              {st.check && <div className={st.check.startsWith("沒通過") ? "warn" : "muted"}>檢查：{st.check}</div>}
+              {st.error && <div className="warn">錯誤：{st.error}</div>}
+              {st.draft && <details className="draft"><summary>這一步的草稿（沒有採用）</summary><div>{st.draft}</div></details>}
+            </li>
+          ))}</ol>
+          {steps}
+        </details>
+      )}
+      <div className="body">{body}</div>
+      {live && <Progress {...live} />}
+      {refs.length > 0 && (
+        <div className="refs">
+          <div className="refs-title">參考資料</div>
+          {refs.map((r, j) => <div key={j} className="ref"><span className="muted">{r.title}</span><div>{r.text}</div></div>)}
+        </div>
+      )}
+      {m.meta && <div className="meta">{statusLine(m.meta)}</div>}
+      {m.meta?.injection?.suspected?.length > 0 &&
+        <div className="warn">注意：{m.meta.injection.warning}（{m.meta.injection.suspected.join("、")}）</div>}
+    </div>
+  );
 }
 
 function Chat() {
@@ -141,7 +183,9 @@ function Chat() {
       ? [{ type: "text", text: asked }, { type: "image_url", image_url: { url: image.url } }] : asked };
     if (image) history[history.length - 1] = { role: "user", content: `${text}  [圖片：${image.name}]` };
     setImage(null);
-    setMsgs([...history, { role: "assistant", content: "", meta: null, steps: [] }]);
+    // 畫面上的舊訊息保留 meta（過程、狀態列），送出的歷史才只留 role、content
+    // Earlier messages keep their meta on screen; only the outgoing history is reduced to role and content
+    setMsgs([...msgs, history[history.length - 1], { role: "assistant", content: "", meta: null, steps: [] }]);
     setInput("");
     setBusy(true);
     setError("");
@@ -209,15 +253,7 @@ function Chat() {
       <div className="log">
         {msgs.length === 0 && <SeedBanner />}
         {msgs.map((m, i) => (
-          <div key={i} className={`msg ${m.role}`}>
-            {m.steps?.length > 0 && <ul className="steps">{m.steps.map((s, j) =>
-              <li key={j} className={s.status}>{stepText(s)}</li>)}</ul>}
-            <div className="body">{m.content}</div>
-            {busy && progress && i === msgs.length - 1 && <Progress {...progress} />}
-            {m.meta && <div className="meta">{statusLine(m.meta)}</div>}
-            {m.meta?.injection?.suspected?.length > 0 &&
-              <div className="warn">注意：{m.meta.injection.warning}（{m.meta.injection.suspected.join("、")}）</div>}
-          </div>
+          <Message key={i} m={m} live={busy && i === msgs.length - 1 ? progress : null} />
         ))}
         <div ref={end} />
       </div>

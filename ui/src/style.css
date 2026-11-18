@@ -60,3 +60,18 @@ pre { background: var(--panel); border: 1px solid var(--line); padding: .5rem; o
 select, input, a { color: inherit; }
 select { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; font: inherit; }
 .crash pre { white-space: pre-wrap; font-size: .8rem; }
+
+/* 回答的過程與參考資料（add-answer-process）/ answer process and references */
+details.process { margin: 0 0 .4rem; font-size: .85rem; color: var(--muted); }
+details.process > summary { cursor: pointer; user-select: none; }
+details.process ol { margin: .3rem 0 .3rem 1.2rem; padding: 0; }
+details.process li { margin: .25rem 0; }
+details.process li b { color: var(--fg); font-weight: 600; }
+details.draft { margin-top: .2rem; }
+details.draft > div { white-space: pre-wrap; border-left: 3px solid var(--line); padding: .3rem .6rem; color: var(--fg);
+  max-height: 20rem; overflow: auto; }
+.refs { margin-top: .6rem; padding: .5rem .7rem; border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+  font-size: .85rem; }
+.refs-title { font-weight: 600; margin-bottom: .3rem; }
+.ref { margin: .25rem 0; }
+.ref > div { white-space: pre-wrap; line-height: 1.5; }
