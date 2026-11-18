@@ -42,6 +42,11 @@ from .settings import POLICIES, Settings
 LIVE = re.compile(r"https?://|網址|網頁|網站|新聞|天氣|氣溫|下雨|颱風動態|股價|匯率|油價|最新消息|即時|"
                   r"現在幾點|上網查|網路上(找|查|搜)|搜尋一下")
 # 優先走雲端免費模型的轉交原因（使用者 2026-11-18）/ escalation reasons that go to the free cloud models first
+WEB_MEMO_CHARS = 6000   # 整理重點時給本機看的網頁字數（本機上下文 4,096 token）/ page characters for the summary
+WEB_MEMO_PROMPT = ("下面是網頁〈{title}〉（{url}）的文字。請用繁體中文整理成可以記住的重點：先一句話說明這個網頁是什麼，"
+                   "再用 5 到 12 點條列主要內容（名稱、用途、重要數字或步驟），只寫網頁裡有的，不要加入網頁沒有的內容。"
+                   "\n\n網頁文字：\n{text}")
+CANT_READ = re.compile(r"無法(讀取|解析|存取|瀏覽)|看不到|亂碼|讀不到|corrupt|cannot (read|access)", re.I)
 CLOUD_FIRST = frozenset({"context_too_large", "engine_unavailable"})
 # 抱怨或回饋，不是要答案的問題 / complaints and feedback rather than questions
 FEEDBACK = re.compile(r"又(出現|變成|是|有)|怎麼又|還是(有|一樣|錯)|不要再|你又|你剛剛|你剛才|講過了|說過了")
@@ -527,6 +532,17 @@ class Gateway:
                 rec["experience_used"] = [e.id for e in lessons]
                 rec["experience_lessons"] = [e.lesson for e in lessons]
                 found.append((hint_text(lessons), [], True, ""))
+        if getattr(self, "memory", None) is not None and getattr(self.s, "web_read", False):
+            # 問題提到記住過的網站：附上當時整理的重點（add-web-read）/ a remembered site is named: attach its summary
+            from ..webread import recall as web_recall
+            try:
+                hits = web_recall(self.s.root, last["content"] or "")
+            except (OSError, ValueError):
+                hits = []
+            for h in hits:
+                found.append((f"以下是你先前讀過並記住的網頁重點（{h['url']}），可能已過時：\n{h['summary']}",
+                              [{"source": "memory", "page": h.get("page") or h["url"], "kind": "web"}], False,
+                              f"\n\n---\n【記憶】先前讀過的網頁：{h.get('title') or h['url']}（{h['url']}）"))
         if self.s.tools:  # 程式算好的數字 / numbers computed by code
             from ..tools import grounding as tool_grounding
             found.append(tool_grounding(last["content"]))
@@ -643,6 +659,95 @@ class Gateway:
         m["content"] = [{"type": "text", "text": question}, *others, *pics] if others or pics else question
         self.log(f"read paths: {len(images)} image(s), {len(docs)} document(s)")
 
+    async def _read_urls(self, body: dict, rec: dict) -> None:
+        """使用者訊息裡的網址由 gateway 在本機讀取，轉成文字當文件附上（add-web-read；使用者 2026-11-18：
+        「仔細閱讀這個網址的內容並記憶起來」被轉給 Claude、本機又說讀不到）。只讀最後一則使用者訊息、附件以外的網址。
+        URLs in the last user message are fetched locally and attached as documents (add-web-read)."""
+        if not self.s.web_read:
+            return
+        from .. import documents as D
+        from ..webread import MEMO, WebError, fetch, find_urls
+        msgs = body["messages"]
+        idx = next((i for i in range(len(msgs) - 1, -1, -1) if msgs[i].get("role") == "user"), None)
+        if idx is None:
+            return
+        m = msgs[idx]
+        text = message_text(m)
+        urls = find_urls(D.DOC_RE.sub(" ", text))
+        if not urls:
+            return
+        _stage("reading_documents")
+        pages, log = [], []
+        for url in urls:
+            try:
+                page = await fetch(url)
+                pages.append(page)
+                log.append({"url": url, "ok": True, "bytes": page["bytes"], "title": page["title"]})
+            except WebError as exc:
+                log.append({"url": url, "why": str(exc)})
+            except Exception as exc:  # noqa: BLE001 - 讀不到就照舊 / unreadable pages fall back to the old path
+                log.append({"url": url, "why": type(exc).__name__})
+        rec["web_read"] = log
+        if not pages:
+            return
+        rec["web_read_ok"] = True
+        rec["training_use"] = False   # 網頁內容的授權不明 / page licences are unknown
+        if MEMO.search(text):
+            rec["web_memo"] = [{"url": p["url"], "title": p["title"]} for p in pages]
+            rec["_web_pages"] = [p["text"][:WEB_MEMO_CHARS] for p in pages]   # 摘要用，不寫進軌跡 / not logged
+        question = text
+        for page in pages:
+            name = f"{page['title']}（{page['final_url']}）" if page["title"] else page["final_url"]
+            question = D.attach({"name": name, "text": page["text"]}, question)
+        others = [p for p in m["content"] if isinstance(p, dict) and p.get("type") != "text"] \
+            if isinstance(m.get("content"), list) else []
+        m["content"] = [{"type": "text", "text": question}, *others] if others else question
+        self.log(f"read urls: {len(pages)} page(s)")
+
+    def _web_memo(self, rec: dict) -> None:
+        """使用者要記住網頁：在背景請本機把網頁整理成重點，存進記憶，之後相關問題會附上（add-web-read）。
+        When asked to remember a page, the local model writes a summary in the background and it goes into memory."""
+        if not rec.get("web_memo") or rec.get("_web_memo_done") or getattr(self, "memory", None) is None:
+            return
+        rec["_web_memo_done"] = True
+        pages = rec.pop("_web_pages", None) or []
+        rec["memory"] = {"saved": "pending", "why": "web_memo"}
+        try:
+            asyncio.get_running_loop().create_task(self._summarise_pages(rec["web_memo"], pages))
+        except RuntimeError:
+            pass
+
+    async def _summarise_pages(self, memo: list[dict], pages: list[str]) -> None:
+        for page, text in zip(memo, pages):
+            summary = ""
+            try:
+                base = await self.sup.acquire()
+                try:
+                    r = await self.local.post(f"{base}/v1/chat/completions", json={
+                        "model": self.sup.core["name"] if self.sup.core else self.s.core_model,
+                        "messages": [{"role": "user", "content": WEB_MEMO_PROMPT.format(
+                            title=page["title"] or page["url"], url=page["url"], text=text)}],
+                        "temperature": 0.2, "max_tokens": 700, "chat_template_kwargs": {"enable_thinking": False}})
+                    r.raise_for_status()
+                    summary = strip_appendix(_message(r.json()).get("content") or "").strip()
+                finally:
+                    self.sup.release()
+            except Exception as exc:  # noqa: BLE001 - 摘要失敗不影響回答 / never blocks answers
+                self.log(f"web memo: summary failed: {type(exc).__name__}: {exc}")
+            if not summary or escalation.needs_help({"content": summary}, "stop") or CANT_READ.search(summary[:300]):
+                self.log(f"web memo: nothing stored for {page['url']}")
+                continue
+            title = page["title"] or page["url"]
+            try:
+                saved = await anyio.to_thread.run_sync(
+                    self.memory.save_answer, f"網頁「{title}」的內容重點",
+                    f"{summary}\n\n（來源：{page['url']}，{now_iso()[:10]} 由芥子在本機讀取整理）", "local", None)
+                from ..webread import remember
+                await anyio.to_thread.run_sync(remember, self.s.root, page["url"], page["title"], summary, saved)
+                self.log(f"web memo: saved {saved}")
+            except Exception as exc:  # noqa: BLE001
+                self.log(f"web memo: {exc}")
+
     def _path_note(self, body: dict, rec: dict) -> None:
         """問題裡只打了本機檔案路徑、沒附檔：提醒模型看不到內容、不要猜（使用者 2026-11-18：模型憑 iStock 檔名猜了圖片內容）。
         A local path typed without attaching the file: tell the model it cannot see it and must not guess."""
@@ -715,7 +820,8 @@ class Gateway:
         q = users[-1]["content"]
         try:
             m = REMEMBER.match(q)
-            if m:
+            from ..webread import URL_RE
+            if m and not (self.s.web_read and URL_RE.search(q)):   # 「記住＋網址」要先讀網頁 / read the page first
                 self.memory.save_note(m.group(1))
                 rec["sources"] = [{"source": "memory", "page": "使用者要我記住的事", "kind": "note"}]
                 rec.pop("dict_appendix", None)
@@ -1028,6 +1134,7 @@ class Gateway:
             if m.get("role") == "assistant" and isinstance(m.get("content"), str):
                 m["content"] = strip_appendix(m["content"])
         await self._read_paths(body, rec)
+        await self._read_urls(body, rec)
         await anyio.to_thread.run_sync(self._ground, body, rec, data)
         self._attach_skills(body, rec, data)
         self._path_note(body, rec)
@@ -1476,6 +1583,8 @@ class Gateway:
         # 只看問題本身：附加文件裡出現「網站、新聞」等字不代表要上網查（2026-11-17 桌面網頁實測誤判）
         # Only the question counts: words like "website" inside an attached document do not need the web
         if not LIVE.search(DOC_RE.sub("", last["content"])) or TRANSCRIPT.search(last["content"]):
+            return None
+        if rec.get("web_read_ok"):   # 網頁已在本機讀好附上 / the page was read locally (add-web-read)
             return None
         if any(s.get("source") in ("tools", "memory") for s in rec.get("sources") or []):
             return None  # 「今天星期幾」程式已算好；記憶裡有答案 / computed or remembered
@@ -1938,6 +2047,10 @@ class Gateway:
         """經驗的結算（附上的經驗記有效／無效、寫新經驗）；回傳要放進 meta 的欄位。 / Settle lessons for this answer."""
         provider = next((t.get("provider") for t in reversed(rec.get("tiers") or [])
                          if isinstance(t, dict) and t.get("answer") and t.get("tier") == 3), None)
+        try:
+            self._web_memo(rec)
+        except Exception as exc:  # noqa: BLE001
+            self.log(f"web memo: {type(exc).__name__}: {exc}")
         try:
             self._experience_done(rec, tier, escalation_reason, provider)
         except Exception as exc:  # noqa: BLE001

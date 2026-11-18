@@ -60,6 +60,10 @@ def steps(rec: dict) -> list[dict]:
     if rec.get("image_paths"):
         out.append({"kind": "files", "label": "讀取檔案",
                     "items": [p["path"] + ("" if p.get("ok") else f"（{p.get('why')}）") for p in rec["image_paths"]]})
+    if rec.get("web_read"):
+        out.append({"kind": "web", "label": "讀取網頁",
+                    "items": [(w.get("title") or w["url"]) + ("" if w.get("ok") else f"（{w.get('why')}）")
+                              for w in rec["web_read"]]})
     if rec.get("sources"):
         labels = list(dict.fromkeys(_source_label(s) for s in rec["sources"] if isinstance(s, dict)))
         if labels:

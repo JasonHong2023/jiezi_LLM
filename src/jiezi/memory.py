@@ -264,7 +264,7 @@ class Memory:
     def save_answer(self, question: str, answer: str, provider: str, model: str | None) -> str | None:
         if not answer or not answer.strip():
             return None
-        who = "Claude" if provider == "claude" else "雲端"
+        who = {"claude": "Claude", "local": "本機（讀網頁）"}.get(provider, "雲端")
         return self._write_entry(question, answer, "qa", f"{who}（{model}）" if model else who)
 
     def save_correction(self, question: str, text: str) -> str:

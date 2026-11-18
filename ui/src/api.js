@@ -228,7 +228,7 @@ export function refParts(line) {
   if (last < line.length) out.push({ text: line.slice(last) });
   return out;
 }
-const STEP_SHORT = { files: "讀檔", lookup: "查資料", look: "看圖工具", experience: "參考經驗" };
+const STEP_SHORT = { files: "讀檔", lookup: "查資料", look: "看圖工具", experience: "參考經驗", web: "讀網頁" };
 export function processSummary(process, latency) {
   const parts = [];
   for (const st of process || []) {
