@@ -1,8 +1,8 @@
-"""內建工具：計算、單位換算、日期（add-tools）。由程式算好再交給模型，不讓小模型自己算。
-Built-in tools: arithmetic, unit conversion and dates (add-tools). Computed by code and handed to the model, so the
-small model never does the math itself.
+"""內建工具：計算、單位換算、日期與國定假日（add-tools、add-holiday-tool）。由程式算好再交給模型。
+Built-in tools: arithmetic, unit conversion, dates and statutory holidays. Computed by code, not by the small model.
 
-全部只用標準函式庫；計算用語法樹白名單求值，不使用 eval。 / Standard library only; arithmetic uses an AST whitelist."""
+計算、換算、日期只用標準函式庫且用語法樹白名單求值，不使用 eval；國定假日在有法規資料庫時才延遲載入
+lunar-python。 / Core math uses only the standard library; holidays load lunar-python lazily when a law DB is present."""
 
 from __future__ import annotations
 
@@ -12,6 +12,10 @@ import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from fractions import Fraction
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # 避免在純工具測試裡拉進法規／曆法模組 / keep the pure tool path dependency-light
+    from .laws import Laws
 
 FW = str.maketrans("０１２３４５６７８９．，＋－＊／（）＝％", "0123456789.,+-*/()=%")
 MAX_EXP, MAX_DIGITS = 200, 60
@@ -295,22 +299,41 @@ def date_facts(text: str, now: datetime | None = None) -> list[str]:
 
 
 # ── 對話 / Chat ──
-def grounding(text: str, now: datetime | None = None) -> tuple[str, list[dict], bool, str] | None:
+def grounding(text: str, now: datetime | None = None, laws: Laws | None = None) -> tuple[str, list[dict], bool, str] | None:
     """回傳 (system 訊息, 來源, 可訓練, 附錄)；沒有可算的就回傳 None。 / Computed facts for the chat, or None."""
     text = (text or "")[:2000]
     calc, conv, dates = calculations(text), conversions(text), date_facts(text, now)
     lunar = lunar_facts(text, now)
     lines = [*calc, *conv, *dates, *lunar]
-    if not lines:
+
+    holiday = None
+    if laws is not None:
+        from .holidays import grounding as holidays_grounding  # noqa: PLC0415 - 有法規 DB 才載入
+        holiday = holidays_grounding(laws, text, now.date() if now else None)
+    if not lines and not holiday:
         return None
+
     sources = ([{"source": "tools", "tool": "calculator"}] if calc else []) + \
               ([{"source": "tools", "tool": "units"}] if conv else []) + \
               ([{"source": "tools", "tool": "dates"}] if dates else []) + \
               ([{"source": "tools", "tool": "lunar"}] if lunar else [])
-    body = "\n".join(f"- {x}" for x in lines)
-    content = ("以下是程式計算的結果，是正確的。回答時直接採用這些數字，不要自己重算或改動；"
-               "不必另外說明計算方式，系統會在回答後附上計算過程。\n\n" + body)
-    return content, sources, True, "\n\n---\n【計算】\n" + body
+    trainable = True
+    if lines:
+        body = "\n".join(f"- {x}" for x in lines)
+        content = ("以下是程式計算的結果，是正確的。回答時直接採用這些數字，不要自己重算或改動；"
+                   "不必另外說明計算方式，系統會在回答後附上計算過程。\n\n" + body)
+        appendix = "\n\n---\n【計算】\n" + body
+    else:
+        content, appendix = "", ""
+
+    if holiday:
+        hc, hs, ht, ha = holiday
+        sources = sources + hs + [{"source": "tools", "tool": "holidays"}]
+        trainable = trainable and ht
+        content = (content + "\n\n" + hc).lstrip("\n")
+        appendix += ha
+
+    return content, sources, trainable, appendix
 
 
 # ── 農曆（lunar-python，MIT；使用者 2026-11-16 同意；沒裝時略過）──

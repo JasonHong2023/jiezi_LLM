@@ -11,7 +11,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tests"))
 
+from jiezi import laws as L  # noqa: E402
 from jiezi import tools as T  # noqa: E402
+from test_holidays import build  # noqa: E402
 
 NOW = datetime(2026, 11, 16, 10, 30)
 
@@ -56,6 +58,25 @@ class TestUnitsAndDates(unittest.TestCase):
         self.assertIn("還有 39 天", facts("距離 12月25日 還有幾天"))
         self.assertIn("相差 93 天", facts("2026-11-16 到 2027/2/17 差幾天"))
         self.assertIn("2027-02-24", facts("100天後是幾號"))
+
+
+class TestHolidayTools(unittest.TestCase):
+    def test_tools_grounding(self):
+        t, root = build()
+        try:
+            lw = L.Laws(L.db_path(root))
+            content, sources, trainable, appendix = T.grounding("台灣2027年的國定假日有哪些?", NOW, laws=lw)
+            self.assertIn("2027-02-05", content)
+            self.assertIn("【計算】", appendix)
+            self.assertIn("【法規出處】", appendix)
+            self.assertIn("computed-holidays", [s["source"] for s in sources])
+            self.assertIn("tools", [s["source"] for s in sources])
+            self.assertTrue(trainable)
+        finally:
+            t.cleanup()
+
+    def test_no_law_db_stays_quiet(self):
+        self.assertIsNone(T.grounding("台灣2027年的國定假日有哪些?", NOW))
 
 
 class TestGatewayTools(unittest.TestCase):
