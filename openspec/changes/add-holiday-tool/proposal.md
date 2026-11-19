@@ -1,4 +1,4 @@
-> **狀態 / Status**：2026-11-19 提案，等使用者審閱。/ Proposed, awaiting review.
+> **狀態 / Status**：2026-11-19 使用者核准，依 design.md 實作。/ Approved by user, implement per design.md.
 
 ## Why
 
@@ -30,3 +30,8 @@ The holiday question is computable from the statute already in the local law dat
 ## Impact
 
 - 程式：`src/jiezi/tools.py`（或新 `holidays.py`）、測試；不需要新套件（lunar-python 已安裝）。
+
+## 修正紀錄 / Amendment (2026-11-19)
+
+- What Changes 原寫「逢星期六於前一上班日、逢星期日於後一上班日」為通用往例；補充：除夕及春節依人事總處 116 年公告改為逢例假日往後補，故 2027 初一、初二補 2/9、2/10（非 2/3、2/9）。
+- 同公告之跨年規則：隔年 1/1 逢星期六時，於當年 12/31 補假；2027 清單因此含 2027-12-31。以上皆仍標「推算，以公告為準」。
