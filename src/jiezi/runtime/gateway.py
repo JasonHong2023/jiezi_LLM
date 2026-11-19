@@ -503,6 +503,12 @@ class Gateway:
             # Questions about Jiezi itself use the system prompt only (a live test pulled in Taiwan.md's self-introduction)
             rec["grounding_skipped"] = "about_jiezi"
             return
+        tool_grounded = None
+        if self.s.tools:
+            from ..tools import grounding as tool_grounding
+            tool_grounded = tool_grounding(last["content"], laws=self.laws)
+            if tool_grounded is not None:
+                rec["grounded_by_tools"] = True
         found = []
         # 附了長文件：問題是在問文件，不用語意向量去知識庫／法規撈「看起來相關」的段落（2026-11-17 實測會蓋過文件、
         # 佔掉上下文）；問題裡直接點名的文章或法條照樣附。
@@ -519,7 +525,7 @@ class Gateway:
         # An image question depends on the image: no text memory (a live test recalled the earlier path-only answer)
         if self.memory is not None and not last.get("_img") and not CREATIVE.search(last["content"] or ""):  # 記憶最優先
             from ..memory import recall_block
-            found.append(recall_block(last["content"], self.memory))
+            found.append(recall_block(last["content"], self.memory, include_answer=tool_grounded is None))
         if getattr(self, "experience", None) is not None and not last.get("_img") \
                 and not CREATIVE.search(last["content"] or ""):
             # 過去解題的經驗當提示（local-first-solving）/ lessons from earlier questions as hints
@@ -543,9 +549,8 @@ class Gateway:
                 found.append((f"以下是你先前讀過並記住的網頁重點（{h['url']}），可能已過時：\n{h['summary']}",
                               [{"source": "memory", "page": h.get("page") or h["url"], "kind": "web"}], False,
                               f"\n\n---\n【記憶】先前讀過的網頁：{h.get('title') or h['url']}（{h['url']}）"))
-        if self.s.tools:  # 程式算好的數字 / numbers computed by code
-            from ..tools import grounding as tool_grounding
-            found.append(tool_grounding(last["content"]))
+        if tool_grounded is not None:  # 程式算好的數字 / numbers computed by code
+            found.append(tool_grounded)
         if self.dictionary is not None:
             from ..dictionary import grounding
             found.append(grounding(self.dictionary, last["content"]))
@@ -845,7 +850,8 @@ class Gateway:
                 rec.pop("dict_appendix", None)
                 return self._memory_reply(rec, t0, stream, f"根據你 {best.at[:10]} 的更正：{best.text}\n\n---\n"
                                           f"【記憶】[[{best.title}]]（問題：{best.question}）")
-            if policy in ("jiezi", "jiezi-local") and storable(q, len(users) - 1) is None and not corrections:
+            if policy in ("jiezi", "jiezi-local") and storable(q, len(users) - 1) is None and not corrections \
+                    and not rec.get("grounded_by_tools"):
                 found = self.memory.find_answer(q)
                 if found and found[1] >= EXACT:
                     e = found[0]

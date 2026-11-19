@@ -305,6 +305,45 @@ class TestGateway(unittest.TestCase):
             self.assertEqual(r.json()["jiezi"]["escalation"], "context_too_large")
             self.assertEqual(self.local_seen, [])
 
+    def test_holiday_question_is_grounded_locally(self):
+        from jiezi import laws as L
+        from test_holidays import blob, manifest
+        data = blob()
+        (self.tmp / "laws").mkdir()
+        (self.tmp / "laws" / "manifest.toml").write_text(manifest(data), encoding="utf-8")
+        L.build(self.tmp, download=lambda u, d: d.write_bytes(data), log=lambda *_: None)
+        answer = {"role": "assistant", "content": "依本機法規計算，2027 年 2 月 5 日是除夕。"}
+        with self.client([answer], cloud_on=True) as c:
+            r = self.post(c, {"model": "jiezi", "messages": [{"role": "user", "content": "台灣2027年的國定假日有哪些?"}]}).json()
+        self.assertEqual((r["jiezi"]["tier"], self.cloud_calls), (0, []))
+        self.assertTrue(any("【計算】" in m["content"] and "2027-02-05" in m["content"]
+                            for m in self.local_seen[0]["messages"] if m["role"] == "system"))
+        self.assertIn("computed-holidays", [s["source"] for s in r["jiezi"]["sources"]])
+        out = r["choices"][0]["message"]["content"]
+        self.assertIn("【計算】", out)
+        self.assertIn("【法規出處】", out)
+
+    def test_stale_claude_memory_does_not_override_holiday_calculation(self):
+        from jiezi import laws as L
+        from jiezi.memory import Memory, wiki_path
+        from test_holidays import blob, manifest
+        data = blob()
+        (self.tmp / "laws").mkdir()
+        (self.tmp / "laws" / "manifest.toml").write_text(manifest(data), encoding="utf-8")
+        L.build(self.tmp, download=lambda u, d: d.write_bytes(data), log=lambda *_: None)
+        Memory(wiki_path(self.tmp)).save_answer("台灣2027年的國定假日有哪些?", "舊答案：不是 2 月 5 日。",
+                                                "claude", "claude-opus-5-5")
+        answer = {"role": "assistant", "content": "依本機法規計算，2027 年 2 月 5 日是除夕。"}
+        with self.client([answer], cloud_on=True) as c:
+            r = self.post(c, {"model": "jiezi", "messages": [
+                {"role": "user", "content": "台灣2027年的國定假日有哪些?"}]}).json()
+        self.assertEqual((r["jiezi"]["tier"], self.cloud_calls), (0, []))
+        self.assertIn("computed-holidays", [s["source"] for s in r["jiezi"]["sources"]])
+        out = r["choices"][0]["message"]["content"]
+        self.assertIn("【計算】", out)
+        self.assertNotIn("舊答案", out)
+        self.assertFalse(any("舊答案" in m["content"] for m in self.local_seen[0]["messages"]))
+
     def test_document_words_do_not_trigger_web_routing(self):
         from jiezi.documents import attach
         q = attach({"name": "週會.txt", "text": "決議：新版網站 12 月 1 日上線。\n待辦：王小明完成測試"}, "待辦事項有哪些？")

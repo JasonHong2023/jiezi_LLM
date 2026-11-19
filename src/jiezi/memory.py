@@ -329,15 +329,16 @@ def notes_prompt(m: Memory) -> str | None:
     return "使用者先前要你記住的事（回答時要遵守、參考）：\n" + "\n".join(f"- {n.text}" for n in notes)
 
 
-def recall_block(question: str, m: Memory) -> tuple[str, list[dict], bool, str] | None:
+def recall_block(question: str, m: Memory, include_answer: bool = True) -> tuple[str, list[dict], bool, str] | None:
     """類似問題的記憶（更正優先，再來是先前請教的答案）→ (system 訊息, 來源, 可訓練, 附錄)。
-    Corrections first, then earlier answers → (system message, sources, trainable, appendix)."""
+    `include_answer=False` 保留使用者更正、不附舊答案（程式有計算結果時用）。
+    Corrections first, then earlier answers; set `include_answer=False` to keep corrections but skip stale answers."""
     blocks, sources, trainable, notes = [], [], True, []
     for c in m.corrections_for(question):
         blocks.append(f"【使用者更正（{c.at[:10]}）】問題：{c.question}\n正確說法：{c.text}")
         sources.append({"source": "memory", "page": c.title, "kind": "correction"})
         notes.append(f"- 依你 {c.at[:10]} 的更正（[[{c.title}]]）")
-    found = m.find_answer(question)
+    found = m.find_answer(question) if include_answer else None
     if found:
         a, sim = found
         text = a.text if len(a.text) <= MAX_ANSWER_CHARS else a.text[:MAX_ANSWER_CHARS] + "……"
