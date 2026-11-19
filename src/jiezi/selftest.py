@@ -226,7 +226,13 @@ def coverage(root: Path) -> dict:
     """不跑模型：只看 gateway 會不會附上含正確答案的資料（觸發與檢索的上限）。
     Without the model: does the gateway attach data that contains the answer? (an upper bound for triggers/retrieval)"""
     from . import tools
-    parts = [lambda q: tools.grounding(q)]
+    law = None
+    try:
+        from .laws import Laws, db_path as ldb, grounding as lg
+        law = Laws(ldb(root))
+    except Exception:  # noqa: BLE001
+        pass
+    parts = [lambda q: tools.grounding(q, laws=law)]
     try:
         from .dictionary import Dictionary, db_path, grounding
         d = Dictionary(db_path(root))
@@ -245,12 +251,8 @@ def coverage(root: Path) -> dict:
         parts.append(lambda q: kg(k, q))
     except Exception:  # noqa: BLE001
         pass
-    try:
-        from .laws import Laws, db_path as ldb, grounding as lg
-        lw = Laws(ldb(root))
-        parts.append(lambda q: lg(lw, q))
-    except Exception:  # noqa: BLE001
-        pass
+    if law is not None:
+        parts.append(lambda q: lg(law, q))
     by, misses = {}, []
     for it in build(root):
         found = [r for r in (p(it.question) for p in parts) if r]
