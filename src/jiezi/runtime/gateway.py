@@ -1118,6 +1118,7 @@ class Gateway:
             json_mode = jsonout.spec(body) is not None  # add-json-output
         except jsonout.BadFormat as exc:
             return _err(400, str(exc), "invalid_response_format")
+        agent_contract = body.pop("agent_contract", None)  # A1：只給代理用，不轉送引擎、不進原始 request
         tid = new_id() if self.traj.enabled else None
         # training_use：None 表示訓練前要依授權表確認；請教 Claude 的回答一律 False（design D9）
         # training_use: None means check the license registry before training; Claude consultations are always False
@@ -1132,7 +1133,7 @@ class Gateway:
             rec["json_mode"] = True
         if body.pop("jiezi_agent", None):  # 唯讀代理（add-agent-readonly）/ read-only agent
             if self.s.agent:
-                return await self._agent(body, rec, policy, stream, json_mode)
+                return await self._agent(body, rec, policy, stream, json_mode, agent_contract)
             rec["agent"] = {"enabled": False}  # 關閉時照一般請求處理 / handled as a normal request when off
         # 查資料可能要啟動 embedding 引擎，放到執行緒以免卡住其他請求 / may start the embedder; off the event loop
         data: list[dict] = []  # gateway 自己附加的資料訊息 / data messages the gateway attached
@@ -1237,21 +1238,53 @@ class Gateway:
             self.sup.release()
 
     # ── 唯讀代理（add-agent-readonly）/ Read-only agent ──
-    async def _agent(self, body: dict, rec: dict, policy: str, stream: bool, json_mode: bool) -> Response:
+    async def _agent(self, body: dict, rec: dict, policy: str, stream: bool, json_mode: bool,
+                     contract: object | None = None) -> Response:
         """模型在本機想、工具在 MCP 子行程裡做（授權與稽核在那裡）；檔案內容不送到 Claude 或雲端（OQ2）。
         The local model plans; tools run in the MCP child (grants and audit live there); file contents never leave
         the machine (OQ2)."""
         import asyncio
+        from ..agent import contract as C
         from ..agent import loop as A
+        from ..agent import tools as T
         from ..agent.grants import Grants
+        started = now_iso()
+        messages = body.get("messages") or []
+        goal = next((m.get("content") for m in reversed(messages)
+                     if isinstance(m, dict) and m.get("role") == "user" and isinstance(m.get("content"), str)), None)
+        norm = C.normalize(contract, step_ceiling=self.s.agent_max_steps, available_tools=T.NAMES, implicit_goal=goal)
+        initial = {
+            "steps": [], "contract": norm.contract,
+            "contract_status": "accepted" if norm.ok else "clarification",
+            "effective_tools": list(norm.contract.get("effective_tools") or []),
+            "effective_budget": dict(norm.contract.get("effective_budget") or {}),
+            "terminal_state": "running", "started_at": started, "terminal_at": None,
+        }
+
+        def mark_terminal(state: str, reason: str | None = None, info: dict | None = None) -> None:
+            a = rec.setdefault("agent", {"steps": []})
+            a.update(initial)
+            if info:
+                a.update(info)
+            a.setdefault("started_at", started)
+            if not a.get("terminal_at"):
+                a["terminal_at"] = now_iso()
+            a["terminal_state"] = state
+            if reason:
+                a["terminal_reason"] = reason
+
+        def fail(code: int, message: str, kind: str, reason: str | None = None) -> JSONResponse:
+            mark_terminal("failed", reason or kind)
+            return self._finish_error(rec, code, message, kind)
+
         if policy not in ("jiezi", "jiezi-local"):
-            return _err(400, "唯讀代理只在本機執行（檔案內容不送出），請用 jiezi 或 jiezi-local / the agent runs locally "
+            return fail(400, "唯讀代理只在本機執行（檔案內容不送出），請用 jiezi 或 jiezi-local / the agent runs locally "
                              "only; use the jiezi or jiezi-local policy", "agent_policy")
         if body.get("tools") or json_mode or has_images(body):
-            return _err(400, "唯讀代理不能同時帶自己的工具、JSON 格式或圖片 / the agent cannot be combined with client "
+            return fail(400, "唯讀代理不能同時帶自己的工具、JSON 格式或圖片 / the agent cannot be combined with client "
                              "tools, JSON mode or images", "agent_unsupported")
         rec["training_use"] = False  # 內容是使用者的私人檔案 / the user's private files
-        rec["agent"] = {"steps": []}
+        rec.setdefault("agent", {"steps": []})
         t0 = time.monotonic()
         folders = [str(f) for f in Grants(self.s.root).folders()]
         if self.sup.status == "unloaded":
@@ -1259,8 +1292,8 @@ class Gateway:
         try:
             base = await self.sup.acquire()
         except EngineUnavailable as exc:
-            return self._finish_error(rec, 503, f"唯讀代理需要本機模型（檔案內容不會送到雲端）；本機引擎無法使用：{exc} / "
-                                                "the agent needs the local engine", "engine_unavailable")
+            return fail(503, f"唯讀代理需要本機模型（檔案內容不會送到雲端）；本機引擎無法使用：{exc} / "
+                             "the agent needs the local engine", "engine_unavailable")
 
         async def complete(msgs: list[dict], schemas: list | None) -> dict:
             b = {"messages": msgs, "temperature": 0.3, **({"tools": schemas} if schemas else {})}
@@ -1268,18 +1301,23 @@ class Gateway:
 
         async def work(emit) -> tuple[dict, dict]:
             async with A.McpClient(self.s.root) as mcp:
-                return await A.run(body["messages"], complete, mcp, folders, emit, rec["id"], self.s.agent_max_steps)
+                return await A.run(body["messages"], complete, mcp, folders, emit, rec["id"],
+                                   self.s.agent_max_steps, contract)
 
         def finish(msg: dict, info: dict) -> tuple[dict, dict]:
-            rec["agent"] = info
-            if info.get("suspected"):
-                rec["injection"] = {"suspected": info["suspected"], "where": ["agent tool results"]}
+            mark_terminal(info.get("terminal_state", "completed"), info.get("terminal_reason"), info)
+            a = rec["agent"]
+            if a.get("suspected"):
+                rec["injection"] = {"suspected": a["suspected"], "where": ["agent tool results"]}
             resp = {"id": f"chatcmpl-{rec['id']}", "object": "chat.completion", "created": int(time.time()),
                     "model": self.sup.core["name"] if self.sup.core else self.s.core_model,
                     "choices": [{"index": 0, "message": {"role": "assistant", "content": msg.get("content") or ""},
                                  "finish_reason": "stop"}]}
             meta = self._meta(rec, 0, resp, None, t0)
-            meta["agent"] = {"steps": info["steps"], "step_limit": info["step_limit"], "folders": len(folders)}
+            meta["agent"] = {"steps": a["steps"], "step_limit": a.get("step_limit", False), "folders": len(folders),
+                             "contract_status": a.get("contract_status"), "terminal_state": a.get("terminal_state"),
+                             "effective_tools": a.get("effective_tools", []),
+                             "effective_budget": a.get("effective_budget", {})}
             rec.update(final_tier=0, jiezi=meta)
             return resp, meta
 
@@ -1289,6 +1327,7 @@ class Gateway:
             try:
                 msg, info = await work(nothing)
             except Exception as exc:  # noqa: BLE001
+                mark_terminal("failed", f"{type(exc).__name__}: {exc}")
                 return self._finish_error(rec, 502, f"代理執行失敗 / agent failed: {type(exc).__name__}: {exc}",
                                           "agent_error")
             finally:
@@ -1316,6 +1355,7 @@ class Gateway:
                         yield _sse({"object": "jiezi.agent.step", "choices": [], "jiezi_agent": ev})
                 await task
                 if "err" in out:
+                    mark_terminal("failed", f"{type(out['err']).__name__}: {out['err']}")
                     rec.update(status="agent_error", error=str(out["err"]))
                     self.traj.write(rec)
                     written = True
@@ -1337,6 +1377,7 @@ class Gateway:
                             pass
                 self.sup.release()
                 if not written:
+                    mark_terminal("aborted", "client cancelled")
                     rec.update(status="cancelled")
                     self.traj.write(rec)
 
