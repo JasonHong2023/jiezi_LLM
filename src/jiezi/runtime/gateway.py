@@ -664,6 +664,36 @@ class Gateway:
         m["content"] = [{"type": "text", "text": question}, *others, *pics] if others or pics else question
         self.log(f"read paths: {len(images)} image(s), {len(docs)} document(s)")
 
+    def _scrapling_page(self, url: str, why: str) -> dict | None:
+        """opt-in 回退：web-fetch 讀不到時，用政策核准的 scrapling MCP 再試一次；只回中繼資料與清理後文字。
+        Opt-in fallback: retry a failed web-fetch through the policy-cleared scrapling MCP, with metadata-only audit."""
+        config = getattr(self.s, "scrapling", None)
+        if config is None or not config.enabled:
+            return None
+        from urllib.parse import urlsplit
+
+        from ..agent import audit
+        from ..scrapling_mcp import Backend, build_adapter
+
+        try:
+            host = urlsplit(url).hostname or ""
+        except ValueError:
+            host = ""
+        audit.write(self.s.root, {"tool": "make_request", "host": host, "decision": "fallback",
+                                  "status": "selected", "backend": Backend.SCRAPLING, "why": why[:200]})
+        adapter = build_adapter(config, self.s.root)
+        try:
+            text = adapter.fetch("make_request", url)
+        except Exception as exc:  # noqa: BLE001 - 回退失敗不擋住原本的 web-read 錯誤 / fallback never blocks the answer
+            self.log(f"scrapling fallback: {type(exc).__name__}: {exc}")
+            return None
+        finally:
+            adapter.close()
+        if not text.strip():
+            return None
+        return {"url": url, "final_url": url, "title": "", "text": text,
+                "bytes": len(text.encode("utf-8"))}
+
     async def _read_urls(self, body: dict, rec: dict) -> None:
         """使用者訊息裡的網址由 gateway 在本機讀取，轉成文字當文件附上（add-web-read；使用者 2026-11-18：
         「仔細閱讀這個網址的內容並記憶起來」被轉給 Claude、本機又說讀不到）。只讀最後一則使用者訊息、附件以外的網址。
@@ -671,6 +701,7 @@ class Gateway:
         if not self.s.web_read:
             return
         from .. import documents as D
+        from ..scrapling_mcp import Backend
         from ..webread import MEMO, WebError, fetch, find_urls
         msgs = body["messages"]
         idx = next((i for i in range(len(msgs) - 1, -1, -1) if msgs[i].get("role") == "user"), None)
@@ -687,9 +718,16 @@ class Gateway:
             try:
                 page = await fetch(url)
                 pages.append(page)
-                log.append({"url": url, "ok": True, "bytes": page["bytes"], "title": page["title"]})
+                log.append({"url": url, "ok": True, "bytes": page["bytes"], "title": page["title"],
+                            "backend": Backend.WEB_FETCH})
             except WebError as exc:
-                log.append({"url": url, "why": str(exc)})
+                page = await anyio.to_thread.run_sync(self._scrapling_page, url, str(exc))
+                if page is not None:
+                    pages.append(page)
+                    log.append({"url": url, "ok": True, "bytes": page["bytes"], "title": page["title"],
+                                "backend": Backend.SCRAPLING, "fallback_from": "web-fetch", "why": str(exc)})
+                else:
+                    log.append({"url": url, "why": str(exc)})
             except Exception as exc:  # noqa: BLE001 - 讀不到就照舊 / unreadable pages fall back to the old path
                 log.append({"url": url, "why": type(exc).__name__})
         rec["web_read"] = log

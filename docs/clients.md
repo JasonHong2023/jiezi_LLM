@@ -28,6 +28,43 @@ cat 會議記錄.txt | scripts/jiezi ask "列出待辦事項"     # 管線輸入
 `jiezi chat` 裡輸入 `/file 路徑`，再輸入問題。文件會一直附著（狀態列顯示檔名），可以對同一份文件連續追問，每一題都會依那一題重新挑段落，也會參考上一輪問答（所以可以問「那相關數據呢？」）；`/file clear` 取消，重開 chat 後要重新 `/file`。掃描版 PDF 會自動用繁中 OCR（每頁約 2 秒）。PowerPoint 讀每張投影片的文字與備忘稿（整張是圖片的簡報讀不到字，請先匯出成 PDF）；Excel 每個工作表讀成「欄 | 欄」的列，日期會轉成 2026-11-16 這種寫法，公式取上次計算的結果，上限 20 萬個儲存格。舊版 .doc／.ppt／.xls 以及 .rtf、OpenDocument（.odt／.odp／.ods）會先用 LibreOffice 轉成新格式再讀（每份多花幾秒到十幾秒）；轉檔只在沒有網路的沙盒裡做，含巨集的檔案只取文字、巨集不會執行。沒裝 LibreOffice 時會提示安裝指令（`scripts/setup/common/install_office`），其他格式不受影響。（更正 2026-11-17：原本寫「不支援」，已由 add-legacy-office 補上。）文件超過本機模型的上下文時，gateway 會先分段處理：要摘要就逐段整理重點再合併；問問題就挑最相關的段落，並標出段落編號。挑段落同時看字面和語意（2026-11-17 起，add-semantic-chunks）：問「加班費怎麼算」也找得到寫著「延長工作時間之工資」的條文。語意比對要先替文件建段落向量（30 段約 1 分鐘，在 CPU 上、只放記憶體），附上文件的當下就在背景開始；第一題最多等 20 秒，還沒建好就先只用字面挑，下一題起就用得到。`JIEZI_DOC_SEMANTIC=off` 可關閉。`JIEZI_DOC_RECALL` 可再加強挑段落（add-chunk-recall）：`reserve` 先放語意排序前 2 名；`hyde` 先讓本機模型猜一句答案、用它和問題各查一次（每題多幾秒，超過 8 秒放棄、退回一般做法；猜的答案只用來找段落，不會給你看）；預設 `off`，量測後再決定。
 In chat use `/file path`. Long documents are condensed by the gateway before answering. The document stays attached for follow-up questions until `/file clear`. Chunks are chosen by wording and by meaning (embeddings, built in the background when the document is attached; the first question waits up to 20 s).
 
+### 選用 Scrapling MCP 網頁抓取（預設關閉）/ Optional Scrapling MCP web fetch (off by default)
+
+這是與 `JIEZI_WEB_READ` 分開的**外部 MCP 後端**；目前屬 PoC，未經核准不建議在正式環境啟用。後端順序固定為 `web-fetch`（首選靜態抓取）→ `scrapling`（`web-fetch` 不可用或需要 JavaScript/stealth 時才用）；兩者都不進預設安裝。
+This is a separate **external MCP backend** from `JIEZI_WEB_READ` and is still a PoC; do not enable it in production without approval. The backend order is fixed: `web-fetch` first, then `scrapling` only when `web-fetch` is unavailable or JavaScript/stealth is needed. Neither group is installed by default.
+
+```bash
+# 只安裝需要的後端 / install only the backend(s) you need
+uv sync --group web-fetch
+uv sync --group scrapling      # 含 JS/stealth；含瀏覽器相依 / includes JS/stealth and browser dependencies
+
+# .env：明確啟用並列出授權站台 / opt in and list authorized sites
+JIEZI_SCRAPLING_MCP=on
+JIEZI_SCRAPLING_ALLOWED_HOSTS=quotes.toscrape.com,books.toscrape.com
+JIEZI_SCRAPLING_TIMEOUT_SECONDS=15
+JIEZI_SCRAPLING_MAX_BYTES=1000000
+JIEZI_SCRAPLING_ALLOW_JS_STEALTH=on   # 需 JS 時才開；可省略（預設 off）/ omit unless JS is required (default off)
+
+scripts/jiezi stop && scripts/jiezi start && scripts/jiezi status   # 重新啟動 gateway / restart the gateway
+```
+
+- `JIEZI_SCRAPLING_MCP` 接受 `on`、`true`、`yes`、`1`；其他值或留空都是關閉。關閉時不註冊工具、不啟動 MCP 行程、不開新連接埠。/ `on`, `true`, `yes` and `1` enable it; anything else (including empty) is off. When off, no tools are registered and no MCP process or port is created.
+- `JIEZI_SCRAPLING_ALLOWED_HOSTS` 為逗號分隔的精確 host；留空等於全部拒絕。前導點（例如 `.example.org`）表示含該網域的子網域。私人 IP、`localhost`、loopback、link-local 與網址內嵌憑證一律拒絕。/ Comma-separated exact hosts; empty denies all. A leading dot includes subdomains. Private IPs, `localhost`, loopback, link-local and credentials in URLs are always rejected.
+- 只抓**自己有授權**的公開網站，並遵守網站條款與 `robots.txt`。不支援登入態、CAPTCHA、付費牆、代理輪替或其他規避控制；這些工具即使出現在 MCP server 也會被濾掉。/ Fetch only authorized public sites and obey their terms and `robots.txt`. Login state, CAPTCHA, paywalls, proxy rotation and other evasion controls are never allowed, even if the server advertises them.
+- 抓取結果當作不可信資料處理，會過既有的提示注入檢查；稽核只記工具、host、政策決定、狀態、位元組數、時間與後端，**不記頁面本文**。/ Fetched text is treated as untrusted data and passes the existing injection guard. Audit records metadata only, never page bodies.
+- **Kill switch**：把 `JIEZI_SCRAPLING_MCP` 設為 `off` 或清空，再重啟 gateway；也可 `uv sync` 時不加這兩個群組移除套件。/ Set `JIEZI_SCRAPLING_MCP=off` (or empty) and restart the gateway; omit the optional groups to remove the packages.
+- **移除條件**：出現未修復 High/Critical 或 CISA KEV 命中、網站條款禁止、資安事故，或 PoC 量測未過時，移除 env 設定、解除安裝 `web-fetch`／`scrapling` 群組，並刪掉轉接器、文件與授權登記；不需資料遷移。/ Remove the env settings, uninstall the groups, and delete the adapter, docs and license entries if an unpatched High/Critical or CISA KEV hit appears, site terms forbid it, a security incident occurs, or the PoC fails; no data migration is needed.
+
+目前資安查證：PyPI metadata 顯示 `scrapling 0.5.1` 為 BSD-3-Clause、`mcp 2.2.0` 為 MIT、`anyio 4.14.2` 為 MIT、`httpx 0.28.1` 為 BSD-3-Clause。OSV 對這些版本仍會回傳歷史通報，但逐一比對影響範圍後，選用版本都已在修正版以上，沒有仍適用的通報。GitHub Advisory Database／NVD 查到的是已修正通報：`anyio < 4.14.2`、`mcp < 2.2.0`、`lxml < 6.1.0`、`curl_cffi < 0.15.0`；本環境沒有 `pip-audit`，改用 PyPI／OSV／GHSA／NVD／CISA KEV 查證，KEV 無命中。第三方靜態稽核頁面只讀到部分內容，17 項 findings 尚未全部查證，因此不作為放行依據。詳見 [授權登記表](licenses.md)。
+Current checks: PyPI metadata lists the fixed versions above under BSD-3-Clause or MIT. OSV still returns historical advisories for those versions, but each selected version is at or above the advisory's fixed version, so none still applies. GHSA/NVD advisories against older `anyio`, `mcp`, `lxml` and `curl_cffi` are fixed by the pinned lower bounds; no CISA KEV hit was found. `pip-audit` is unavailable here, so PyPI, OSV, GHSA, NVD and CISA KEV were used instead. A third-party static audit was only partially readable; its 17 findings are not treated as clearance. See the [license registry](licenses.md).
+
+16:52 更正（R19.4，保留上方原文）：`pip-audit 2.10.1` 其後已安裝在可拋棄 venv `/tmp/opencode/scrapling-resolve`，exit 0、`No known vulnerabilities found`；OSV querybatch 對 74 個套件回 0 hits。真實 PoC（只打授權練習站與公開 challenge demo，未登入、未破解 CAPTCHA、未碰付費牆）：`quotes.toscrape.com` web-fetch 1.13 秒／11,064 bytes、scrapling fallback 2.106 秒／3,261 bytes；使用既有 `chromium-1228` 的 stealth 路徑靜態 5.21 秒／3,261 bytes，JS 頁 `quotes.toscrape.com/js/` 4.956 秒／1,811 bytes 且渲染出預期 quote，injection guard 移除 0 字元；`nopecha.com/demo/cloudflare` 單次 3.926 秒／571 bytes、HTTP 403 interstitial，**未**使用 `solve_cloudflare`，不算成功繞過。稽核只記中繼資料，不記頁面本文。
+
+`uv sync --group scrapling` 只裝 Python 套件，不含 browser 二進位。上述 JS／stealth PoC 復用本機既有 `~/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome`，把 `--executable-path` 放在 MCP server 啟動命令，沒有下載或安裝 browser；目前 adapter 尚未把 browser 路徑設為環境變數，正式啟用前仍需決定要叫使用者安裝相容 browser，或由 adapter 提供可設定路徑。既有系統串接與最終驗證尚未完成，現階段不建議在正式環境啟用。
+16:52 correction (R19.4, original text above kept): `pip-audit 2.10.1` was later installed in the disposable venv `/tmp/opencode/scrapling-resolve`; it exited 0 with `No known vulnerabilities found`, and OSV querybatch returned 0 hits for 74 packages. Real PoCs (authorized practice sites and a public challenge demo only; no login, CAPTCHA solving or paywalls): `quotes.toscrape.com` web-fetch 1.13 s / 11,064 bytes and scrapling fallback 2.106 s / 3,261 bytes; the stealth path with the existing `chromium-1228` fetched the static page in 5.21 s / 3,261 bytes and the JS page `quotes.toscrape.com/js/` in 4.956 s / 1,811 bytes with the expected quote rendered and 0 characters removed by the injection guard; the single `nopecha.com/demo/cloudflare` measurement was 3.926 s / 571 bytes with an HTTP 403 interstitial. `solve_cloudflare` was **not** used, so this is not a successful bypass. Audits record metadata only, never page bodies.
+
+`uv sync --group scrapling` installs Python packages but not a browser binary. The JS/stealth PoCs reused the existing `~/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome`, passing `--executable-path` in the MCP server launch command; no browser was downloaded or installed. The adapter does not yet expose a browser-path setting, so enablement requires deciding whether users must install a compatible browser or the adapter should offer a configurable path. Integration and final verification remain pending; do not enable in production yet.
+
 ### 第 2 層：只請 Claude 指出錯誤（預設關閉）/ Tier 2: feedback only (off by default)
 
 `.env` 設 `JIEZI_TIER2=on` 後，工具呼叫、JSON 輸出、程式語法、短文字翻譯這類「有自動檢查」的問題，本機重試一次仍沒過時，芥子會先只請 Claude（或雲端）指出錯在哪、怎麼改，再由本機照著意見重答一次。通過了就用本機的答案，狀態行顯示 `tier 2 (local + claude 回饋 feedback)`；沒通過才整題轉交。這類回答受 Claude 影響，不會進訓練資料。目前預設關閉，等量測結果（第 2 層通過率 ≥ 40%）再決定要不要預設開啟。

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from ..config import GATEWAY_KEY_VAR, load_env, port_base, project_root
 from ..errors import JieziError
+from ..scrapling_policy import PolicyConfig
 
 LOCAL_HOST = "127.0.0.1"
 POLICIES = ("jiezi", "jiezi-local", "jiezi-cloud", "jiezi-ask-claude")
@@ -103,6 +104,7 @@ class Settings:
     writing_refs: bool = True       # 寫作問題附延伸閱讀連結（add-curriculum D6）/ further-reading links for writing questions
     curriculum: bool = True         # 課綱／國小學習問題先查知識圖譜（add-curriculum）/ curriculum questions use the graph
     consult_auto: bool = True       # 自動請教，不用逐次同意（使用者 2026-11-15）/ auto-consult without per-call approval
+    scrapling: PolicyConfig = field(default_factory=PolicyConfig)  # 選用外部 MCP 抓取後端（add-scrapling-web-read；預設關）
 
     @property
     def cloud_ready(self) -> bool:
@@ -179,6 +181,7 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         rerank_gpu=_onoff(env, "JIEZI_RERANK_GPU", False),
         rerank_timeout_s=float(env.get("JIEZI_RERANK_TIMEOUT") or 10.0),
         consult_web=_onoff(env, "JIEZI_CONSULT_WEB", True),
+        scrapling=_scrapling(env),
         system_prompt=_system_prompt(root, env),
     )
 
@@ -206,3 +209,10 @@ def _consult(env: dict) -> str:
     if v not in ("off", "claude-cli"):
         raise JieziError(f"JIEZI_CONSULT must be off or claude-cli, got {v!r}")
     return v
+
+
+def _scrapling(env: dict) -> PolicyConfig:
+    try:
+        return PolicyConfig.from_env(env)
+    except (TypeError, ValueError) as exc:
+        raise JieziError(f"JIEZI_SCRAPLING_* settings are invalid: {exc}") from exc

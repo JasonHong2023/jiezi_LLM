@@ -34,6 +34,16 @@ train = [
     "torch==2.15.0",
     "transformers==5.23.0",
 ]
+# 選用網頁讀取後端：web-fetch 首選；scrapling 回退（JS/stealth PoC）；兩者都不進預設安裝。
+# Optional web-read backends: web-fetch is preferred, scrapling is fallback (JS/stealth PoC); neither is installed by default.
+web-fetch = [
+    "httpx==0.28.1",
+]
+scrapling = [
+    "scrapling[ai,fetchers]==0.5.1",
+    "anyio>=4.14.2",
+    "mcp>=2.2.0",
+]
 
 [tool.uv]
 default-groups = ["dev"]

@@ -17,6 +17,7 @@ import anyio  # noqa: E402
 import httpx  # noqa: E402
 from starlette.testclient import TestClient  # noqa: E402
 
+from jiezi.agent import audit  # noqa: E402
 from jiezi.config import ensure_gateway_key  # noqa: E402
 from jiezi.errors import JieziError  # noqa: E402
 from jiezi.runtime import escalation  # noqa: E402
@@ -24,6 +25,9 @@ from jiezi.runtime.gateway import Gateway, create_app  # noqa: E402
 from jiezi.runtime.settings import Settings, load_settings  # noqa: E402
 from jiezi.runtime.supervisor import EngineUnavailable, Supervisor  # noqa: E402
 from jiezi.runtime.trajectory import TrajectoryWriter  # noqa: E402
+from jiezi.scrapling_mcp import Backend  # noqa: E402
+from jiezi.scrapling_policy import PolicyConfig  # noqa: E402
+from jiezi.webread import WebError  # noqa: E402
 
 KEY = "k" * 32
 TOOLS = [{"type": "function", "function": {"name": "get_weather", "parameters": {
@@ -52,6 +56,36 @@ class TestSettings(unittest.TestCase):
             self.assertGreater(len(text.split("JIEZI_GATEWAY_KEY=")[1].strip()), 30)
             self.assertEqual(env.stat().st_mode & 0o777, 0o600)
             self.assertFalse(ensure_gateway_key(Path(d)))  # 不覆寫 / never overwritten
+
+    def test_scrapling_defaults_off_and_env(self):
+        s = load_settings(Path("/x"), {"JIEZI_GATEWAY_KEY": KEY})
+        self.assertFalse(s.scrapling.enabled)
+        self.assertEqual(s.scrapling.allowed_hosts, frozenset())
+        self.assertEqual((s.scrapling.timeout_seconds, s.scrapling.max_bytes), (15.0, 1_000_000))
+        self.assertEqual(s.scrapling.approved_tools, frozenset({"make_request"}))
+        s = load_settings(Path("/x"), {
+            "JIEZI_GATEWAY_KEY": KEY,
+            "JIEZI_SCRAPLING_MCP": "on",
+            "JIEZI_SCRAPLING_ALLOWED_HOSTS": " Example.COM , books.toscrape.com ",
+            "JIEZI_SCRAPLING_TIMEOUT_SECONDS": "7.5",
+            "JIEZI_SCRAPLING_MAX_BYTES": "2048",
+            "JIEZI_SCRAPLING_ALLOW_JS_STEALTH": "yes",
+        })
+        self.assertTrue(s.scrapling.enabled)
+        self.assertEqual(s.scrapling.allowed_hosts, frozenset({"example.com", "books.toscrape.com"}))
+        self.assertEqual((s.scrapling.timeout_seconds, s.scrapling.max_bytes), (7.5, 2048))
+        self.assertEqual(s.scrapling.approved_tools, frozenset({"make_request", "browser_fetch_once"}))
+
+    def test_scrapling_blank_numbers_use_defaults_and_bad_numbers_fail(self):
+        s = load_settings(Path("/x"), {
+            "JIEZI_GATEWAY_KEY": KEY,
+            "JIEZI_SCRAPLING_MCP": "on",
+            "JIEZI_SCRAPLING_TIMEOUT_SECONDS": " ",
+            "JIEZI_SCRAPLING_MAX_BYTES": "",
+        })
+        self.assertEqual((s.scrapling.timeout_seconds, s.scrapling.max_bytes), (15.0, 1_000_000))
+        with self.assertRaisesRegex(JieziError, "JIEZI_SCRAPLING.*invalid"):
+            load_settings(Path("/x"), {"JIEZI_GATEWAY_KEY": KEY, "JIEZI_SCRAPLING_TIMEOUT_SECONDS": "abc"})
 
 
 class TestVerifiers(unittest.TestCase):
@@ -126,6 +160,98 @@ def settings(tmp: Path, **kw) -> Settings:
     # The ladder is on by default; older tests cover the tiers without it and switch it off
     return Settings(root=tmp, key=KEY, gateway_port=36100, engine_port=36101, models_dir=tmp,
                     **{"ladder": False, **kw})
+
+
+class FakeScraplingAdapter:
+    def __init__(self, text: str = "fallback body", error: Exception | None = None) -> None:
+        self.text = text
+        self.error = error
+        self.calls: list[tuple[str, str]] = []
+        self.closed = False
+
+    def fetch(self, tool: str, url: str) -> str:
+        self.calls.append((tool, url))
+        if self.error is not None:
+            raise self.error
+        return self.text
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class TestScraplingFallback(unittest.TestCase):
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._t.name)
+
+    def tearDown(self):
+        self._t.cleanup()
+
+    def gateway(self, config: PolicyConfig) -> Gateway:
+        gw = Gateway.__new__(Gateway)   # 只測 _read_urls／_scrapling_page，不載入模型或附件
+        gw.s = settings(self.tmp, scrapling=config)
+        gw.log = lambda *_: None
+        return gw
+
+    def test_web_fetch_success_logs_backend_and_starts_no_adapter(self):
+        gw = self.gateway(PolicyConfig(enabled=True, allowed_hosts=frozenset({"example.com"})))
+        body = {"messages": [{"role": "user", "content": "https://example.com/"}]}
+        page = {"url": "https://example.com/", "final_url": "https://example.com/",
+                "title": "Example", "text": "page body", "bytes": 9}
+        with mock.patch("jiezi.webread.fetch", new=mock.AsyncMock(return_value=page)), \
+                mock.patch("jiezi.scrapling_mcp.build_adapter") as build:
+            rec = {}
+            anyio.run(gw._read_urls, body, rec)
+        self.assertEqual(rec["web_read"][0]["backend"], Backend.WEB_FETCH)
+        build.assert_not_called()
+        self.assertFalse(audit.audit_dir(self.tmp).exists())
+
+    def test_disabled_scrapling_keeps_original_error(self):
+        gw = self.gateway(PolicyConfig())
+        body = {"messages": [{"role": "user", "content": "https://example.com/"}]}
+        with mock.patch("jiezi.webread.fetch", new=mock.AsyncMock(side_effect=WebError("offline"))), \
+                mock.patch("jiezi.scrapling_mcp.build_adapter") as build:
+            rec = {}
+            anyio.run(gw._read_urls, body, rec)
+        self.assertEqual(rec["web_read"], [{"url": "https://example.com/", "why": "offline"}])
+        build.assert_not_called()
+        self.assertFalse(audit.audit_dir(self.tmp).exists())
+
+    def test_enabled_scrapling_fallback_is_logged_and_audited_without_body(self):
+        config = PolicyConfig(enabled=True, allowed_hosts=frozenset({"example.com"}))
+        gw = self.gateway(config)
+        body = {"messages": [{"role": "user", "content": "https://example.com/"}]}
+        adapter = FakeScraplingAdapter()
+        with mock.patch("jiezi.webread.fetch", new=mock.AsyncMock(side_effect=WebError("offline"))), \
+                mock.patch("jiezi.scrapling_mcp.build_adapter", return_value=adapter) as build:
+            rec = {}
+            anyio.run(gw._read_urls, body, rec)
+        build.assert_called_once_with(config, self.tmp)
+        self.assertEqual(adapter.calls, [("make_request", "https://example.com/")])
+        self.assertTrue(adapter.closed)
+        self.assertEqual(rec["web_read"][0]["backend"], Backend.SCRAPLING)
+        self.assertEqual((rec["web_read"][0]["fallback_from"], rec["web_read"][0]["why"]),
+                         ("web-fetch", "offline"))
+        self.assertIn("fallback body", body["messages"][-1]["content"])
+        rows = audit.read(self.tmp)
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual((row["tool"], row["host"], row["decision"], row["status"]),
+                         ("make_request", "example.com", "fallback", "selected"))
+        self.assertEqual((row["backend"], row["why"]), (Backend.SCRAPLING, "offline"))
+        self.assertNotIn("fallback body", repr(row))
+
+    def test_failed_fallback_keeps_original_error_and_closes_adapter(self):
+        gw = self.gateway(PolicyConfig(enabled=True, allowed_hosts=frozenset({"example.com"})))
+        body = {"messages": [{"role": "user", "content": "https://example.com/"}]}
+        adapter = FakeScraplingAdapter(error=RuntimeError("boom"))
+        with mock.patch("jiezi.webread.fetch", new=mock.AsyncMock(side_effect=WebError("offline"))), \
+                mock.patch("jiezi.scrapling_mcp.build_adapter", return_value=adapter):
+            rec = {}
+            anyio.run(gw._read_urls, body, rec)
+        self.assertEqual(rec["web_read"], [{"url": "https://example.com/", "why": "offline"}])
+        self.assertTrue(adapter.closed)
+        self.assertEqual(audit.read(self.tmp)[0]["decision"], "fallback")
 
 
 class Clock:
