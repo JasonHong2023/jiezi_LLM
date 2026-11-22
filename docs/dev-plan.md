@@ -391,3 +391,119 @@
 | [`littlebit-selfevolve.md`](design-principles.md) | 設計原則 P1–P8 與老師階梯 |
 | [`hetero-runtime.md`](design/hetero-runtime.md)、[`hw-autoconfig.md`](design/hw-autoconfig.md) | 多引擎編排、硬體探測與參數決策 |
 | [`../2026-11-12.md`](discussions/2026-11-12.md)、[`../2026-11-14.md`](discussions/2026-11-14.md) | 討論記錄 |
+
+---
+
+## 15. Agent 基本能力與最小硬體開發子計畫（2026-11-19 新增）
+
+> 本節是依 R19.4「更正不刪除」新增的**附加子計畫**，不覆蓋原有 P1–P8、D1–D12、G1–G5、時程、預算與核心模型決策。`Anget` 視為 `Agent` 誤繕。核心仍為 `qwen3.5-4b-q4_k_m`；本子計畫的目標是把能力放在外圍系統（工具、驗證器、記憶、技能、流程、稽核），**不是換更大的模型，也不是把硬體占滿**。
+>
+> 本節只是開發計畫。任何新功能仍依 R4 先提 OpenSpec proposal 並經使用者確認；每個功能都要先判定 `SKILL`／`MCP`／核心內建，先查現成方案，再做資安掃描。每項任務的狀態、預期產出與回填位置記錄在 `~/projects/tmp/LLM_discussion/HANDOFF.md` §3 與 `~/projects/tmp/LLM_discussion/2026-11-19.md` #8。
+
+### 15.1 基本能力矩陣與芥子現況
+
+判定：`IMPLEMENTED`＝已有可驗證實作；`PARTIAL`＝有基礎但還沒完整驗收或覆蓋；`MISSING`＝尚未具備，需先提案。
+
+| # | 基本能力 | 必備行為 | 芥子現況 | 判定 | 下一步 |
+| --- | --- | --- | --- | --- | --- |
+| A1 | 任務契約 | 明確目標、限制、完成條件、風險等級；模糊時先問，不自行擴權 | 使用者規則與 gateway 已有脈絡，但沒有 first-class task contract 欄位 | PARTIAL | 先提案 `add-agent-contract`；把目標／限制／完成條件寫入軌跡 |
+| A2 | 有限代理迴圈 | observe → think → act → verify → answer；步數、呼叫數、輸出字數、超時都要有上限 | `src/jiezi/agent/loop.py`：`MAX_STEPS=6`、`MAX_CALLS_PER_STEP=3`、`RESULT_CHARS=2500`、`OLD_RESULT_CHARS=400`、`TOOLS_BUDGET=2600`、`CALL_TIMEOUT_S=120`；取消會殺 process group；工具結果視為資料不是指示 | IMPLEMENTED | 補極限、逾時、重複呼叫、取消的回歸測試 |
+| A3 | 工具呼叫 | schema 明確；參數型別檢查；不捏造工具；結果可追溯；失敗可重試但不無限重試 | `src/jiezi/agent/tools.py` 提供 `list_dir`／`find_files`／`read_file`／`file_info`；`runtime/escalation.py` 驗證 `tool_calls` 或 `[f(a=1)]` 文字格式；`toolcheck` 已從 33/50 提升到 43–44/50 [實測] | PARTIAL | 續做 `add-strong-tool-calling`；ACEBench／BFCL 完整評測排夜間 |
+| A4 | 唯讀檔案與最小權限 | 逐次檢查 grant；解析 symlink；拒絕 `.env`、金鑰、憑證與家目錄敏感區；可撤銷 | `agent/grants.py`：`var/agent/grants.json`、拒絕 `DENY_NAMES`／`DENY_HOME`；每次呼叫重讀 grant；`agent/tools.py` 無寫入／執行／網路 | IMPLEMENTED | 加 path traversal、symlink、revoke-after-grant 的紅隊測試 |
+| A5 | 外部能力介面（MCP） | 外部進程／資源要有 schema、授權、稽核、生命週期；本機先走 stdio，不主動開 HTTP | `agent/server.py` 支援 MCP stdio 子集：`initialize`、`notifications/initialized`、`ping`、`tools/list`、`tools/call`；沒有改 grant 的方法；尚未做 resources／prompts／sampling／HTTP | PARTIAL | 維持本地子集；若要 HTTP，依官方 spec 處理授權與信任，先另提提案 |
+| A6 | 外部驗證與分層轉交 | 驗證器在核心外；不用模型自己當唯一裁判；本機不足再分層升級；每日上限與成本可控 | `runtime/escalation.py` 驗證後重試，不執行模型輸出；`RETRY_PROMPT`；`gateway` 有 tier、policy、cloud、sources；第 2 層預設關閉；轉交統計已有 | PARTIAL | 補中文工具驗證器與「何時不該轉」的對照題；延續 `add-strong-tool-calling`、`reduce-claude-escalation` |
+| A7 | 記憶與檢索 | 知識靠 RAG／外部來源；回答標來源；記憶可查可糾正；外部與雲端內容不得直接進訓練 | `memory.py` 的 `var/memory/wiki/` Markdown wiki 為正本、SQLite 為索引；Claude／雲端回答 `training_use=false`；RAG、法規 DB、網頁讀取、長文件已可用 | PARTIAL | 來源信任、版本與註記統一；冷門事實「沒資料時不猜」繼續驗證 |
+| A8 | 技能形成與重用 | 只從驗證成功的工具呼叫提煉；要有信心門檻、來源、沿用次數與淘汰 | `skills.py` v0：`var/skills/skills.jsonl`；只收 schema 驗證且 `confidence >= 0.75` 的成功呼叫；`MIN_SIMILARITY=0.3`、`MAX_EXAMPLES=2`；目前真實樣本不足 | PARTIAL | 延續 `add-skills-v0`；訂定最小樣本數、去重、過期與人工核准 |
+| A9 | 可觀測與稽核 | 每次工具呼叫有 audit；回答有 process／sources；可重建事件順序；留存不無限成長 | `agent/audit.py` 寫 `var/agent/audit/YYYY-MM-DD.jsonl` 且不記檔案內容；`runtime/trajectory.py` 本機 JSONL、寫入失敗不影響回答、有 retention prune；`gateway` 有 `/health`、`/v1/documents`、`/admin/unload` | IMPLEMENTED | 統一 audit／trajectory／dashboard 的欄位與保存政策 |
+| A10 | 人在迴圈與高風險操作 | 寫入、外部連線、安裝、金鑰、破壞性操作要 preview、明確核准、可撤銷、可回溯 | 目前只有 grant／revoke CLI 與唯讀工具；沒有 per-action approve／dry-run／rollback | MISSING | 先提案 `add-agent-approval`；未核准前不新增寫入／shell／網路工具 |
+| A11 | 多客戶端可用 | CLI／TUI／desktop／Hermes／OpenCode 都能用，且工具清單不炸上下文 | gateway 可為多客戶端提供服務；Hermes 帶約 55 個工具、數萬 token，走 `jiezi-local` 回 413 [實測] | PARTIAL | 工具依任務篩選與精簡描述；先修 413 再談全面開放 |
+| A12 | 提示注入與輸出安全 | 外部內容永遠是資料；拒絕間接注入；工具描述不當成可信指令；輸出經過驗證 | `injection.py` 預設開啟；loop 明確標示工具結果是資料；grant deny；一鍵中止 ≤ 1 秒 [實測] | PARTIAL | 建立固定注入語料與回歸關卡；覆蓋網頁／文件／記憶／技能四種來源 |
+| A13 | 資源守門 | 不占滿硬體；VRAM 至少留 1 GB；agent 控制面不載入額外模型；重度工作 00:00–07:00 | `facts.json` budgets、服務僅綁 `127.0.0.1`、連接埠 36100–36119、`JIEZI_AGENT` 預設關閉、重排序與第 2 層預設關閉 | PARTIAL | 把 agent 的 token／tool／time budget 與 budget dashboard 對齊 |
+| A14 | 停止、恢復與責任界線 | 可停止、可查最後狀態、可從譜系重建；失敗不靜默吞掉；不跨信任邊界自動委派 | 取消會殺 process group；trajectory 本機記錄；但「恢復到哪一步」與多代理信任模型未定義 | PARTIAL | 定義 pause／resume／abort 語意；多代理與 sandbox 留到 G5 之後 |
+
+### 15.2 `SKILL`／`MCP`／核心內建的判定
+
+| 類型 | 用在哪裡 | 必備條件 | 不該用在 |
+| --- | --- | --- | --- |
+| `SKILL` | 程序性知識、模板、檢查清單、可重複流程、可重用的工具呼叫範例 | 可用 Markdown／模板／小型腳本表達；不新增外部權限；不長期持有憑證；可版本化、可審查、可移除；放在本機技能庫並記錄來源 | 需要獨立生命週期、跨客戶端協定、外部系統寫入、敏感授權、不能在日誌暴露的資料 |
+| `MCP` | 外部工具／資源／服務，需要 schema、權限邊界、稽核，或要給 Hermes／OpenCode 等多客戶端重用 | 先查有無現成 server；最小工具集；input schema 驗證；逐次授權；stdio 優先；不把 tool description 當可信指令；日誌不記敏感內容 | 純文字知識、只要 prompt 就能完成的事、還沒通過 R4 的寫入／shell／網路操作 |
+| 核心／既有模組 | 不可外包的安全與 invariant：迴圈上限、grant、verifier、escalation、audit、trajectory、cancellation、gateway budget | 放在 `src/jiezi/`；有單元測試與紅隊測試；不改核心模型；可被 audit 驗證 | 為了「看起來有 Agent 功能」而新增一層抽象；假借 SKILL／MCP 名稱逃避審查 |
+
+判定守則：先問「它會改變外部世界嗎？」、「它需要新的權限嗎？」、「它要被不同客戶端重用嗎？」；任一為是，優先考慮 `MCP` 並做資安掃描。只是「怎麼做」的知識才用 `SKILL`。若不是新功能、只是既有核心的強化，標記為「核心／既有模組」，仍走 R4；不得用「核心」當作模糊地帶來規避 SKILL／MCP 判定。每個新功能都要在 proposal 寫下：分類、現成方案搜尋結果、引用來源、資安掃描結論；若發現重大問題，先提出原因與影響交使用者決策，不直接加入。
+
+### 15.3 現成方案搜尋與取捨
+
+本輪背景 `librarian` 任務超時失敗，已改用前景查證官方文件；不重啟背景任務，也不重複大範圍搜尋。查證日期：2026-11-19。
+
+| 來源 | 重點 | 芥子取捨 |
+| --- | --- | --- |
+| [MCP Specification 2025-06-18](https://modelcontextprotocol.io/specification/2025-06-18) | tools/resources/prompts；user consent and control、data privacy、tool safety（arbitrary code execution、description 可能不可信）、LLM sampling controls；implementation guidelines 要求 authorization、access control、privacy | 沿用 stdio 子集與嚴格 schema；工具結果只當資料；不主動開 HTTP／OAuth 表面；若要 HTTP 必須先做完整威脅模型與提案 |
+| [Anthropic Agent Skills overview](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview) | Skills 是 filesystem-based、按需載入的可重用能力，封裝 instructions／metadata／scripts／templates | 適合 SKILL：程序、模板、工具呼叫範例；不把權限寫進 SKILL 文字；技能來源與版本要可稽核 |
+| [Building effective agents（Anthropic）](https://www.anthropic.com/engineering/building-effective-agents) | 先用簡單、可組合的模式；workflows 與 agents 分開；只有在有 ground truth 與 stopping conditions 時才增加自主性 | 保持 bounded loop、明確停止條件、外部驗證；不做無目標自主代理；不為「像 agent」而增加自主權 |
+| [OWASP Top 10 for LLM Applications 2025](https://genai.owasp.org/download/43299/) | `LLM01:2025 Prompt Injection`；RAG／fine-tuning 無法完全緩解注入 | 一律假設網頁、文件、記憶、工具描述可能帶注入；輸入／輸出分層檢查；高風險動作要人在迴圈 |
+| [OWASP AI Agent Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/AI_Agent_Security_Cheat_Sheet.html) | Tool Security & Least Privilege、Input Validation、Memory & Context Security；避免 over-permissioned MCP tool；用 scoped allowlist 與 authorization middleware | grant 逐次重讀、deny list、audit 不記內容、工具白名單、來源標記；新增工具前逐項勾稽 |
+
+### 15.4 資安掃描結果與準則
+
+本節本身只新增文件，未新增套件、服務、連接埠或權限，故本次變更的 OSV／相依掃描結果為「無新增相依」。未來每個 Agent 功能必須重做下表；出現重大問題即停止並交使用者決策。
+
+| 風險 | 現有控制 | 殘留風險 | 準則／行動 |
+| --- | --- | --- | --- |
+| 間接提示注入（網頁／文件／記憶／工具回傳） | `injection.py` 預設開；工具結果標為資料；回答附來源 | Long context 與多來源交叉注入 | 固定注入語料回歸；來源分層；高風險動作需核准 |
+| Tool poisoning／schema 說謊 | tools 用固定 schema；grant 白名單；每次呼叫重讀 grant | 第三方 MCP server 可能描述與行為不一致 | 只用可信 server；最小工具集；wire log 只記必要欄位；新 server 先隔離測試 |
+| 幻覺工具呼叫／參數錯型 | `runtime/escalation.py` 驗證 tool_calls 與 JSON 型別；失敗重試；不執行模型輸出文字 | 巢狀參數、long-tail API 仍可能錯 | 延續 `add-strong-tool-calling`；ACEBench／BFCL 夜間完整評測 |
+| Excessive agency | `JIEZI_AGENT` 預設關；目前唯讀；grant／revoke CLI | 未來加入寫入／shell／網路時權限過大 | 分階段 proposal；per-action preview、dry-run、rollback、HITL；未核准不做 |
+| Path traversal／secret 外洩 | symlink 解析；`DENY_NAMES`／`DENY_HOME`；audit 不記檔案內容 | 新路徑型態或罕見編碼 | 紅隊測試 `.env`、key、pem、facts.json、家目錄敏感路徑、符號連結 |
+| 記憶／技能污染 | 雲端輸出 `training_use=false`；技能只收驗證成功且信心足夠的呼叫 | 質量門檻仍低、樣本不足 | 來源／時間／驗證證據入欄位；人工核准後才推廣；惡意意圖樣本要隔離 |
+| 資源耗盡 | loop 上限、timeout、字數上限；VRAM 保留 ≥1 GB；facts budgets；重活夜間 | 多客戶端同時觸發、工具輸出超大 | task-level budget 與 dashboard 對齊；超出就 fail closed；預設不開全部工具 |
+| 供應鏈 | 新相依要查 OSV、寫 `docs/licenses.md`、`scripts/jiezi audit` 未接受漏洞 0 | Python／Node 間接相依 | 不新增相依為首選；不可避免時先掃描再提案 |
+| 多客戶端上下文爆炸 | gateway 可服務 Hermes／OpenCode | Hermes 帶約 55 工具造成 413 [實測] | 工具依任務篩選、縮減描述；修好前不視為「多客戶端完成」 |
+
+### 15.5 開發順序（A1–A8 皆需先提案，目標是最小硬體；A0 已完成）
+
+| 順序 | 提案／change | 詳細任務 | 驗收 | 資源 |
+| --- | --- | --- | --- | --- |
+| A0 | 本節與紀錄（已完成於 2026-11-19） | 現況盤點；外部官方文件查證；能力矩陣；SKILL／MCP 判定；資安準則；任務寫入 HANDOFF §3 與當日 #8 | 兩份紀錄可追溯到 T1–T5；本節不改核心與既有原則 | 僅文件；無新進程／連接埠／相依 |
+| A1 | `add-agent-contract` | 定義 task contract 欄位：goal、constraints、done criteria、risk、allowed tools、budget；寫入 trajectory；模糊時先問；完成／失敗都要記錄狀態 | contract 測試通過；不產生未經授權的工具呼叫；稽核可重建 | 僅 CPU／Python；不載入額外模型 |
+| A2 | `add-agent-hardening` | 補 A2/A4/A12/A13 回歸：步數、呼叫數、字數、timeout、cancel、symlink、secret deny、revoke after grant、injection corpus | 642 現有測試不降；唯讀代理 6/6 [現有基線]；中止 ≤1 秒 [現有基線]；紅隊案例全過 | 白天可跑短測試；大量模糊測試／紅隊夜間 |
+| A3 | `add-strong-tool-calling`（續） | 巢狀參數、JSON 還原、ACEBench／BFCL 完整評測、工具篩選；修正 Hermes／OpenCode 413 | 工具呼叫不低於目前 43–44/50 [實測]；正式目標等夜間完整評測後回填；多客戶端不再 413 | 完整評測僅夜間；不占滿 GPU；VRAM ≥1 GB 保留 |
+| A4 | `add-agent-capability-registry` | 每個新功能填分類表：SKILL／MCP／核心；現成方案連結；資安掃描；版本／責任人／移除條件；技能庫門檻與淘汰 | 任意新功能都能在 proposal 找到三項證據；無現成方案要寫理由；重大問題先停下 | 文件與小程式；無新外部服務 |
+| A5 | `add-agent-trust-gate` | 來源信任、技能／記憶 provenance、版本、checksum 或等價驗證、污染隔離、雲端輸出禁止訓練標記 | 外部內容不可直接變成技能／訓練；來源可查；注入語料回歸通過 | 僅 CPU／文字處理；不新增 embedding 模型 |
+| A6 | `add-agent-approval`（高風險，最後做） | per-action approve、preview、dry-run、rollback、audit reason、revoke；先只做單一可逆寫入工具 | R4 核准後才施工；未核准任何寫入／shell／網路工具；每次高風險動作都有明確核准 | 仍以本機優先；連接埠不超出 36100–36119 |
+| A7 | `add-client-tool-filter` | 工具依 task contract 篩選；描述壓縮；Hermes／OpenCode smoke test；失敗降級而不是 413 | 兩客戶端在真實工具清單下可對話；gateway 不超出上下文 | 白天短測；避免 systemd 重啟打斷請求 |
+| A8 | `add-agent-observability` | 統一 audit／trajectory／process／dashboard 欄位；task budget 與 facts budgets 對齊；fail-closed 狀態 | 狀態頁可看到 agent on/off、成果、轉交、工具、資源；不記敏感內容 | 不開新連接埠；不得占滿硬體 |
+
+### 15.6 本子計畫的驗收關卡
+
+1. **方向不變**：不改 P1–P8、D1–D12、G1–G5、核心 `qwen3.5-4b-q4_k_m`、Phase 0–8 主時程；所有能力都走外圍系統。
+2. **安全優先**：每個 Agent 功能都有 R4 proposal、SKILL／MCP／核心判定、現成方案搜尋、資安掃描；重大風險先交使用者決策。
+3. **最小硬體**：agent 控制面不載入額外模型；VRAM 至少留 1 GB；硬體資源不可全部占盡；服務只綁 `127.0.0.1`、連接埠 36100–36119；重度評測 00:00–07:00。
+4. **回歸不降**：`PYTHONPATH=src:tests .venv/bin/python -m unittest discover -s tests` 不少於現有 642 tests OK；`openspec validate --all --strict` 通過；行為變更需 red/green 對照。
+5. **唯讀基線**：唯讀代理 6/6、中止 ≤1 秒、secret deny、grant revoke 都通過；HITL 未做好前不開寫入／shell／網路。
+6. **工具品質**：工具呼叫以目前 43–44/50 [實測] 為下限；完整 ACEBench／BFCL 夜間回填正式基線；不捏造工具、不直接執行模型輸出文字。
+7. **資料邊界**：Claude／雲端回答一律 `training_use=false`；外部內容永遠是資料；來源、時間、驗證證據可追溯。
+8. **客戶端**：Hermes／OpenCode 的工具清單問題修正前，不宣告多客戶端 Agent 完成。
+9. **紀律**：每項任務都記錄在 HANDOFF §3 與當日討論紀錄；完成一項回填一項；本輪不 push，除非使用者再次授權。
+
+### 15.7 A1 完成補記（2026-11-19 13:59，R19.4）
+
+> 保留 §15.1／§15.5 原本的 `PARTIAL` 與代辦說法；本節是完成後的更正，不覆蓋原紀錄。
+
+- **狀態**：A1 `add-agent-contract` 已於 13:59 closed；A2–A8 仍待各自 R4 提案與核准。
+- **實作**：新增 `src/jiezi/agent/contract.py`；`loop.py` 工具分派前驗證 contract 並使用 effective tools／budget；`gateway.py` 從 request 移除 `agent_contract` 後才寫 trajectory，於 response meta 與 JSONL 附加 contract、budget、tools、terminal state、時間欄位。
+- **安全**：contract 只是中繼資料、不進引擎 prompt、不擴大 grant、不新增 SKILL／MCP／相依／連接埠；未知欄位忽略、secret scrub、未知或未授權工具拒絕、超額 budget cap、模糊 done criteria 零工具呼叫。
+- **驗證**：`TestContract` 5/5、`TestLoop` 7/7、`TestGatewayAgent` 6/6；全量 654/654 OK（原 642 + 新增 12）；`openspec validate --all --strict` 44/44；`git diff --check` 乾淨。
+- **殘留風險**：尚未 live smoke／重啟 gateway；`aborted` 終態在串流取消路徑已實作但未被新測試直接覆蓋；basedpyright 未安裝（使用者先前拒絕），Python LSP 未跑；ResourceWarning 為既有；未 stage／commit／push。
+- **14:05 最終重跑補記（R19.4，保留 13:59 結果）**：`openspec validate --all --strict` 44/44；`openspec status --change add-agent-contract --json` artifacts 全 done／`isComplete: true`；全量 unittest 654/654 OK（74.465 秒）；`GIT_MASTER=1 git diff --check` 無輸出；他人 `add-sft-round2/tasks.md` 未動。未 stage／commit／push。
+- **14:08 最終確認（R19.4，保留前述結果）**：文件回填後再跑 `openspec validate --all --strict` 44/44、`GIT_MASTER=1 git diff --check` 無輸出；全量 unittest 654/654 OK（74.321 秒）。未 stage／commit／push。
+
+### 15.8 A2 完成補記（2026-11-20，R19.4）
+
+> 保留 §15.7 的 A1 原文與上方所有歷史紀錄；本節是 A2 `add-agent-hardening` 施工完成後的更正，不覆蓋原紀錄。tasks.md 6.3 原寫「§15.7」，因 R19.4 改新增本節。
+
+- **核准**：使用者已於施工前明確授權（question 工具回覆「授權施工 add-agent-hardening (Recommended)」）；T36 closed，T37／T38 closed；7.1 的「等待可以實作」關卡在施工前已滿足，無須再次請求。
+- **狀態**：A2 已施工完成，change/tasks.md 18/18 勾選；`openspec status --change add-agent-hardening --json` → `isComplete: true`、四件 artifacts 全 `done`。
+- **實作**：新增 `src/jiezi/agent/limits.py` 做六個上限的不可變單一來源；`loop.py`／`contract.py` 改讀取它並保留舊常數名稱；`loop.py`  tool call timeout 改 fail closed 並標明秒數。新增 `tests/fixtures/agent_redteam/manifest.json`（21 案例、6 分類：loop_limits／cancellation／grants／injection／budget_alignment／user_text）與 `tests/test_agent_hardening.py`（5 tests，含真實子行程取消 gate）；`tests/test_agent.py` 加回歸 gate 註解；`tests/test_injection.py` 加 3 項多來源注入回歸。
+- **安全**：合成語料、無真實機密；寫入 grant、symlink 逃逸、secret deny、revoke、稽核無內容、budget 對齊都有測試；Claude／雲端輸出不進訓練。無新套件、服務、連接埠、模型或 GPU 工作。
+- **驗證**：`PYTHONPATH=src:tests .venv/bin/python -m unittest -v tests.test_agent_hardening` → 5/5 OK（0.631 秒；先前 12 tests 是 top-level `TestLoop` 重複收集，已改為函式內 import 修正）；`PYTHONPATH=src:tests .venv/bin/python -m unittest discover -s tests` → `Ran 719 tests in 73.939s`、`OK`（原 711 + 新增 8；ResourceWarning 為既有）；`openspec validate add-agent-hardening --strict` valid；`openspec validate --all --strict` 46 passed／0 failed；`GIT_MASTER=1 git diff --check` 無輸出；繁體掃描無真簡體；未 stage／commit／push。
+- **殘留風險**：語料過擬合與真實機密誤入仍需內容審查；大量 fuzz／夜間紅隊排除在本 change 外；未 live smoke 或重啟 gateway；basedpyright 未安裝（使用者先前拒絕），Python LSP 未跑；ResourceWarning 為既有。
