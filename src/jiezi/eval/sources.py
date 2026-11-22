@@ -131,12 +131,52 @@ def parse_acebench(src: Source, paths: dict[str, Path]) -> Iterator[dict]:
                          "ground_truth": answers[r["id"]]})
 
 
+def parse_bfcl(src: Source, paths: dict[str, Path]) -> Iterator[dict]:
+    """BFCL V4 單輪子集：題目/答案以 id 對應；函式名稱的 `.` 轉 `_`（OpenAI tools 限制）。
+    BFCL V4 subsets: join questions and answers by id; normalize `.` in function names to `_`
+    because OpenAI tool names only allow [a-zA-Z0-9_-]."""
+    for f in src.files:
+        if not f.name.startswith("bfcl-data-"):
+            continue
+        category = f.name.removeprefix("bfcl-data-").removesuffix(".json")
+        answer_name = f"bfcl-answer-{category}.json"
+        if answer_name not in paths:
+            if category != "irrelevance":
+                raise EvalError(f"bfcl {category}: missing answer file {answer_name}")
+            answers: dict[str, list] = {}
+        else:
+            answers = {a["id"]: a["ground_truth"] for a in _jsonl(paths[answer_name])}
+
+        for r in _jsonl(paths[f.name]):
+            funcs = []
+            seen = set()
+            for fn in r["function"]:
+                raw_name = fn.get("name") or ""
+                name = raw_name.replace(".", "_")
+                if name in seen:
+                    raise EvalError(f"bfcl {category}/{r['id']}: duplicate function name after normalization: {name}")
+                seen.add(name)
+                copied = dict(fn)
+                copied["name"] = name
+                funcs.append(copied)
+
+            if r["id"] not in answers and category != "irrelevance":
+                raise EvalError(f"bfcl {category}: no ground truth for {r['id']}")
+            gt = answers.get(r["id"], [])
+            if isinstance(gt, list):
+                gt = [{k.replace(".", "_"): v for k, v in g.items()} if isinstance(g, dict) else g for g in gt]
+            yield _item(src, r["id"], category,
+                        {"category": category, "question": r["question"], "functions": funcs,
+                         "ground_truth": gt})
+
+
 PARSERS: dict[str, Callable[[Source, dict[str, Path]], Iterator[dict]]] = {
     "simpleqa_jsonl": parse_simpleqa,
     "ceval_zip": parse_ceval_zip,
     "cmmlu_zip": parse_cmmlu_zip,
     "evalplus_jsonl_gz": parse_evalplus,
     "acebench_jsonl": parse_acebench,
+    "bfcl_jsonl": parse_bfcl,
 }
 
 

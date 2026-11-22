@@ -7,8 +7,8 @@
 
 ## 2. 量測 / Measure
 
-- [ ] 2.1 ACEBench-zh 完整 normal 題組；BFCL simple/multiple/parallel/irrelevance 子集（授權查證後）
-- [ ] 2.2 夜間：1.1–1.3 前後對比，回報給使用者
+- [x] 2.1 ACEBench-zh 完整 normal 題組；BFCL simple/multiple/parallel/irrelevance 子集（授權查證後；2026-11-20 `jiezi-local`／`toolcheck --suite all` 實測 1306/1540=84.8%：ACEBench 387/500=77.4%，BFCL 919/1040=88.4%；報告 `var/reports/toolcheck-all-20261120-1802-jiezi-local.md`）
+- [x] 2.2（2026-11-20 21:47 回填，使用既有 11-17／11-18 50 題報告與 11-20 夜間 E0 取樣報告；非受控 A/B：1.1 是文字格式評測 vs 原生 tools 路徑、1.2 是相鄰版本連跑、1.3 是同次 N=8 取樣的 pass@1 vs 多數決；詳見 `2026-11-20.md` #10）夜間：1.1–1.3 前後對比，回報給使用者
 
 ## 3. 訓練 / Training（第 2 輪結果之後）
 

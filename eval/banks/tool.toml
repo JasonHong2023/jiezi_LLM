@@ -1,0 +1,147 @@
+# 工具呼叫題庫定義（add-strong-tool-calling task 2.1）/ Tool-call bank definition
+#
+# 只版控來源定義；題目內容在執行時下載並快取於 var/eval/（不進版控）。
+# Only source definitions are versioned; item content is downloaded at run time and cached in var/eval/.
+# 這個 bank 刻意不含其他任務，因此不適用 r0.toml 的 MIN_PER_TASK 組成檢查。
+# This bank intentionally contains only the tool task, so r0.toml's MIN_PER_TASK composition check does not apply.
+# 每個來源的 license_key 必須存在於 docs/licenses.md（規則 R18.3）。
+# Every source's license_key must exist in docs/licenses.md (rule R18.3).
+
+name = "tool"
+version = 1
+seed = 20261120
+
+[[source]]
+key = "acebench-zh-normal"
+license_key = "acebench"
+task = "tool"
+group = "reasoning"
+scorer = "pending_verifier"
+format = "acebench_jsonl"
+count = 500
+stratify = "category"
+
+[[source.file]]
+name = "data_normal_single_turn_single_function.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_single_turn_single_function.json"
+sha256 = "95e8a10c3fc98d706d69a2b47cc7ec1a18449eb24e1dcb616b232b0a8a83aff4"
+
+[[source.file]]
+name = "answer_normal_single_turn_single_function.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_single_turn_single_function.json"
+sha256 = "5e4a4f3268e46095392b6208bec3aefd015467404985d45853155ec6f036edf4"
+
+[[source.file]]
+name = "data_normal_single_turn_parallel_function.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_single_turn_parallel_function.json"
+sha256 = "8479e8739e25a58ae61f18b5d68f3843dc76f22c3ce155353d56036d4778f894"
+
+[[source.file]]
+name = "answer_normal_single_turn_parallel_function.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_single_turn_parallel_function.json"
+sha256 = "0786f04adcc1672ebd7d938fc8f602da674c3312b4c8b5f3d7d990523bc8891a"
+
+[[source.file]]
+name = "data_normal_atom_bool.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_atom_bool.json"
+sha256 = "0b945e4a0d2018875b6e50a28e55359d94609681853c50a87d205a115be55bf8"
+
+[[source.file]]
+name = "answer_normal_atom_bool.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_atom_bool.json"
+sha256 = "c9e9bb15872a71284742de8f9db241ead8621682bb4b0ba1894550cec95be571"
+
+[[source.file]]
+name = "data_normal_atom_enum.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_atom_enum.json"
+sha256 = "806ece8b2753779816185a4060e68667053ab46144bb2b294c434bc3d9116f85"
+
+[[source.file]]
+name = "answer_normal_atom_enum.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_atom_enum.json"
+sha256 = "57a75036ca6901619d7f6ed37371d82063524e1e02dacc58ba1e68c73e3d0888"
+
+[[source.file]]
+name = "data_normal_atom_list.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_atom_list.json"
+sha256 = "da4839021796e66eb149917ebfe839dd25589faf2310e5360e8d04d1c102db88"
+
+[[source.file]]
+name = "answer_normal_atom_list.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_atom_list.json"
+sha256 = "586834aabc928c93df20af270656bdf2846ae7761a490daf4fbfd11b51e4f7bf"
+
+[[source.file]]
+name = "data_normal_atom_number.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_atom_number.json"
+sha256 = "924456f46cada50acd4330c8b7f3790ce12837480991d1a6f3098fd73cb8ebb7"
+
+[[source.file]]
+name = "answer_normal_atom_number.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_atom_number.json"
+sha256 = "093288870e5a7d6243d2e598c5ea2ccaa7a84e95a523af70b17a5b43bef11cd7"
+
+[[source.file]]
+name = "data_normal_atom_object_short.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_atom_object_short.json"
+sha256 = "1c7107737f539243629cbbf118a83138428c05da5574658caf6c8ff8ed0a252d"
+
+[[source.file]]
+name = "answer_normal_atom_object_short.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_atom_object_short.json"
+sha256 = "e4cd896db9292b7eb350d2551d8ce63a60d537b66dd28b13c64e2118afad3483"
+
+[[source.file]]
+name = "data_normal_atom_object_deep.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/data_normal_atom_object_deep.json"
+sha256 = "7d59db54e4d486fb29e985bfccc752afac92fe67a739c0f3ea2303dfd89f87af"
+
+[[source.file]]
+name = "answer_normal_atom_object_deep.json"
+url = "https://raw.githubusercontent.com/chenchen0103/ACEBench/56dd66cf6439b0d9655ee1b353e4cd745c6f664e/data_all/data_zh/possible_answer/data_normal_atom_object_deep.json"
+sha256 = "15bd565c36852d3d93e68f4dee5189b6b0a87dfd9947544dda82759d46b67eb9"
+
+[[source]]
+key = "bfcl"
+license_key = "bfcl"
+task = "tool"
+group = "reasoning"
+scorer = "pending_verifier"
+format = "bfcl_jsonl"
+count = 1040
+stratify = "category"
+
+[[source.file]]
+name = "bfcl-data-simple_python.json"
+url = "https://raw.githubusercontent.com/ShishirPatil/gorilla/58f57e9124ea981403792dd51e00a6577e621fae/berkeley-function-call-leaderboard/bfcl_eval/data/BFCL_v4_simple_python.json"
+sha256 = "82dd63ba502eb2520c6b5d1d9a5c4b590e03ff261565175561f6228a367d1991"
+
+[[source.file]]
+name = "bfcl-answer-simple_python.json"
+url = "https://raw.githubusercontent.com/ShishirPatil/gorilla/58f57e9124ea981403792dd51e00a6577e621fae/berkeley-function-call-leaderboard/bfcl_eval/data/possible_answer/BFCL_v4_simple_python.json"
+sha256 = "38b1bc7469d1de73a812ffce9e2b10a1d8812425fd090ed314066ccec76d0ceb"
+
+[[source.file]]
+name = "bfcl-data-multiple.json"
+url = "https://raw.githubusercontent.com/ShishirPatil/gorilla/58f57e9124ea981403792dd51e00a6577e621fae/berkeley-function-call-leaderboard/bfcl_eval/data/BFCL_v4_multiple.json"
+sha256 = "aef168155ebd74b7ac2401198b201343bc7d16d7a3d7e0d4e6d8ee82c6969b2a"
+
+[[source.file]]
+name = "bfcl-answer-multiple.json"
+url = "https://raw.githubusercontent.com/ShishirPatil/gorilla/58f57e9124ea981403792dd51e00a6577e621fae/berkeley-function-call-leaderboard/bfcl_eval/data/possible_answer/BFCL_v4_multiple.json"
+sha256 = "244e00ce9395df948bcafc7bee64e8f9c87ef70887587d83cae45b13699f3047"
+
+[[source.file]]
+name = "bfcl-data-parallel.json"
+url = "https://raw.githubusercontent.com/ShishirPatil/gorilla/58f57e9124ea981403792dd51e00a6577e621fae/berkeley-function-call-leaderboard/bfcl_eval/data/BFCL_v4_parallel.json"
+sha256 = "fad375d68295776efb63e5aa331dd884f8635e7bb50e05908113c74f14281c3c"
+
+[[source.file]]
+name = "bfcl-answer-parallel.json"
+url = "https://raw.githubusercontent.com/ShishirPatil/gorilla/58f57e9124ea981403792dd51e00a6577e621fae/berkeley-function-call-leaderboard/bfcl_eval/data/possible_answer/BFCL_v4_parallel.json"
+sha256 = "3af54bf04e5b7640b03a9b6a82440f52474feb24b398f94435fd2b155c7727de"
+
+[[source.file]]
+name = "bfcl-data-irrelevance.json"
+url = "https://raw.githubusercontent.com/ShishirPatil/gorilla/58f57e9124ea981403792dd51e00a6577e621fae/berkeley-function-call-leaderboard/bfcl_eval/data/BFCL_v4_irrelevance.json"
+sha256 = "8237162db28f3cf2e3f7d0b0380333fdf829c2ff15234506b0f2205399c8c655"

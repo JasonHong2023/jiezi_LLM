@@ -65,12 +65,9 @@ def _require(entry: dict, keys: tuple[str, ...], where: str) -> None:
         raise EvalError(f"{where}: missing {', '.join(missing)}")
 
 
-def load_bank(path: Path | None = None, licenses_md: Path | None = None) -> Bank:
-    """解析題庫定義；欄位不合法、授權未登記或題數不足時停止。
-    Parse a bank definition; stop on invalid fields, unregistered licenses, or too few items."""
-    root = project_root()
-    path = path or root / "eval" / "banks" / "r0.toml"
-    licenses_md = licenses_md or root / "docs" / "licenses.md"
+def _read(path: Path, licenses_md: Path) -> tuple[dict, tuple[Source, ...]]:
+    """解析定義與來源，但保留給呼叫端決定是否檢查題庫組成。
+    Parse a definition and its sources; let the caller decide whether to check bank composition."""
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError) as exc:
@@ -109,9 +106,27 @@ def load_bank(path: Path | None = None, licenses_md: Path | None = None) -> Bank
         ))
     if not sources:
         raise EvalError(f"{path}: no [[source]] entries")
+    return data, tuple(sources)
+
+
+def load_sources(path: Path | None = None, licenses_md: Path | None = None) -> tuple[Source, ...]:
+    """只解析來源定義與授權，不檢查跨任務題數（工具題專用 bank 用）。
+    Parse sources and the license gate without the cross-task count check (for tool-only banks)."""
+    root = project_root()
+    return _read(path or root / "eval" / "banks" / "tool.toml",
+                 licenses_md or root / "docs" / "licenses.md")[1]
+
+
+def load_bank(path: Path | None = None, licenses_md: Path | None = None) -> Bank:
+    """解析完整題庫定義；欄位不合法、授權未登記或題數不足時停止。
+    Parse a full bank definition; stop on invalid fields, unregistered licenses, or too few items."""
+    root = project_root()
+    path = path or root / "eval" / "banks" / "r0.toml"
+    licenses_md = licenses_md or root / "docs" / "licenses.md"
+    data, sources = _read(path, licenses_md)
 
     per_task = {t: sum(s.count for s in sources if s.task == t) for t in TASKS}
     short = [f"{t}={n}" for t, n in per_task.items() if n < MIN_PER_TASK]
     if short:
         raise EvalError(f"{path}: every task type needs at least {MIN_PER_TASK} items; short: {', '.join(short)}")
-    return Bank(name=data["name"], version=int(data["version"]), seed=int(data["seed"]), sources=tuple(sources))
+    return Bank(name=data["name"], version=int(data["version"]), seed=int(data["seed"]), sources=sources)

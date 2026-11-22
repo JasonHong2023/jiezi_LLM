@@ -346,8 +346,13 @@ def main(argv: list[str] | None = None) -> int:
     dsp.add_argument("--limit", type=int, default=2000, help="template examples per source")
     dsp.add_argument("--replay", help="複習資料 JSONL（train replay 產生）/ replay JSONL from `train replay`")
     dsp.add_argument("--replay-ratio", type=float, default=0.0, help="複習資料佔全部的比例 / replay share, 0–<1")
-    tc = sub.add_parser("toolcheck", help="ACEBench through the gateway as OpenAI tools (system-level tool-call score)")
+    from .. import toolcheck as TC
+
+    tc = sub.add_parser("toolcheck", help="ACEBench/BFCL through the gateway as OpenAI tools (system-level score)")
     tc.add_argument("--policy", default="jiezi-local")
+    tc.add_argument("--suite", choices=list(TC.SUITES), default="r0",
+                    help="r0 (default 50 ACEBench), acebench-full, bfcl, or all")
+    tc.add_argument("--limit", type=int, help="at most N items per source in the suite")
     sub.add_parser("dashboard", help="metrics dashboard: achievement rate, local handling, E0, self-test, gaps")
     sp = sub.add_parser("selftest", help="self-test generated from the bundled data (dictionary, curriculum, tools…)")
     sp.add_argument("--policy", default="jiezi-local", help="gateway policy (default jiezi-local)")
@@ -552,8 +557,9 @@ def main(argv: list[str] | None = None) -> int:
             from .. import toolcheck
             env = load_env(root)
             out, summary = toolcheck.run(root, f"http://127.0.0.1:{port_base(env)}", env.get("JIEZI_GATEWAY_KEY") or "",
-                                         args.policy)
-            print(f"{summary['correct']}/{summary['items']} correct {summary['by_status']}; report: {out}")
+                                         args.policy, suite=args.suite, limit=args.limit)
+            print(f"[{summary['suite']}] {summary['correct']}/{summary['items']} correct "
+                  f"{summary['by_status']} {summary['by_source']}; report: {out}")
             return 0
         if args.cmd == "dashboard":
             from . import dashboard
