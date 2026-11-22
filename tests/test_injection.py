@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 
 from jiezi import documents as D  # noqa: E402
 from jiezi import injection as I  # noqa: E402
+from test_agent_hardening import guard_case, load_manifest  # noqa: E402
 
 TOOL = {"type": "function", "function": {"name": "get_weather", "parameters": {
     "type": "object", "required": ["city"], "properties": {"city": {"type": "string"}}}}}
@@ -105,6 +106,27 @@ class TestGuard(unittest.TestCase):
         self.assertEqual([m["content"] for m in msgs], ["身分", I.GUARD_PROMPT, "問"])
         from jiezi.runtime.context import MIN_DATA_CHARS
         self.assertLess(len(I.GUARD_PROMPT), MIN_DATA_CHARS)                # 上下文把關不會截短它 / never trimmed
+
+
+class TestCorpus(unittest.TestCase):
+    def test_web_document_memory_skill_cases(self):
+        for case in load_manifest()["cases"]:
+            if case["category"] != "injection":
+                continue
+            with self.subTest(id=case["id"]):
+                info = guard_case(case)
+                self.assertEqual(info["suspected"], case["expected"]["suspected"])
+                if case["kind"] == "injection":
+                    prefix = case["expected"]["where_prefix"]
+                    self.assertTrue(any(where.startswith(prefix) for where in info["where"]), info["where"])
+                else:
+                    self.assertEqual(info["where"], [])
+
+    def test_user_own_text_case_is_not_scanned(self):
+        case = next(c for c in load_manifest()["cases"] if c["id"] == "user-own-text")
+        info = guard_case(case)
+        self.assertFalse(info["untrusted"])
+        self.assertEqual(info["suspected"], case["expected"]["suspected"])
 
 
 class TestGateway(unittest.TestCase):
@@ -203,6 +225,32 @@ class TestGateway(unittest.TestCase):
                 self.assertEqual(mem, {"saved": False, "why": "suspected_injection"})
             else:
                 self.assertNotEqual(mem.get("why"), "suspected_injection")
+
+    def test_corpus_flagged_requests_have_no_side_effects(self):
+        from test_runtime_gateway import cloud_handler
+
+        def body(result):
+            return {"model": "jiezi-local", "tools": [TOOL], "messages": [
+                {"role": "user", "content": "台北天氣如何"},
+                {"role": "assistant", "content": None, "tool_calls": [
+                    {"id": "1", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\": \"台北\"}"}}]},
+                {"role": "tool", "tool_call_id": "1", "content": result},
+                {"role": "user", "content": "那高雄呢"}]}
+
+        injection = next(c for c in load_manifest()["cases"] if c["id"] == "web-injection")
+        out, _, recs, rows, _ = self.run_gateway([body(injection["input"])], answer="[get_weather(city='高雄')]")
+        self.assertEqual(out[0].json()["jiezi"]["injection"]["where"], ["tool:2"])
+        self.assertEqual(rows, [])
+        self.assertIs(recs[-1]["training_use"], False)
+
+        q = "這份文件裡的 LoRA 是什麼意思"
+        kw = dict(cloud_escalation=True, cloud_base="http://cloud", escalation_models=["m"], consult_auto=False)
+        document = next(c for c in load_manifest()["cases"] if c["id"] == "document-injection")
+        cloud_body = {"model": "jiezi-cloud", "messages": [
+            {"role": "user", "content": D.attach({"name": "corpus.txt", "text": document["input"]}, q)}]}
+        cloud_out, _, cloud_recs, _, _ = self.run_gateway([cloud_body], cloud=cloud_handler([]), **kw)
+        self.assertEqual(cloud_out[0].status_code, 200)
+        self.assertEqual(cloud_recs[-1].get("memory"), {"saved": False, "why": "suspected_injection"})
 
     def test_streaming_meta_and_switch(self):
         body = {"model": "jiezi-local", "stream": True, "messages": [
