@@ -5,6 +5,7 @@ import selectors
 import shutil
 import socket
 import subprocess
+import time
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from dataclasses import asdict, dataclass
@@ -130,12 +131,19 @@ class HttpxWebFetcher:
 
 
 class StdioMcpTransport:
-    def __init__(self, timeout_seconds: float = 15.0, command: tuple[str, ...] = ("scrapling-mcp",)) -> None:
+    def __init__(
+        self,
+        timeout_seconds: float = 15.0,
+        command: tuple[str, ...] = ("scrapling-mcp",),
+        max_bytes: int = 1_000_000,
+    ) -> None:
         self._timeout = timeout_seconds
         self._command = command
+        self._max_bytes = max_bytes
         self._process: subprocess.Popen[str] | None = None
         self._initialized = False
         self._next_id = 1
+        self._bytes_read = 0  # 累積讀取位元組數 / cumulative bytes read
 
     def _start(self) -> None:
         if self._process is not None and self._process.poll() is None:
@@ -152,21 +160,32 @@ class StdioMcpTransport:
             bufsize=1,
         )
         self._initialized = False
+        self._bytes_read = 0
 
-    def _read_line(self) -> str:
+    def _read_line(self, deadline: float) -> str:
+        """讀一行，受整體期限與單一請求的位元組上限約束；readline 最多讀到剩餘額度 +1，
+        超大回應不會整行先進記憶體。/ Read one line within the request deadline and byte budget;
+        readline is bounded by the remaining budget so an oversized reply is never buffered whole."""
         if self._process is None or self._process.stdout is None:
             raise BackendUnavailable("MCP process is not running")
+        remaining_time = deadline - time.monotonic()
+        if remaining_time <= 0:
+            raise TimeoutError("MCP stdio response timed out")
         selector = selectors.DefaultSelector()
         selector.register(self._process.stdout, selectors.EVENT_READ)
         try:
-            ready = selector.select(self._timeout)
+            ready = selector.select(remaining_time)
             if not ready:
                 raise TimeoutError("MCP stdio response timed out")
-            line = self._process.stdout.readline()
+            budget = max(self._max_bytes - self._bytes_read, 0)
+            line = self._process.stdout.readline(budget + 1)
         finally:
             selector.close()
         if not line:
             raise BackendUnavailable("MCP server closed stdout")
+        self._bytes_read += len(line.encode("utf-8"))
+        if self._bytes_read > self._max_bytes:
+            raise BackendUnavailable(f"MCP response exceeds max_bytes ({self._bytes_read} > {self._max_bytes})")
         return line
 
     def _write(self, message: dict[str, object]) -> None:
@@ -175,18 +194,42 @@ class StdioMcpTransport:
         self._process.stdin.write(json.dumps(message, ensure_ascii=False) + "\n")
         self._process.stdin.flush()
 
+    def _read_response(self, expected_id: int) -> dict[str, object]:
+        """讀取並解析回應，略過 notification、非 JSON 行、id mismatch，直到拿到預期 id 或逾時。
+        Read and parse response, skipping notifications, non-JSON lines, and id mismatches until expected id or timeout."""
+        deadline = time.monotonic() + self._timeout  # 整體期限，略過的行也算 / one deadline for the whole reply
+        while True:
+            line = self._read_line(deadline)
+            stripped = line.strip()
+            if not stripped:
+                continue  # 略過空行 / skip empty lines
+            try:
+                response = json.loads(stripped)
+            except json.JSONDecodeError:
+                # 非 JSON 行（如 log）、略過 / non-JSON line (e.g., log), skip
+                continue
+
+            # 若無 id，視為 notification，略過 / no id -> notification, skip
+            if "id" not in response:
+                continue
+
+            # id 不符，略過 / id mismatch, skip
+            if response.get("id") != expected_id:
+                continue
+
+            # 找到預期的 response
+            if "error" in response:
+                raise RuntimeError(str(response["error"]))
+            result = response.get("result")
+            return result if isinstance(result, dict) else {}
+
     def _request_raw(self, method: str, params: dict[str, object]) -> dict[str, object]:
         self._start()
         message_id = self._next_id
         self._next_id += 1
+        self._bytes_read = 0  # 上限是每個請求，不是整個行程生命週期 / the cap is per request, not per process lifetime
         self._write({"jsonrpc": "2.0", "id": message_id, "method": method, "params": params})
-        response = json.loads(self._read_line())
-        if response.get("id") != message_id:
-            raise RuntimeError("MCP response id mismatch")
-        if "error" in response:
-            raise RuntimeError(str(response["error"]))
-        result = response.get("result")
-        return result if isinstance(result, dict) else {}
+        return self._read_response(message_id)
 
     def _ensure_initialized(self) -> None:
         if self._initialized:
@@ -259,7 +302,10 @@ class ScraplingMcpAdapter:
         self.web_fetcher = web_fetcher
         self._transport = transport
         self._transport_factory = transport_factory or (
-            lambda: StdioMcpTransport(timeout_seconds=config.timeout_seconds)
+            # 原始 stdio 上限＝內容上限×2＋64 KiB：留給 JSON-RPC 外框與跳脫字元；內容仍由 enforce_byte_cap 截到 max_bytes
+            # raw stdio cap = 2× content cap + 64 KiB for the JSON-RPC envelope and escaping; content is still capped later
+            lambda: StdioMcpTransport(timeout_seconds=config.timeout_seconds,
+                                      max_bytes=config.max_bytes * 2 + 65_536)
         )
 
     def _get_transport(self) -> McpTransport:

@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+import json
+import queue
+import shutil
+import subprocess
 import tempfile
+import threading
+import time
 import unittest
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -408,6 +414,230 @@ class ResolvedAddressTests(unittest.TestCase):
             raise OSError("no such host")
         self.assert_refused(boom, DenialReason.DNS_FAILED)
 
+
+# === 殘留 (3)(4) 測試 / Residual (3)(4) tests ===
+
+
+def _make_fake_mcp_server_script(responses: list[dict | str], stderr_lines: list[str] | None = None) -> str:
+    """生成一個會輸出指定回應的假 MCP server Python 腳本。"""
+    stderr_lines = stderr_lines or []
+    script_parts = [
+        "import sys",
+        "import json",
+        "import time",
+        f"responses = {json.dumps(responses)}",
+        f"stderr_lines = {json.dumps(stderr_lines)}",
+        "response_idx = 0",
+        "",
+        "# 先發送 stderr 行",
+        "for line in stderr_lines:",
+        "    sys.stderr.write(line + '\\n')",
+        "    sys.stderr.flush()",
+        "",
+        "while response_idx < len(responses):",
+        "    # 等待 stdin 有資料（請求）或直接發送回應",
+        "    # 為了測試方便，我們不等待請求直接發送回應",
+        "    resp = responses[response_idx]",
+        "    response_idx += 1",
+        "    if isinstance(resp, dict):",
+        "        sys.stdout.write(json.dumps(resp) + '\\n')",
+        "    else:",
+        "        sys.stdout.write(str(resp) + '\\n')",
+        "    sys.stdout.flush()",
+        "    time.sleep(0.01)",  # 給 client 一點時間讀取
+        "",
+        "# 保持程式運行一小段時間讓 client 讀完",
+        "time.sleep(0.5)",
+    ]
+    return "\n".join(script_parts)
+
+
+def _run_fake_mcp_server(responses: list[dict | str], stderr_lines: list[str] | None = None) -> subprocess.Popen:
+    """啟動假 MCP server 子行程。"""
+    script = _make_fake_mcp_server_script(responses, stderr_lines)
+    return subprocess.Popen(
+        ["python3", "-u", "-c", script],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+    )
+
+
+class StdioTransportResidual3Tests(unittest.TestCase):
+    """殘留 (3) 測試：StdioMcpTransport 處理 notification、非 JSON 行、id mismatch。"""
+
+    def setUp(self) -> None:
+        self.config = PolicyConfig(
+            enabled=True,
+            allowed_hosts=frozenset({"example.com"}),
+            timeout_seconds=5.0,
+            max_bytes=1000,
+        )
+
+    def _create_transport_with_server(self, responses: list[dict | str], stderr_lines: list[str] | None = None) -> StdioMcpTransport:
+        """建立連接到假 server 的 transport。"""
+        original_popen = subprocess.Popen
+
+        def mock_popen(*args, **kwargs):
+            # args[0] 是命令列表，檢查第一個元素是否包含 scrapling-mcp
+            cmd_list = args[0] if args else []
+            if cmd_list and "scrapling-mcp" in cmd_list[0]:
+                return _run_fake_mcp_server(responses, stderr_lines)
+            return original_popen(*args, **kwargs)
+
+        with mock.patch("subprocess.Popen", side_effect=mock_popen), \
+             mock.patch("shutil.which", return_value="/fake/scrapling-mcp"):
+            transport = StdioMcpTransport(timeout_seconds=self.config.timeout_seconds, command=("scrapling-mcp",))
+            transport._start()
+        return transport
+
+    def test_skips_notification_without_id(self) -> None:
+        """Server 送出 notification (無 id) 時應略過，繼續等待有 id 的 response。"""
+        # 需要 3 個有效回應：initialize(id=1)、tools/list(id=2)、額外測試用
+        # 序列：notification -> initialize response -> tools/list response
+        responses = [
+            {"jsonrpc": "2.0", "method": "notifications/progress", "params": {"progress": 50}},  # notification (無 id)
+            {"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": "2025-06-18", "capabilities": {}}},  # initialize response
+            {"jsonrpc": "2.0", "id": 2, "result": {"tools": [{"name": "make_request"}]}},  # tools/list response
+        ]
+        transport = self._create_transport_with_server(responses)
+        try:
+            result = transport.list_tools()
+            self.assertIn("make_request", result)
+        finally:
+            transport.close()
+
+    def test_skips_non_json_lines(self) -> None:
+        """Server 送出非 JSON log 行時應略過，繼續等待有效 JSON-RPC response。"""
+        responses = [
+            "[LOG] Server starting up...",  # 非 JSON 行
+            "DEBUG: Some debug info",  # 另一個非 JSON 行
+            {"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": "2025-06-18", "capabilities": {}}},  # initialize response
+            {"jsonrpc": "2.0", "id": 2, "result": {"tools": [{"name": "make_request"}]}},  # tools/list response
+        ]
+        transport = self._create_transport_with_server(responses)
+        try:
+            result = transport.list_tools()
+            self.assertIn("make_request", result)
+        finally:
+            transport.close()
+
+    def test_skips_id_mismatch_and_waits_for_correct_id(self) -> None:
+        """Server 送出 id 不符的 response 時應略過，繼續等待正確 id。"""
+        responses = [
+            {"jsonrpc": "2.0", "id": 999, "result": {"tools": []}},  # 錯誤的 id (給 initialize)
+            {"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": "2025-06-18", "capabilities": {}}},  # 正確的 initialize response
+            {"jsonrpc": "2.0", "id": 2, "result": {"tools": [{"name": "make_request"}]}},  # tools/list response
+        ]
+        transport = self._create_transport_with_server(responses)
+        try:
+            result = transport.list_tools()
+            self.assertIn("make_request", result)
+        finally:
+            transport.close()
+
+
+class StdioTransportResidual4Tests(unittest.TestCase):
+    """殘留 (4) 測試：StdioMcpTransport 讀取時限制單行／總量上限。"""
+
+    def setUp(self) -> None:
+        self.config = PolicyConfig(
+            enabled=True,
+            allowed_hosts=frozenset({"example.com"}),
+            timeout_seconds=5.0,
+            max_bytes=100,  # 小上限方便測試
+        )
+
+    def _create_transport_with_server(self, responses: list[dict | str], stderr_lines: list[str] | None = None, max_bytes: int | None = None) -> StdioMcpTransport:
+        """建立連接到假 server 的 transport。"""
+        original_popen = subprocess.Popen
+
+        def mock_popen(*args, **kwargs):
+            cmd_list = args[0] if args else []
+            if cmd_list and "scrapling-mcp" in cmd_list[0]:
+                return _run_fake_mcp_server(responses, stderr_lines)
+            return original_popen(*args, **kwargs)
+
+        transport = StdioMcpTransport(
+            timeout_seconds=self.config.timeout_seconds,
+            command=("scrapling-mcp",),
+        )
+        # 注入 max_bytes 給 transport（修復後會用到）
+        if max_bytes is not None:
+            transport._max_bytes = max_bytes
+        with mock.patch("subprocess.Popen", side_effect=mock_popen), \
+             mock.patch("shutil.which", return_value="/fake/scrapling-mcp"):
+            transport._start()
+        return transport
+
+    def test_read_line_enforces_max_bytes_per_line(self) -> None:
+        """單行超過 max_bytes 時應中止並報錯。"""
+        # 建立一個超過 100 bytes 的單行回應
+        long_result = "x" * 150
+        responses = [
+            {"jsonrpc": "2.0", "id": 1, "result": {"content": [{"type": "text", "text": long_result}]}},
+        ]
+        transport = self._create_transport_with_server(responses, max_bytes=100)
+        try:
+            with self.assertRaises((RuntimeError, BackendUnavailable, ValueError)) as ctx:
+                transport.call_tool("make_request", {"url": "https://example.com/"})
+            # 錯誤訊息應提到 byte limit
+            self.assertIn("byte", str(ctx.exception).lower())
+        finally:
+            transport.close()
+
+    def test_skipped_lines_count_toward_the_request_cap(self) -> None:
+        """同一請求內，略過的 notification／log 行也計入上限。 / Skipped lines count toward one request's cap."""
+        responses = ["log " + "z" * 40, {"jsonrpc": "2.0", "method": "notifications/progress", "params": {"p": "q" * 20}},
+                     {"jsonrpc": "2.0", "id": 1, "result": {}}]
+        transport = self._create_transport_with_server(responses, max_bytes=100)
+        try:
+            with self.assertRaises(BackendUnavailable) as ctx:
+                transport.call_tool("make_request", {"url": "https://example.com/"})
+            self.assertIn("byte", str(ctx.exception).lower())
+        finally:
+            transport.close()
+
+    def test_cap_is_per_request_not_per_process(self) -> None:
+        """回歸：每個請求都在上限內時，多個請求累計超過上限也不可失敗。
+        Regression: several requests each under the cap must not fail once their total exceeds it."""
+        responses = [
+            {"jsonrpc": "2.0", "id": 1, "result": {"serverInfo": {"name": "fake"}}},
+            {"jsonrpc": "2.0", "id": 2, "result": {"content": [{"type": "text", "text": "a" * 40}]}},
+            {"jsonrpc": "2.0", "id": 3, "result": {"content": [{"type": "text", "text": "b" * 40}]}},
+        ]
+        transport = self._create_transport_with_server(responses, max_bytes=150)  # 每行約 121 bytes，累計 >300
+        try:
+            first = transport.call_tool("make_request", {"url": "https://example.com/1"})
+            second = transport.call_tool("make_request", {"url": "https://example.com/2"})
+            self.assertIn(b"a" * 40, first)
+            self.assertIn(b"b" * 40, second)
+        finally:
+            transport.close()
+
+    def test_endless_notifications_hit_the_overall_deadline(self) -> None:
+        """server 一直送 notification 時，整體期限到就逾時，不可無限等。
+        A server that only sends notifications must hit the overall deadline."""
+        import time as _time
+        responses = [{"jsonrpc": "2.0", "method": "notifications/progress"}] * 300  # 約 3 秒 / about 3 s
+        transport = self._create_transport_with_server(responses, max_bytes=1_000_000)
+        transport._timeout = 0.5
+        try:
+            started = _time.monotonic()
+            with self.assertRaises(TimeoutError):
+                transport.call_tool("make_request", {"url": "https://example.com/"})
+            self.assertLess(_time.monotonic() - started, 2.0)
+        finally:
+            transport.close()
+
+    def test_adapter_gives_transport_room_for_the_json_envelope(self) -> None:
+        """adapter 建立的 transport 上限要大於內容上限（留給 JSON 外框與跳脫）。"""
+        adapter = ScraplingMcpAdapter(self.config, gate=StaticSecurityGate(web_fetch=False, scrapling=True),
+                                      injection_guard=lambda t: t, audit_sink=lambda e: None)
+        transport = adapter._transport_factory()
+        self.assertGreater(transport._max_bytes, self.config.max_bytes * 2)
 
 if __name__ == "__main__":
     unittest.main()
