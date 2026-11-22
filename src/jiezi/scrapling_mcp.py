@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import selectors
 import shutil
+import socket
 import subprocess
 from collections.abc import Callable, Iterable
 from pathlib import Path
@@ -21,6 +22,7 @@ from jiezi.scrapling_policy import (
     clamp_timeout,
     enforce_byte_cap,
     filter_tools,
+    validate_resolved_host,
     validate_url,
 )
 
@@ -247,8 +249,10 @@ class ScraplingMcpAdapter:
         web_fetcher: WebFetcher | None = None,
         transport: McpTransport | None = None,
         transport_factory: Callable[[], McpTransport] | None = None,
+        resolve: Callable | None = None,
     ) -> None:
         self.config = config
+        self._resolve = resolve
         self.gate = gate
         self.injection_guard = injection_guard
         self.audit_sink = audit_sink
@@ -322,6 +326,7 @@ class ScraplingMcpAdapter:
         backend_name = ""
         try:
             validate_url(url, self.config)
+            validate_resolved_host(host, self._resolve or socket.getaddrinfo)
             if classify_tool(tool, self.config) is not ToolStatus.APPROVED:
                 raise PolicyError(DenialReason.TOOL_NOT_ALLOWED, tool)
             timeout = clamp_timeout(

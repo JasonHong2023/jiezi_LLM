@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import ipaddress
 import os
-from collections.abc import Iterable
+import socket
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from enum import StrEnum
 from urllib.parse import urlsplit
@@ -37,6 +38,8 @@ class DenialReason(StrEnum):
     LOCAL_NAME = "local_name"
     HOST_NOT_ALLOWED = "host_not_allowed"
     TOOL_NOT_ALLOWED = "tool_not_allowed"
+    DNS_FAILED = "dns_failed"
+    INVALID_CONFIG = "invalid_config"
 
 
 class ToolStatus(StrEnum):
@@ -75,11 +78,18 @@ class PolicyConfig:
         approved = {"make_request"}
         if allow_js_stealth:
             approved.add("browser_fetch_once")
+        timeout_seconds = float((source.get("JIEZI_SCRAPLING_TIMEOUT_SECONDS") or "").strip() or "15")
+        max_bytes = int((source.get("JIEZI_SCRAPLING_MAX_BYTES") or "").strip() or "1000000")
+        # 載入時就拒絕非正數（原本只在使用點攔截）/ reject non-positive limits at load time, not only at use
+        if not timeout_seconds > 0:
+            raise PolicyError(DenialReason.INVALID_CONFIG, "JIEZI_SCRAPLING_TIMEOUT_SECONDS must be > 0")
+        if max_bytes <= 0:
+            raise PolicyError(DenialReason.INVALID_CONFIG, "JIEZI_SCRAPLING_MAX_BYTES must be > 0")
         return cls(
             enabled=enabled,
             allowed_hosts=hosts,
-            timeout_seconds=float((source.get("JIEZI_SCRAPLING_TIMEOUT_SECONDS") or "").strip() or "15"),
-            max_bytes=int((source.get("JIEZI_SCRAPLING_MAX_BYTES") or "").strip() or "1000000"),
+            timeout_seconds=timeout_seconds,
+            max_bytes=max_bytes,
             allow_js_stealth=allow_js_stealth,
             approved_tools=frozenset(approved),
         )
@@ -159,6 +169,31 @@ def validate_url(url: str, config: PolicyConfig) -> str:
     if not is_allowed_host(host, config.allowed_hosts):
         raise PolicyError(DenialReason.HOST_NOT_ALLOWED, host)
     return url
+
+
+def _non_public(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    mapped = getattr(ip, "ipv4_mapped", None)
+    return (not ip.is_global or ip.is_multicast or ip.is_unspecified
+            or (mapped is not None and not mapped.is_global))
+
+
+def validate_resolved_host(host: str, resolve: Callable | None = None) -> None:
+    """解析主機名後，任何一個位址不是公用網路就拒絕（與 webread._blocked 同一標準）。
+    Reject a host when any resolved address is not public (same bar as webread._blocked)."""
+    normalized = normalize_host(host)
+    if is_ip_literal(normalized):
+        addrs = [ipaddress.ip_address(normalized)]
+    else:
+        try:
+            infos = (resolve or socket.getaddrinfo)(normalized, None, type=socket.SOCK_STREAM)
+            addrs = [ipaddress.ip_address(str(i[4][0]).split("%")[0]) for i in infos]
+        except (OSError, ValueError) as exc:
+            raise PolicyError(DenialReason.DNS_FAILED, normalized) from exc
+    if not addrs:
+        raise PolicyError(DenialReason.DNS_FAILED, normalized)
+    for ip in addrs:
+        if _non_public(ip):
+            raise PolicyError(DenialReason.PRIVATE_ADDRESS, f"{normalized} -> {ip}")
 
 
 def classify_tool(name: str, config: PolicyConfig) -> ToolStatus:

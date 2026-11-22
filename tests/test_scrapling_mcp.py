@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 from jiezi.agent import audit
 from jiezi.scrapling_mcp import (
@@ -17,6 +18,22 @@ from jiezi.scrapling_mcp import (
     build_adapter,
 )
 from jiezi.scrapling_policy import DenialReason, PolicyConfig, PolicyError
+
+
+def _public_dns(host, *args, **kwargs):
+    """測試不連網：所有主機都解析成公用位址。 / Offline tests: every host resolves to a public address."""
+    return [(2, 1, 6, "", ("93.184.216.34", 0))]
+
+
+_dns_patch = mock.patch("jiezi.scrapling_mcp.socket.getaddrinfo", _public_dns)
+
+
+def setUpModule() -> None:
+    _dns_patch.start()
+
+
+def tearDownModule() -> None:
+    _dns_patch.stop()
 
 ALLOWED_URL = "https://quotes.toscrape.com/"
 
@@ -349,6 +366,47 @@ class BuildAdapterTests(unittest.TestCase):
             self.assertEqual(rows[0]["backend"], Backend.WEB_FETCH)
             self.assertNotIn("body", repr(rows))
             self.assertNotIn("文件結束", repr(rows))
+
+
+class ResolvedAddressTests(unittest.TestCase):
+    """殘留 (1) 修正：允許清單內的主機名若解析到內網也要拒絕，且不啟動 transport。
+    Residual (1) fix: an allowlisted name that resolves to a private address is refused before any transport starts."""
+
+    def adapter(self, resolve):
+        self.rows: list = []
+        self.started = False
+
+        def factory():
+            self.started = True
+            raise AssertionError("transport must not start")
+
+        config = PolicyConfig(enabled=True, allowed_hosts=frozenset({"quotes.toscrape.com"}))
+        return ScraplingMcpAdapter(config, gate=StaticSecurityGate(web_fetch=False, scrapling=True),
+                                   injection_guard=lambda t: t, audit_sink=self.rows.append,
+                                   transport_factory=factory, resolve=resolve)
+
+    def assert_refused(self, resolve, reason: DenialReason) -> None:
+        adapter = self.adapter(resolve)
+        with self.assertRaises(PolicyError) as caught:
+            adapter.fetch("make_request", "https://quotes.toscrape.com/")
+        self.assertEqual(caught.exception.reason, reason)
+        self.assertFalse(self.started)
+
+    def test_private_resolution_is_refused(self) -> None:
+        for ip in ("127.0.0.1", "10.0.0.5", "192.168.1.1", "169.254.169.254", "::1", "::ffff:10.0.0.1"):
+            with self.subTest(ip=ip):
+                fam = 10 if ":" in ip else 2
+                self.assert_refused(lambda *a, ip=ip, fam=fam, **k: [(fam, 1, 6, "", (ip, 0))],
+                                    DenialReason.PRIVATE_ADDRESS)
+
+    def test_any_private_address_among_many_is_refused(self) -> None:
+        self.assert_refused(lambda *a, **k: [(2, 1, 6, "", ("93.184.216.34", 0)), (2, 1, 6, "", ("10.1.2.3", 0))],
+                            DenialReason.PRIVATE_ADDRESS)
+
+    def test_dns_failure_is_refused(self) -> None:
+        def boom(*a, **k):
+            raise OSError("no such host")
+        self.assert_refused(boom, DenialReason.DNS_FAILED)
 
 
 if __name__ == "__main__":

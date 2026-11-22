@@ -216,5 +216,16 @@ class EnvConfigTests(unittest.TestCase):
         self.assertEqual(config.approved_tools, frozenset({"make_request", "browser_fetch_once"}))
 
 
+    def test_from_env_rejects_non_positive_limits(self) -> None:
+        # 殘留 (2) 修正：載入時就拒絕 / residual (2) fix: refused at load time
+        for key, value in (("JIEZI_SCRAPLING_TIMEOUT_SECONDS", "0"), ("JIEZI_SCRAPLING_TIMEOUT_SECONDS", "-3"),
+                           ("JIEZI_SCRAPLING_TIMEOUT_SECONDS", "nan"), ("JIEZI_SCRAPLING_MAX_BYTES", "0"),
+                           ("JIEZI_SCRAPLING_MAX_BYTES", "-1")):
+            with self.subTest(key=key, value=value):
+                with self.assertRaises(PolicyError) as caught:
+                    PolicyConfig.from_env({key: value})
+                self.assertEqual(caught.exception.reason, DenialReason.INVALID_CONFIG)
+
+
 if __name__ == "__main__":
     unittest.main()
