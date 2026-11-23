@@ -72,6 +72,14 @@ class SelectTests(unittest.TestCase):
         out = F.select([bad, good], convo("weather"))
         self.assertEqual(out["kept"], ["forecast"])
 
+    def test_attached_document_does_not_drive_ranking(self):
+        # 2026-11-23 離線量測：web-read 附上的網頁文字讓 browser_navigate 被擠掉 / page text pushed out the right tool
+        page = "【文件：Shop（https://shop.example/）】\n" + "image image search search click click " * 50 + "\n【文件結束】"
+        tools = [tool("browser_navigate", "open a url in the browser"), tool("image_search", "search image"),
+                 tool("click_button", "click"), tool("search_web", "search")]
+        out = F.select(tools, convo(page + "\n\n到這個網站 https://shop.example/ browser url"), keep=(), top_k=1)
+        self.assertEqual(out["kept"], ["browser_navigate"])
+
     def test_settings_keep_list_and_top_k(self):
         import tempfile
         from jiezi.runtime.settings import load_settings

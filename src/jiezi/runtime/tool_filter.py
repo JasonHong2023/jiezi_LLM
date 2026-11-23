@@ -139,7 +139,11 @@ def select(tools: list[dict], messages: list[dict], contract_tools: Iterable[str
     """挑出要送的工具（第 1 階段）。回傳 {"tools", "protected", "kept", "dropped"}。
     Pick the stage-1 tools; protected = keep-list ∪ contract ∪ already called (never dropped)."""
     protected_names = set(keep) | set(contract_tools) | called_tools(messages)
-    words = keywords(last_user_text(messages))
+    from ..documents import DOC_RE
+    # 只看問題本身：gateway 先把網頁讀好附進同一則訊息（add-web-read），網頁內文的字不能決定工具排序
+    # （2026-11-23 離線量測：Pinterest 頁面文字擠掉了 browser_navigate）
+    # Score on the question only: a page attached by web-read must not drive the ranking
+    words = keywords(DOC_RE.sub(" ", last_user_text(messages)))
     protected, others = [], []
     for i, t in enumerate(tools):
         (protected if tool_name(t) in protected_names else others).append((i, t))
