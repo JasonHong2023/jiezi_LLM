@@ -237,15 +237,21 @@ class TestLoop(Base):
             {"role": "assistant", "content": "", "tool_calls": [tc("read_file", {"path": str(self.home / ".ssh" / "id_rsa")}, 1)]},
             {"role": "assistant", "content": "無法讀取"}])
         self.assertTrue(info["suspected"])                                             # 標記可疑 / flagged
-        self.assertEqual(events[-1]["status"], "refused")                              # 照做也被拒 / still refused
+        # fail-closed（add-agent-observability）：偵測到注入就不再有任何工具動作，連照做的機會都沒有
+        self.assertEqual((info["terminal_state"], info["terminal_reason"]), ("fail_closed", "injection_detected"))
+        self.assertEqual(len(mcp.calls), 1)                                            # 只有第一次讀檔 / only the first read
+        self.assertIsNone(seen[1][1])                                                  # 收尾不給工具 / no tools offered
+        self.assertEqual(seen[1][0][-1]["content"], loop.INJECTION_NOTE)
+        self.assertIn("⚠", seen[1][0][-2]["content"])
         self.assertNotIn("PRIVATE", json.dumps(seen, ensure_ascii=False))
-        self.assertIn("⚠", seen[1][0][-1]["content"])
+        self.assertEqual(msg["content"], "")                                           # 第二個假回答（工具呼叫）的文字 / scripted
 
     def test_step_limit_and_bad_arguments(self):
         endless = [{"role": "assistant", "content": "", "tool_calls": [
             {"id": "x", "type": "function", "function": {"name": "list_dir", "arguments": "{不是 JSON"}}]}] * 10
         msg, info, seen, events, mcp = self.run_loop(list(endless), max_steps=2)
         self.assertTrue(info["step_limit"])
+        self.assertEqual((info["terminal_state"], info["terminal_reason"]), ("fail_closed", "budget_exceeded"))
         self.assertEqual(len(info["steps"]), 2)
         self.assertIsNone(seen[-1][1])                                                 # 最後一次不給工具 / no tools last
         self.assertEqual(mcp.calls, [])                                                # 壞參數沒有執行 / never executed

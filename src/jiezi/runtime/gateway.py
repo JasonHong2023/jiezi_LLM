@@ -1387,6 +1387,9 @@ class Gateway:
             meta = self._meta(rec, 0, resp, None, t0)
             meta["agent"] = {"steps": a["steps"], "step_limit": a.get("step_limit", False), "folders": len(folders),
                              "contract_status": a.get("contract_status"), "terminal_state": a.get("terminal_state"),
+                             "fail_closed": a.get("terminal_state") == "fail_closed",
+                             "fail_closed_reason": a.get("terminal_reason") if a.get("terminal_state") == "fail_closed"
+                             else None,
                              "effective_tools": a.get("effective_tools", []),
                              "effective_budget": a.get("effective_budget", {})}
             rec.update(final_tier=0, jiezi=meta)

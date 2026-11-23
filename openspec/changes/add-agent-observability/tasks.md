@@ -81,6 +81,8 @@
   - `_filter_tools()` 使用新 `select()` 回傳，寫入 `rec["tool_filter"]`
 - [ ] **T2.7** 單元測試：`tests/test_tool_filter_unified.py`、`tests/test_gateway_tool_filter.py`
 
+> **主控實作註記（2026-11-23）Phase 3**：`agent/loop.py` 的 fail-closed 關的是「動作」不是「回答」：步數用完 → `terminal_state=fail_closed`、`terminal_reason=budget_exceeded`（照舊請模型就現有資料作答）；工具結果疑似注入 → 立刻停止後續所有工具呼叫，加 `INJECTION_NOTE` 請模型只就現有資料回答並提醒使用者，`terminal_reason=injection_detected`。gateway 的 `jiezi.agent` 加 `fail_closed`、`fail_closed_reason`。`verification_loop` 不適用代理迴圈（迴圈不做驗證重試），未實作。T3.3／T3.4（契約預算）：契約已有收斂，不重做。測試：`test_injected_file_cannot_widen_grants`（現在連第二次呼叫都不會發生）、`test_step_limit_and_bad_arguments`。
+
 ## Phase 3: 核心邏輯對齊 / Core Logic Alignment
 
 ### 3.1 Agent Loop
