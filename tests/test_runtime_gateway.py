@@ -469,6 +469,19 @@ class TestGateway(unittest.TestCase):
         self.assertEqual([t["function"]["name"] for t in self.cloud_calls[0]["tools"]], ["bash"])
         self.assertEqual(self.traj()[0]["tool_filter"]["stage"], "exhausted")
 
+    def test_admin_memory_lists_topics_and_lessons(self):
+        # local-first-solving 3.3：狀態頁列出記憶主題與經驗（只有標題、計數、摘要）
+        from jiezi.experience import Experience
+        from jiezi.memory import Memory, wiki_path
+        with self.client([{"role": "assistant", "content": "x"}]) as c:
+            wiki = wiki_path(self.sup.s.root)
+            Memory(wiki).save_note("我住台中")
+            Experience(wiki).record("台北到高雄多遠", "數字錯", "retry", "先查距離再算")
+            self.assertEqual(c.get("/admin/memory").status_code, 401)
+            out = c.get("/admin/memory", headers={"Authorization": f"Bearer {KEY}"}).json()
+        self.assertEqual(out["topics"][0]["note"], 1)
+        self.assertEqual((out["lessons"][0]["lesson"], out["lessons"][0]["active"]), ("先查距離再算", True))
+
     def test_holiday_question_is_grounded_locally(self):
         from jiezi import laws as L
         from test_holidays import blob, manifest

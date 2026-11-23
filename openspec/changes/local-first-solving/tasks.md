@@ -16,7 +16,7 @@
 
 - [x] 3.1 階梯走超過第 1 步就寫一筆經驗（本機摘要「下次要注意」），存記憶 wiki `experience/`
 - [x] 3.2 相似題目先附相關經驗當提示；記錄被用上與有效次數，無效三次停用
-- [ ] 3.3（wiki 可檢視、修改、刪除已可；狀態頁列表未做；測試 TestLadder 5 個）狀態頁／wiki 可檢視、修改、刪除；測試
+- [x] 3.3（wiki 可檢視、修改、刪除已可；2026-11-23 狀態頁加「記憶 wiki」「經驗」兩表，後端 `GET /admin/memory`〔只送標題、計數、摘要〕，刪除用 `scripts/jiezi memory forget`；測試 TestLadder 5 個＋test_admin_memory_lists_topics_and_lessons）狀態頁／wiki 可檢視、修改、刪除；測試
 
 ## 4. 量測 / Measure
 

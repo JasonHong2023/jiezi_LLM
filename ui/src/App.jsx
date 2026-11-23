@@ -362,11 +362,13 @@ function Status() {
   const [health, setHealth] = useState(null);
   const [doctor, setDoctor] = useState(null);
   const [esc, setEsc] = useState(null);
+  const [mem, setMem] = useState(null);
   const [error, setError] = useState("");
   useEffect(() => {
     fetch(BASE + "/health").then((r) => r.json()).then(setHealth).catch((e) => setError(String(e)));
     getJSON("/admin/doctor").then(setDoctor).catch((e) => setError(String(e.message)));
     getJSON("/admin/escalations").then(setEsc).catch(() => setEsc(null));
+    getJSON("/admin/memory").then(setMem).catch(() => setMem(null));
   }, []);
   return (
     <div>
@@ -383,6 +385,29 @@ function Status() {
                 <td className="q">{Object.entries(d.reasons).map(([k, n]) => `${reasonText(k)} ${n}`).join("、")}</td></tr>
             ))}</tbody>
           </table>
+        </div>
+      )}
+      {mem && (
+        <div className="esc">
+          <h3>記憶 wiki（{mem.topics.length} 個主題）</h3>
+          <p className="muted">要修改請直接編輯 var/memory/wiki 裡的頁面；刪除一個主題用 <code>scripts/jiezi memory forget 主題</code>。</p>
+          {mem.topics.length > 0 && (
+            <table>
+              <thead><tr><th>主題</th><th>答案</th><th>更正</th><th>記住的事</th><th>更新</th></tr></thead>
+              <tbody>{mem.topics.map((t) => (
+                <tr key={t.page}><td className="q">{t.title}</td><td>{t.qa}</td><td>{t.correction}</td><td>{t.note}</td><td>{t.updated}</td></tr>
+              ))}</tbody>
+            </table>
+          )}
+          <h3>經驗（{mem.lessons.length} 筆，無效 3 次自動停用）</h3>
+          {mem.lessons.length > 0 && (
+            <table>
+              <thead><tr><th>題目</th><th>下次要注意</th><th>用上</th><th>有效</th><th>無效</th><th>狀態</th></tr></thead>
+              <tbody>{mem.lessons.map((x) => (
+                <tr key={x.id}><td className="q">{x.question}</td><td className="q">{x.lesson}</td><td>{x.uses}</td><td>{x.wins}</td><td>{x.fails}</td><td>{x.active ? "啟用" : "停用"}</td></tr>
+              ))}</tbody>
+            </table>
+          )}
         </div>
       )}
       {doctor && (

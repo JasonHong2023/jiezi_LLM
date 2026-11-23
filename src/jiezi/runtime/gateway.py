@@ -1057,6 +1057,32 @@ class Gateway:
         from .stats import escalations
         return JSONResponse(await anyio.to_thread.run_sync(lambda: escalations(load(self.s.root, 7))))
 
+    def memory_listing(self) -> dict:
+        """記憶 wiki 主題與經驗清單（狀態頁用；local-first-solving 3.3）。只列標題、計數與摘要，不送全文。
+        Memory topics and lessons for the status page: titles, counts and short text only."""
+        topics = []
+        if self.memory is not None:
+            self.memory._scan()
+            per: dict[str, dict] = {}
+            for e in self.memory.entries:
+                t = per.setdefault(e.title, {"title": e.title, "page": e.page, "qa": 0, "correction": 0, "note": 0,
+                                             "updated": ""})
+                t[e.kind] = t.get(e.kind, 0) + 1
+                t["updated"] = max(t["updated"], e.at or "")
+            topics = sorted(per.values(), key=lambda t: t["updated"], reverse=True)
+        lessons = []
+        if self.experience is not None:
+            lessons = [{"id": x.id, "question": x.question[:80], "step": x.step, "lesson": x.lesson[:160],
+                        "seen": x.seen, "uses": x.uses, "wins": x.wins, "fails": x.fails, "active": x.active, "at": x.at}
+                       for x in sorted(self.experience.load(), key=lambda x: x.at, reverse=True)]
+        return {"topics": topics, "lessons": lessons}
+
+    async def admin_memory(self, request: Request) -> Response:
+        """`GET /admin/memory`：記憶與經驗清單。 / Memory topics and lessons."""
+        if not self._authorized(request):
+            return _err(401, "invalid or missing gateway key", "unauthorized")
+        return JSONResponse(await anyio.to_thread.run_sync(self.memory_listing))
+
     async def admin_doctor(self, request: Request) -> Response:
         if not self._authorized(request):
             return _err(401, "invalid or missing gateway key", "unauthorized")
@@ -2481,6 +2507,7 @@ def create_app(gw: Gateway) -> Starlette:
         Route("/admin/trajectories", gw.admin_trajectories, methods=["GET"]),
         Route("/admin/doctor", gw.admin_doctor, methods=["GET"]),
         Route("/admin/escalations", gw.admin_escalations, methods=["GET"]),
+        Route("/admin/memory", gw.admin_memory, methods=["GET"]),
         *ui_routes(gw.s.root),
     ], lifespan=lifespan, middleware=[_cors()])
 
