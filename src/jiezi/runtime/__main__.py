@@ -350,6 +350,8 @@ def main(argv: list[str] | None = None) -> int:
     dsp.add_argument("--limit", type=int, default=2000, help="template examples per source")
     dsp.add_argument("--replay", help="複習資料 JSONL（train replay 產生）/ replay JSONL from `train replay`")
     dsp.add_argument("--replay-ratio", type=float, default=0.0, help="複習資料佔全部的比例 / replay share, 0–<1")
+    dsp.add_argument("--toolcall-datasets", action="store_true",
+                     help="收外部工具呼叫資料集（ToolACE、hermes-fc；預設不收）/ include licensed tool-calling datasets")
     from .. import toolcheck as TC
 
     tc = sub.add_parser("toolcheck", help="ACEBench/BFCL through the gateway as OpenAI tools (system-level score)")
@@ -558,7 +560,7 @@ def main(argv: list[str] | None = None) -> int:
             from .. import training_data
             from pathlib import Path as P
             out, m = training_data.export(root, args.limit, P(args.replay) if args.replay else None,
-                                          args.replay_ratio)
+                                          args.replay_ratio, toolcall_datasets=args.toolcall_datasets)
             print(f"{m['examples']} examples {m['by_source']}; excluded {m['excluded']}; file: {out}")
             return 0
         if args.cmd == "toolcheck":

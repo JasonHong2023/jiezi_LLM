@@ -63,7 +63,34 @@ def eval_targets(root: Path) -> tuple[set[str], set[str]]:
             for k in ("question", "prompt", "instruction"):
                 if isinstance(d.get(k), str):
                     qs.add(_norm(d[k]))
+    qs |= _toolcheck_questions(root)
     return qs, {t for t in targets if len(t) >= 2}
+
+
+def _toolcheck_questions(root: Path) -> set[str]:
+    """toolcheck 的 ACEBench／BFCL 題目（add-strong-tool-calling 3.1：加入外部工具呼叫資料後才需要擋）。
+    只讀本機快取，讀不到就略過（不在匯出時連網）。 / ACEBench and BFCL questions, cache only."""
+    try:
+        from .toolcheck import items, to_messages
+        its = items(root, "all")
+    except Exception:  # noqa: BLE001 - 沒有快取或格式不同：不擋，但也不讓匯出失敗 / no cache: skip
+        return set()
+    out = set()
+    for it in its:
+        data = it.get("data")
+        if isinstance(data, str):
+            import ast
+            try:
+                data = ast.literal_eval(data)
+            except (ValueError, SyntaxError):
+                continue
+        q = (data or {}).get("question") if isinstance(data, dict) else None
+        if q is None:
+            continue
+        for m in to_messages(q):
+            if m.get("role") == "user" and isinstance(m.get("content"), str) and m["content"].strip():
+                out.add(_norm(m["content"]))
+    return out
 
 
 def _ex(messages, answer, source, license_, origin, **extra) -> dict:
@@ -201,7 +228,20 @@ def from_knowledge(root: Path, rng: random.Random, limit: int) -> list[dict]:
 def _overlaps(ex: dict, banned: set[str], targets: set[str]) -> bool:
     q = next((m["content"] for m in reversed(ex["messages"][:-1]) if m["role"] == "user"), "")
     nq = _norm(q)
-    return nq in banned or any(t in nq for t in targets)
+    if nq in banned or any(t in nq for t in targets):
+        return True
+    # 外部資料集另比對正規化後的前 48 字：同一題換個結尾也算洩題（寧可多擋）
+    # External datasets: a shared 48-character normalized prefix counts as a leak (err on the strict side)
+    if ex.get("origin") == "dataset" and len(nq) >= PREFIX_CHARS:
+        key = id(banned)
+        if _PREFIX_CACHE.get("key") != key:
+            _PREFIX_CACHE.update(key=key, prefixes={b[:PREFIX_CHARS] for b in banned if len(b) >= PREFIX_CHARS})
+        return nq[:PREFIX_CHARS] in _PREFIX_CACHE["prefixes"]
+    return False
+
+
+_PREFIX_CACHE: dict = {}
+PREFIX_CHARS = 48
 
 
 def mix_replay(kept: list[dict], replay: list[dict], ratio: float, rng: random.Random) -> list[dict]:
@@ -221,7 +261,7 @@ def mix_replay(kept: list[dict], replay: list[dict], ratio: float, rng: random.R
 
 
 def export(root: Path, limit_per_source: int = 2000, replay: Path | None = None,
-           replay_ratio: float = 0.0) -> tuple[Path, dict]:
+           replay_ratio: float = 0.0, toolcall_datasets: bool = False) -> tuple[Path, dict]:
     """replay：凍結核心通過驗證的回答（add-sft-round2），依 replay_ratio 混入。
     replay: verified answers of the frozen core (add-sft-round2), mixed in at replay_ratio."""
     if not 0 <= replay_ratio < 1:
@@ -234,8 +274,13 @@ def export(root: Path, limit_per_source: int = 2000, replay: Path | None = None,
     teach = teacher_load(root)[-limit_per_source:]
     for ex in teach:          # 舊的老師樣本也整理 / earlier teacher rows too
         ex["messages"] = merge_system(ex["messages"])
+    toolcall: list[dict] = []
+    if toolcall_datasets:  # 外部工具呼叫資料集（3.1）；預設不收，生成模型條款待使用者決定 / off until the user decides
+        from .toolcall_data import load as toolcall_load
+        toolcall, tc_why = toolcall_load(root, rng, limit_per_source)
+        why.update(tc_why)
     pool = traj + teach + from_laws(root, rng, limit_per_source) + \
-        from_curriculum(root, rng, limit_per_source) + from_knowledge(root, rng, limit_per_source)
+        from_curriculum(root, rng, limit_per_source) + from_knowledge(root, rng, limit_per_source) + toolcall
     kept, seen = [], set()
     for ex in pool:
         if _overlaps(ex, banned, targets):
@@ -262,6 +307,7 @@ def export(root: Path, limit_per_source: int = 2000, replay: Path | None = None,
                 "examples": len(kept), "by_source": dict(Counter(e["source"] for e in kept)),
                 "licenses": dict(Counter(e["license"] for e in kept)), "excluded": dict(why),
                 "rules": "R20.3 verified only; non-trainable sources and evaluation overlaps removed",
-                "limit_per_source": limit_per_source, "replay_ratio": replay_ratio, "replay_unique": len(rep)}
+                "limit_per_source": limit_per_source, "replay_ratio": replay_ratio, "replay_unique": len(rep),
+                "toolcall_datasets": toolcall_datasets}
     out.with_suffix(".manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
     return out, manifest

@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from datetime import date
 from pathlib import Path
 
@@ -66,6 +67,47 @@ class TestTrainingData(unittest.TestCase):
         self.assertEqual(kept[0]["trust_level"], "trusted")
         self.assertEqual((kept[0]["provenance"]["source_channel"], kept[0]["provenance"]["content_hash"]),
                          ("trajectory", kept[0]["sha256"]))
+
+    def test_toolcall_datasets(self):
+        # add-strong-tool-calling 3.1：外部資料集只收通過 schema 的呼叫；含中文不收；評測題（含前 80 字）不收
+        from jiezi import toolcall_data as TC
+        toolace_sys = ('Here is a list of functions in JSON format that you can invoke:\n[{"name": "Market Trends API", '
+                       '"description": "trends", "parameters": {"type": "dict", "properties": {"country": '
+                       '{"type": "string"}}, "required": ["country"]}, "required": null}]')
+        rows = [{"system": toolace_sys, "conversations": [
+                    {"from": "user", "value": "Get the top market trends in the US please"},
+                    {"from": "assistant", "value": '[Market Trends API(country="us")]'}]},
+                {"system": toolace_sys, "conversations": [                                   # 缺必填 / missing
+                    {"from": "user", "value": "trends?"}, {"from": "assistant", "value": "[Market Trends API()]"}]},
+                {"system": toolace_sys, "conversations": [                                   # 中文 / CJK
+                    {"from": "user", "value": "查美国市场趋势"},
+                    {"from": "assistant", "value": '[Market Trends API(country="us")]'}]},
+                {"system": toolace_sys, "conversations": [                                   # 評測題 / eval item
+                    {"from": "user", "value": "Find the distance from San Francisco to Los Angeles in kilometers, with the scenic route"},
+                    {"from": "assistant", "value": '[Market Trends API(country="tw")]'}]}]
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            ds = root / "var" / "datasets" / "toolcall" / "toolace"
+            ds.mkdir(parents=True)
+            (ds / "SOURCE.jsonl").write_text('{"repo": "Team-ACE/ToolACE", "revision": "abc", "license": "Apache-2.0"}\n')
+            (ds / "data.json").write_text(json.dumps(rows))
+            (root / "var" / "trajectories").mkdir(parents=True)
+            with mock.patch.object(T, "eval_targets",
+                                   return_value=({T._norm("Find the distance from San Francisco to Los Angeles in kilometers")}, set())):
+                off, _ = T.export(root, limit_per_source=5)                  # 預設不收 / off by default
+                self.assertEqual(off.read_text(encoding="utf-8"), "")
+                out, m = T.export(root, limit_per_source=5, toolcall_datasets=True)
+            kept = [json.loads(x) for x in out.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(len(kept), 1)
+        k = kept[0]
+        self.assertEqual(k["tools"][0]["function"]["name"], "Market_Trends_API")
+        self.assertEqual(k["tools"][0]["function"]["parameters"]["type"], "object")
+        self.assertEqual(json.loads(k["messages"][-1]["tool_calls"][0]["function"]["arguments"]), {"country": "us"})
+        self.assertEqual((k["source"], k["origin"]), ("toolace", "dataset"))
+        self.assertIn("Apache-2.0", k["license"])
+        self.assertEqual(m["excluded"]["toolace:schema_check_failed"], 1)
+        self.assertEqual(m["excluded"]["toolace:cjk_text"], 1)
+        self.assertEqual(m["excluded"]["overlaps_evaluation"], 1)
 
     def test_ladder_keeps_the_corrected_local_answer(self):
         """階梯中本機重答才對：匯出對的那一次（使用者 2026-11-18：本機自己答對的答案當訓練資料）。
