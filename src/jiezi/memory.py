@@ -13,7 +13,12 @@ index rebuilt when pages change. Lives under var/ (local only).
 - `notes/使用者要我記住的事.md`：「記住：…」的內容，每次對話都附上。
 - `index.md`、`log.md`：目錄與操作紀錄（與 Hermes wiki 相同的表格格式）。
 Claude／雲端的答案只用來「查」，頁面標 `training_use: false`（Anthropic 條款限制用輸出訓練模型），自我進化必須排除。
-Answers from Claude or the cloud are lookup-only and marked training_use: false."""
+Answers from Claude or the cloud are lookup-only and marked training_use: false.
+
+頁面前言新增 / Page frontmatter extended：
+- `trust_level`：trusted / verified / unverified / tainted
+- `provenance`：來源證明物件（source_channel、source_id、content_hash、fetched_at、version、retrieval_method、extra）
+- 缺欄位的既有頁面視為 `unverified` / unknown（向後相容） / Missing fields default to unverified/unknown for backward compat"""
 
 from __future__ import annotations
 
@@ -25,6 +30,7 @@ from pathlib import Path
 
 from .knowledge import ASKING, bigrams
 from .textconv import to_traditional
+from .trust import TrustLevel, get_gate
 
 # 問芥子自己 / about jiezi itself
 SELF = re.compile(r"自我介紹|你是誰|你叫什麼|你的名字|你在哪|你會哪些|你會那些|你能做什麼|誰做的你|你的作者|"
@@ -139,9 +145,23 @@ def _entries(section: str) -> list[tuple[str, str, str, str]]:
     return [(q.strip(), at, (src or "").strip(), txt.strip()) for q, at, src, txt in _ENTRY.findall(section)]
 
 
-def render_page(title: str, created: str, qa: list, corrections: list, related: list[str], tags: list[str]) -> str:
+def render_page(title: str, created: str, qa: list, corrections: list, related: list[str], tags: list[str],
+                trust_level: str = "unverified", provenance: dict | None = None) -> str:
     fm = ["---", f"title: {title}", "type: concept", f"created: {created}", f"updated: {_now()}",
-          f"tags: [{', '.join(tags)}]", "confidence: medium", "training_use: false", "---", "", f"# {title}", ""]
+          f"tags: [{', '.join(tags)}]", "confidence: medium", "training_use: false",
+          f"trust_level: {trust_level}"]
+    if provenance:
+        for k, v in provenance.items():
+            if v is not None:
+                if isinstance(v, dict):
+                    fm.append(f"provenance:")
+                    for pk, pv in v.items():
+                        if pv is not None:
+                            fm.append(f"  {pk}: {pv}")
+                else:
+                    fm.append(f"provenance_{k}: {v}")
+    fm.append("---")
+    fm.extend(["", f"# {title}", ""])
     parts = ["## 問答", ""]
     for q, at, src, txt in qa:
         parts += [f"### {q}", f"- 日期：{at}" + (f"｜來源：{src}" if src else ""), "", txt, ""]
@@ -162,8 +182,11 @@ def _atomic_write(path: Path, text: str) -> None:
 
 
 class Memory:
-    def __init__(self, wiki: Path):
+    def __init__(self, wiki: Path, root: Path | None = None):
+        """root：專案根目錄，用來共用 gateway 的 taint index（add-agent-trust-gate）；沒給就只用記憶體裡的 gate。
+        root shares the gateway's taint index; without it an in-memory gate is used."""
         self.wiki = wiki
+        self.gate = get_gate(root)
         for d in ("topics", "notes"):
             (wiki / d).mkdir(parents=True, exist_ok=True)
         if not (wiki / "index.md").exists():
@@ -227,7 +250,15 @@ class Memory:
                 return e.page
         return best
 
-    def _write_entry(self, question: str, text: str, kind: str, source: str) -> str:
+    def _write_entry(self, question: str, text: str, kind: str, source: str,
+                     source_channel: str = "user", source_id: str = "user",
+                     metadata: dict | None = None) -> str | None:
+        """寫入條目前經 Trust Gate 評估；TAINTED 不寫入並回傳 None。
+        Evaluate trust before writing; TAINTED returns None without writing."""
+        level, provenance, taint = self.gate.evaluate_trust(text, source_channel, source_id, metadata)
+        if level == TrustLevel.TAINTED:
+            return None
+
         page = self.topic_for(question)
         if page is None:
             title = topic_title(question)
@@ -254,7 +285,8 @@ class Memory:
         related = sorted({r.strip("[]") for r in re.findall(r"^- \[\[(.+?)\]\]", secs.get("相關", ""), re.M)} |
                          {t for t in others if t in text or t in question})
         tags = ["jiezi-memory", "correction" if corr else "consult"]
-        _atomic_write(self.wiki / page, render_page(title, created, qa, corr, related, tags))
+        _atomic_write(self.wiki / page, render_page(title, created, qa, corr, related, tags,
+                                                    trust_level=level.name.lower(), provenance=provenance.to_dict()))
         self._log("remember" if kind == "qa" else "correct", Path(page).name,
                   f"question={question.strip()[:60]}; source={source or 'user'}")
         self._index()
@@ -265,19 +297,42 @@ class Memory:
         if not answer or not answer.strip():
             return None
         who = {"claude": "Claude", "local": "本機（讀網頁）"}.get(provider, "雲端")
-        return self._write_entry(question, answer, "qa", f"{who}（{model}）" if model else who)
+        source_channel = "cloud" if provider in ("claude", "cloud") else "local"
+        source_id = model or provider
+        return self._write_entry(question, answer, "qa",
+                                 f"{who}（{model}）" if model else who,
+                                 source_channel=source_channel, source_id=source_id,
+                                 metadata={"retrieval_method": "consult" if source_channel == "cloud" else "local"})
 
-    def save_correction(self, question: str, text: str) -> str:
-        return self._write_entry(question, text, "correction", "使用者")
+    def save_correction(self, question: str, text: str) -> str | None:
+        return self._write_entry(question, text, "correction", "使用者",
+                                 source_channel="correction", source_id="user",
+                                 metadata={"retrieval_method": "user_input"})
 
     def save_note(self, text: str) -> None:
+        level, provenance, taint = self.gate.evaluate_trust(text, "user", "user", {"retrieval_method": "user_input"})
+        if level == TrustLevel.TAINTED:
+            return
+
         path = self.wiki / NOTES_PAGE
         meta, secs = parse_page(path.read_text(encoding="utf-8")) if path.exists() else ({}, {})
         lines = [ln for ln in secs.get("筆記", "").splitlines() if ln.strip().startswith("- ")]
         lines.append(f"- {_now()[:10]}：{' '.join(text.split())[:MAX_NOTE_CHARS]}")
         fm = ["---", "title: 使用者要我記住的事", "type: general", f"created: {meta.get('created') or _now()}",
-              f"updated: {_now()}", "tags: [jiezi-memory, notes]", "confidence: high", "---", "",
-              "# 使用者要我記住的事", "", "> 每次對話都會附上這一頁。可以直接修改或刪除條目。", "", "## 筆記", ""]
+              f"updated: {_now()}", "tags: [jiezi-memory, notes]", "confidence: high",
+              f"trust_level: {level.name.lower()}"]
+        if provenance:
+            for k, v in provenance.to_dict().items():
+                if v is not None:
+                    if isinstance(v, dict):
+                        fm.append(f"provenance:")
+                        for pk, pv in v.items():
+                            if pv is not None:
+                                fm.append(f"  {pk}: {pv}")
+                    else:
+                        fm.append(f"provenance_{k}: {v}")
+        fm.append("---")
+        fm.extend(["", "# 使用者要我記住的事", "", "> 每次對話都會附上這一頁。可以直接修改或刪除條目。", "", "## 筆記", ""])
         _atomic_write(path, "\n".join(fm + lines) + "\n")
         self._log("note", "使用者要我記住的事.md", text[:60])
         self._index()

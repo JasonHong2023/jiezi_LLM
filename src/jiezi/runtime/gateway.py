@@ -238,7 +238,7 @@ class Gateway:
         if settings.memory:
             from ..memory import Memory, wiki_path
             try:
-                self.memory = Memory(wiki_path(settings.root))
+                self.memory = Memory(wiki_path(settings.root), settings.root)
             except Exception as exc:  # noqa: BLE001 - 記憶壞了不影響回答 / a broken memory never blocks answers
                 self.memory_note = str(exc)
         self.experience = None

@@ -450,7 +450,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if g else 1
         if args.cmd == "memory":
             from .. import memory as M
-            m = M.Memory(M.wiki_path(root))
+            m = M.Memory(M.wiki_path(root), root)
             if args.action == "path":
                 print(m.wiki)
                 return 0
