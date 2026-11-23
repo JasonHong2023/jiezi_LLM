@@ -82,6 +82,24 @@ class TestOtherKinds(unittest.TestCase):
         self.assertEqual(O.normalize("cloud:weird", "stats_reason")["escalation_reason"], "other")
 
 
+class TestSummary(unittest.TestCase):
+    def test_counts_only(self):
+        recs = [traj(), traj(status="cancelled"),
+                traj(final_tier=3, tiers=[{"tier": 0}, {"tier": 3, "provider": "cloud", "reason": "context_too_large"}],
+                     tool_filter={"original": 100, "kept": 10, "stage": "exhausted", "names": ["bash"]},
+                     trust={"level": "unverified", "reason": "cloud"}),
+                traj(agent={"terminal_state": "fail_closed", "terminal_reason": "injection_detected"})]
+        recs[0]["tiers"][0]["answer"]["content"] = "答案內文不可外流"
+        out = O.summary(recs)
+        self.assertEqual(out["requests"], 4)
+        self.assertEqual(out["terminal_states"], {"completed": 2, "aborted": 1, "fail_closed": 1})
+        self.assertEqual((out["escalation_reasons"], out["escalated_to"]), ({"context_too_large": 1}, {"cloud": 1}))
+        self.assertEqual(out["fail_closed"], {"injection_detected": 1})
+        self.assertEqual(out["tool_filter"], {"requests": 1, "avg_original": 100.0, "avg_kept": 10.0})
+        self.assertEqual(out["untrainable_reasons"], {"cloud": 1})
+        self.assertNotIn("答案內文", str(out))                               # 沒有內容 / no content
+
+
 class TestScrub(unittest.TestCase):
     def test_well_formed_secrets_redacted(self):
         fake = "sk-" + "a" * 24                                   # 執行時組字串 / built at run time

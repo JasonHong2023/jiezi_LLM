@@ -1086,6 +1086,25 @@ class Gateway:
             return _err(401, "invalid or missing gateway key", "unauthorized")
         return JSONResponse(await anyio.to_thread.run_sync(self.memory_listing))
 
+    async def admin_observability(self, request: Request) -> Response:
+        """`GET /admin/observability?days=7`：統一欄位彙整（add-agent-observability）。只有計數。"""
+        if not self._authorized(request):
+            return _err(401, "invalid or missing gateway key", "unauthorized")
+        try:
+            days = max(1, min(31, int(request.query_params.get("days", "7"))))
+        except ValueError:
+            return _err(400, "days must be a number", "invalid_request")
+        from ..agent.approval import write_enabled
+        from ..observability import summary
+        from .gaps import load
+
+        def build():
+            out = summary(load(self.s.root, days))
+            out.update(days=days, agent_enabled=bool(self.s.agent), agent_write_enabled=write_enabled(),
+                       tool_filter_enabled=bool(self.s.tool_filter))
+            return out
+        return JSONResponse(await anyio.to_thread.run_sync(build))
+
     async def admin_doctor(self, request: Request) -> Response:
         if not self._authorized(request):
             return _err(401, "invalid or missing gateway key", "unauthorized")
@@ -2563,6 +2582,7 @@ def create_app(gw: Gateway) -> Starlette:
         Route("/admin/doctor", gw.admin_doctor, methods=["GET"]),
         Route("/admin/escalations", gw.admin_escalations, methods=["GET"]),
         Route("/admin/memory", gw.admin_memory, methods=["GET"]),
+        Route("/admin/observability", gw.admin_observability, methods=["GET"]),
         *ui_routes(gw.s.root),
     ], lifespan=lifespan, middleware=[_cors()])
 

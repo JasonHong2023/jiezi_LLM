@@ -529,6 +529,17 @@ class TestGateway(unittest.TestCase):
             self.assertEqual(ok.json()["status"], "applied")
         self.assertEqual((docs / "n.md").read_text(encoding="utf-8"), "內容")
 
+    def test_admin_observability(self):
+        # 測試的軌跡寫在暫存資料夾，這裡只驗端點、授權與欄位 / trajectories live elsewhere in tests
+        with self.client([{"role": "assistant", "content": "你好"}]) as c:
+            self.assertEqual(c.get("/admin/observability").status_code, 401)
+            self.assertEqual(c.get("/admin/observability?days=x", headers={"Authorization": f"Bearer {KEY}"}).status_code, 400)
+            out = c.get("/admin/observability?days=2", headers={"Authorization": f"Bearer {KEY}"}).json()
+        self.assertEqual(out["days"], 2)
+        for k in ("requests", "terminal_states", "escalation_reasons", "fail_closed", "tool_filter",
+                  "agent_enabled", "agent_write_enabled", "tool_filter_enabled"):
+            self.assertIn(k, out)
+
     def test_holiday_question_is_grounded_locally(self):
         from jiezi import laws as L
         from test_holidays import blob, manifest

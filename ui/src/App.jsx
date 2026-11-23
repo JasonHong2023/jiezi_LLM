@@ -402,12 +402,14 @@ function Status() {
   const [doctor, setDoctor] = useState(null);
   const [esc, setEsc] = useState(null);
   const [mem, setMem] = useState(null);
+  const [obs, setObs] = useState(null);
   const [error, setError] = useState("");
   useEffect(() => {
     fetch(BASE + "/health").then((r) => r.json()).then(setHealth).catch((e) => setError(String(e)));
     getJSON("/admin/doctor").then(setDoctor).catch((e) => setError(String(e.message)));
     getJSON("/admin/escalations").then(setEsc).catch(() => setEsc(null));
     getJSON("/admin/memory").then(setMem).catch(() => setMem(null));
+    getJSON("/admin/observability?days=7").then(setObs).catch(() => setObs(null));
   }, []);
   return (
     <div>
@@ -424,6 +426,19 @@ function Status() {
                 <td className="q">{Object.entries(d.reasons).map(([k, n]) => `${reasonText(k)} ${n}`).join("、")}</td></tr>
             ))}</tbody>
           </table>
+        </div>
+      )}
+      {obs && (
+        <div className="esc">
+          <h3>代理與工具（最近 {obs.days} 天，{obs.requests} 題）</h3>
+          <p className="muted">代理 {obs.agent_enabled ? "開" : "關"}・寫入工具 {obs.agent_write_enabled ? "開" : "關"}・工具篩選 {obs.tool_filter_enabled ? "開" : "關"}</p>
+          <table><tbody>
+            <tr><td>結果</td><td className="q">{Object.entries(obs.terminal_states).map(([k, n]) => `${k} ${n}`).join("、")}</td></tr>
+            <tr><td>轉交原因</td><td className="q">{Object.entries(obs.escalation_reasons).map(([k, n]) => `${k} ${n}`).join("、") || "—"}</td></tr>
+            <tr><td>停止動作（fail-closed）</td><td className="q">{Object.entries(obs.fail_closed).map(([k, n]) => `${k} ${n}`).join("、") || "—"}</td></tr>
+            <tr><td>工具篩選</td><td className="q">{obs.tool_filter.requests ? `${obs.tool_filter.requests} 次，平均 ${obs.tool_filter.avg_original} → ${obs.tool_filter.avg_kept} 個工具` : "—"}</td></tr>
+            <tr><td>不可訓練原因</td><td className="q">{Object.entries(obs.untrainable_reasons).map(([k, n]) => `${k} ${n}`).join("、") || "—"}</td></tr>
+          </tbody></table>
         </div>
       )}
       <Approvals />

@@ -172,3 +172,31 @@ def normalize(record: dict, kind: str) -> dict:
     if kind == "audit":
         return _audit(record)
     raise ValueError(f"unknown record kind {kind!r}; use trajectory, audit or stats_reason")
+
+
+def summary(records: list[dict]) -> dict:
+    """狀態頁用的彙整（A8 驗收：代理開關之外的成果、轉交、工具、信任）。只有計數，不含內容。
+    Status-page summary over normalized trajectories: counts only, no content."""
+    from collections import Counter
+    states, reasons, closed, trust, providers = Counter(), Counter(), Counter(), Counter(), Counter()
+    tf_n = tf_orig = tf_kept = agent_n = 0
+    for rec in records:
+        n = normalize(rec, "trajectory")
+        states[n.get("terminal_state", "unknown")] += 1
+        if n.get("escalation_reason", "none") != "none":
+            reasons[n["escalation_reason"]] += 1
+            providers[n.get("provider") or "unknown"] += 1
+        if n.get("fail_closed"):
+            closed[n.get("fail_closed_reason") or "unknown"] += 1
+        if isinstance(rec.get("trust"), dict) and rec["trust"].get("reason"):
+            trust[rec["trust"]["reason"]] += 1
+        if isinstance(rec.get("agent"), dict) and rec["agent"].get("enabled", True) is not False:
+            agent_n += 1
+        tf = n.get("tool_filter")
+        if tf and isinstance(tf.get("original"), int) and isinstance(tf.get("kept"), int):
+            tf_n, tf_orig, tf_kept = tf_n + 1, tf_orig + tf["original"], tf_kept + tf["kept"]
+    return {"requests": len(records), "terminal_states": dict(states), "escalation_reasons": dict(reasons),
+            "escalated_to": dict(providers), "fail_closed": dict(closed), "agent_requests": agent_n,
+            "untrainable_reasons": dict(trust),
+            "tool_filter": {"requests": tf_n, "avg_original": round(tf_orig / tf_n, 1) if tf_n else None,
+                            "avg_kept": round(tf_kept / tf_n, 1) if tf_n else None}}

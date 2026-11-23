@@ -111,6 +111,8 @@
   - `training_use` 同步
 - [ ] **T4.2** 單元測試：`tests/test_gateway_jiezi_response.py`
 
+> **主控實作註記（2026-11-23）Phase 5**：讀取端改用 `observability.summary()`（以 normalize 彙整，只有計數）＋ `GET /admin/observability?days=N`＋桌面狀態頁「代理與工具」表（代理／寫入／工具篩選開關、結果、轉交原因、fail-closed、工具篩選平均、不可訓練原因）。既有的 stats／dashboard／process 輸出格式不改（狀態頁既有的轉交表仍用 stats 複合鍵），所以 T5.1–T5.8 改以此代替。
+
 ## Phase 5: 讀取端對齊 / Reader-Side Alignment
 
 ### 5.1 Process View
