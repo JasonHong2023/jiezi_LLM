@@ -123,6 +123,11 @@ def _hermes(row: dict) -> tuple[list, str, dict] | None:
 PARSERS = {"toolace": _toolace, "hermes-fc": _hermes}
 
 
+# 訓練 max_len 768：先用保守估算篩掉放不下的，抽樣才不會被訓練端整筆丟掉（2026-11-23 實測：不篩只留 37%）
+# Pre-filter by a conservative token estimate so sampled examples survive the trainer's 768-token cut
+MAX_EST_TOKENS = 640
+
+
 def load(root: Path, rng: random.Random, limit: int) -> tuple[list[dict], Counter]:
     """讀所有已下載的資料集，回傳 (訓練範例, 排除原因計數)。每個資料集最多 limit 筆（固定種子抽樣）。
     Read every downloaded dataset; at most `limit` examples each (seeded sample)."""
@@ -152,6 +157,10 @@ def load(root: Path, rng: random.Random, limit: int) -> tuple[list[dict], Counte
             tools, question, msg = got
             if not question.strip() or verify_tools(tools, msg).get("status") != "pass":
                 why[f"{name}:schema_check_failed"] += 1
+                continue
+            from .runtime.context import total
+            if total([{"role": "user", "content": question}, msg], tools) > MAX_EST_TOKENS:
+                why[f"{name}:too_long_for_training"] += 1
                 continue
             ex = _ex([{"role": "user", "content": question}], None, name, license_, "dataset")
             ex["messages"][-1] = msg

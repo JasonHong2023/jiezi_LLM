@@ -109,6 +109,23 @@ class TestTrainingData(unittest.TestCase):
         self.assertEqual(m["excluded"]["toolace:cjk_text"], 1)
         self.assertEqual(m["excluded"]["overlaps_evaluation"], 1)
 
+    def test_toolcall_too_long_for_training_is_skipped(self):
+        from jiezi import toolcall_data as TC
+        props = {f"p{i}": {"type": "string", "description": "long description " * 20} for i in range(10)}
+        sysmsg = "functions:\n" + json.dumps([{"name": "big", "description": "d", "parameters": {
+            "type": "dict", "properties": props, "required": ["p0"]}}])
+        rows = [{"system": sysmsg, "conversations": [{"from": "user", "value": "call big please"},
+                                                       {"from": "assistant", "value": '[big(p0="x")]'}]}]
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            ds = root / "var" / "datasets" / "toolcall" / "toolace"
+            ds.mkdir(parents=True)
+            (ds / "SOURCE.jsonl").write_text('{"repo": "r", "revision": "x", "license": "Apache-2.0"}\n')
+            (ds / "data.json").write_text(json.dumps(rows))
+            import random
+            ex, why = TC.load(root, random.Random(1), 10)
+        self.assertEqual((ex, why["toolace:too_long_for_training"]), ([], 1))
+
     def test_ladder_keeps_the_corrected_local_answer(self):
         """階梯中本機重答才對：匯出對的那一次（使用者 2026-11-18：本機自己答對的答案當訓練資料）。
         On the ladder, the corrected local answer is exported, not the first failed one."""
