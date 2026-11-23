@@ -46,6 +46,27 @@ class TestTrainingData(unittest.TestCase):
         self.assertEqual(m["excluded"]["non_trainable_source"], 1)
         self.assertEqual(m["excluded"]["not_verified"], 1)
 
+    def test_trust_fields_and_tainted_content(self):
+        # add-agent-trust-gate T4：範例帶 trust_level／provenance；taint index 裡的內容不收
+        import hashlib
+        from jiezi.trust import get_gate, reset_gate
+        self.addCleanup(reset_gate)
+        bad = "[get_weather(city='台中')]"
+        rows = [rec("查台北天氣", "[get_weather(city='台北')]"), rec("查台中天氣", bad)]
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            get_gate(root).register_hash(hashlib.sha256(bad.encode()).hexdigest(), "request", "tool:1", "x")
+            (root / "var" / "trajectories").mkdir(parents=True)
+            (root / "var" / "trajectories" / f"{date.today().isoformat()}.jsonl").write_text(
+                "\n".join(json.dumps(r, ensure_ascii=False) for r in rows))
+            out, m = T.export(root, limit_per_source=5)
+            kept = [json.loads(x) for x in out.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual([k["messages"][0]["content"] for k in kept], ["查台北天氣"])
+        self.assertEqual(m["excluded"]["tainted_content"], 1)
+        self.assertEqual(kept[0]["trust_level"], "trusted")
+        self.assertEqual((kept[0]["provenance"]["source_channel"], kept[0]["provenance"]["content_hash"]),
+                         ("trajectory", kept[0]["sha256"]))
+
     def test_ladder_keeps_the_corrected_local_answer(self):
         """階梯中本機重答才對：匯出對的那一次（使用者 2026-11-18：本機自己答對的答案當訓練資料）。
         On the ladder, the corrected local answer is exported, not the first failed one."""

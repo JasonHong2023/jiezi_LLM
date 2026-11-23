@@ -71,13 +71,22 @@ def _ex(messages, answer, source, license_, origin, **extra) -> dict:
     # One leading system message: the Qwen chat template rejects any other (training failed on 2026-11-19)
     from .runtime.context import merge_system
     msgs = [*merge_system(list(messages)), {"role": "assistant", "content": answer}]
+    sha = _sha(msgs)
+    # 能走到這裡的範例都已通過授權與驗證規則，所以是 trusted（add-agent-trust-gate T4.1）
+    # Every example reaching here passed the licence and verification rules, hence trusted
+    from .trust import _now_iso_z
+    prov = {"source_channel": origin, "source_id": str(extra.get("trajectory_id") or source), "content_hash": sha,
+            "fetched_at": _now_iso_z(), "retrieval_method": "derivation"}
     return {"messages": msgs, "source": source, "license": license_, "training_use": True, "origin": origin,
-            "sha256": _sha(msgs), **extra}
+            "sha256": sha, "trust_level": "trusted", "provenance": prov, **extra}
 
 
 # ── 1. 軌跡 / Trajectories ──
 def from_trajectories(root: Path, days: int = 3650) -> tuple[list[dict], Counter]:
+    import hashlib
     from .runtime.gaps import load
+    from .trust import get_gate
+    gate = get_gate(root)
     out, why = [], Counter()
     for rec in load(root, days):
         if rec.get("status") != "ok" or rec.get("policy") not in ("jiezi", "jiezi-local"):
@@ -117,6 +126,9 @@ def from_trajectories(root: Path, days: int = 3650) -> tuple[list[dict], Counter
         calls = tier["answer"].get("tool_calls")
         if not answer and not calls:
             why["empty_answer"] += 1
+            continue
+        if answer and gate.is_tainted(hashlib.sha256(answer.encode("utf-8")).hexdigest()):
+            why["tainted_content"] += 1  # 同一段內容曾被判定注入（taint index）/ seen as an injection before
             continue
         msgs = [m for m in (rec.get("request") or {}).get("messages") or [] if m.get("role") in ("system", "user", "assistant")]
         ex = _ex(msgs, answer, "trajectory", "local-model-output (Qwen3 Apache-2.0)", "trajectory",
