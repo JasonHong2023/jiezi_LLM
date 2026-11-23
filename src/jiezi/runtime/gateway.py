@@ -1226,8 +1226,11 @@ class Gateway:
                 return await self._respond_cloud(body, rec, t0, stream, reason="image_needs_vision")
             return self._finish_error(rec, 400, "目前的核心模型不支援圖片（需要有視覺模組的核心，例如 Qwen3.5 加 mmproj）"
                                       "；也沒有可用的雲端模型 / the core model cannot read images", "vision_unavailable")
+        if body.get("tools") and self.s.tool_filter:
+            body = self._filter_tools(body, rec, (agent_contract or {}).get("allowed_tools") or ())
         big = self._too_large(body)
         if big:
+            from .tool_filter import STAGES as TOOL_STAGES
             # 工具清單與系統提示本身就超過本機的上下文（例如帶幾十個工具的代理程式）：裁不掉，送了引擎只會回 400。
             # 2026-11-17 實測 OpenCode 一次送 58,000 token。能轉交就轉交，不能就回清楚的錯誤。
             # Tools and system prompts alone exceed the local context (agent clients with dozens of tools): nothing
@@ -1236,7 +1239,8 @@ class Gateway:
             if policy == "jiezi" and self._auto_route():
                 return await self._escalate(body, rec, t0, stream, reason="context_too_large")
             return self._finish_error(
-                rec, 413, f"這個請求裁短後仍約 {big['after']} token，超過本機模型的上下文（{big['ctx']} token）；"
+                rec, 413, (f"已試過工具篩選（{'→'.join(TOOL_STAGES)}）；" if rec.get("tool_filter") else "") +
+                f"這個請求裁短後仍約 {big['after']} token，超過本機模型的上下文（{big['ctx']} token）；"
                           "通常是工具清單或系統提示太長。請改用 jiezi 或 jiezi-ask-claude，或減少工具 / "
                           f"the request still needs about {big['after']} tokens after trimming but the local model's "
                           f"context is {big['ctx']}; use the jiezi or jiezi-ask-claude policy, or send fewer tools",
@@ -1647,6 +1651,28 @@ class Gateway:
             self.log(f"skills: could not save: {exc}")
 
     # ── 路由器 v0（add-router；開發計畫 4.5 的規則版）/ Router v0 ──
+    def _filter_tools(self, body: dict, rec: dict, contract_tools=()) -> dict:
+        """工具清單放不進本機槽位時依階梯篩選（add-client-tool-filter）；放得下就原樣。
+        放不下時也換成篩過的清單：轉交雲端只帶相關工具，省雲端 token（使用者 2026-11-23 選 OQ0 (C)）。
+        Trim an oversized tool list stage by stage; when nothing fits, the stage-1 selection still goes to the cloud."""
+        from .tool_filter import KEEP_TOOLS, ladder
+        try:
+            res = ladder(body["tools"], body["messages"], lambda ts: not self._too_large({**body, "tools": ts}),
+                         contract_tools=[str(t) for t in contract_tools if isinstance(t, str)],
+                         keep=self.s.tool_keep or KEEP_TOOLS, top_k=self.s.tool_filter_top_k)
+        except Exception as exc:  # noqa: BLE001 - 篩選失敗就照舊送 / a filter bug must not break the request
+            self.log(f"tool filter failed, sending all tools: {type(exc).__name__}: {exc}")
+            return body
+        if res["stage"] is None:
+            return body
+        if not res["tools"]:  # 一個都沒挑中：轉交時照原清單，不讓雲端沒工具可用 / nothing picked: keep all for the cloud
+            rec["tool_filter"] = {"original": res["original"], "kept": res["original"], "stage": "none_relevant"}
+            return body
+        rec["tool_filter"] = {"original": res["original"], "kept": len(res["tools"]), "stage": res["stage"],
+                              "names": res["kept"]}
+        self.log(f"tool filter: {res['original']} → {len(res['tools'])} tools ({res['stage']})")
+        return {**body, "tools": res["tools"]}
+
     def _too_large(self, body: dict) -> dict | None:
         """裁到不能再裁還是放不進一個槽位就回傳 {"after", "ctx"}。 / Set when even full trimming cannot fit one slot."""
         from .context import SLOT_CTX, fit

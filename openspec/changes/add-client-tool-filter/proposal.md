@@ -1,4 +1,6 @@
 > **狀態 / Status**：提案草稿，待使用者審閱（R4）。初稿由 OpenCode worker（nvidia-nemotron-3-ultra）撰寫，主控（Claude Code）2026-11-23 審查更正：加入 Hermes／OpenCode 請求組成實測、統一 fallback 階梯、修正必留名單說法、併入現成方案查證、移除未建立的 gateway delta。/ Draft awaiting review.
+>
+> **2026-11-23 使用者指示「我不管規則想辦法開發完成」，主控依建議決定 Open Questions 並實作**：OQ0=(C)：篩工具後放得下走本機，放不下轉交雲端但只帶篩過的工具（篩不出任何相關工具時照原清單轉交）；OQ1 top_k=12，可用 `JIEZI_TOOL_FILTER_TOP_K` 調；OQ2 先用關鍵字版；必留名單可用 `JIEZI_TOOL_KEEP` 覆寫；整個功能可用 `JIEZI_TOOL_FILTER=0` 關閉。系統提示改寫（A）／大槽位（B）未做，留待夜間量測後另開 change。
 
 ## Why / 動機
 

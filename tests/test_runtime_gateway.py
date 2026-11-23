@@ -431,6 +431,44 @@ class TestGateway(unittest.TestCase):
             self.assertEqual(r.json()["jiezi"]["escalation"], "context_too_large")
             self.assertEqual(self.local_seen, [])
 
+    def test_tool_filter_lets_agent_requests_run_locally(self):
+        # add-client-tool-filter：60 個無關工具＋必留 read＋相關的 weather_lookup → 篩完放得下，走本機
+        noise = [{"type": "function", "function": {"name": f"tool_{i}", "description": "說明" * 200,
+                                                    "parameters": {"type": "object", "properties": {}}}} for i in range(60)]
+        keep = [{"type": "function", "function": {"name": n, "description": d, "parameters": {"type": "object", "properties": {}}}}
+                for n, d in (("read", "Read a file"), ("weather_lookup", "Get the weather forecast for a city"))]
+        body = {"model": "jiezi-local", "messages": [{"role": "user", "content": "what is the weather in Taipei"}],
+                "tools": noise[:30] + keep + noise[30:]}
+        with self.client([{"role": "assistant", "content": "晴"}]) as c:
+            r = self.post(c, body)
+            self.assertEqual(r.status_code, 200)
+        self.assertEqual([t["function"]["name"] for t in self.local_seen[0]["tools"]], ["read", "weather_lookup"])
+        tf = self.traj()[0]["tool_filter"]
+        self.assertEqual((tf["original"], tf["kept"], tf["stage"]), (62, 2, "full"))
+
+    def test_protected_tool_too_big_still_413(self):
+        huge = {"type": "object", "properties": {"p": {"type": "string", "enum": [f"值{j}" for j in range(3000)]}}}
+        tools = [{"type": "function", "function": {"name": "read", "description": "說明" * 3000, "parameters": huge}}]
+        body = {"model": "jiezi-local", "messages": [{"role": "user", "content": "hi"}], "tools": tools}
+        with self.client([{"role": "assistant", "content": "x"}]) as c:
+            self.assertEqual(self.post(c, body).status_code, 413)              # 必留工具本身就太大 / protected tool too big
+
+    def test_escalation_carries_only_the_filtered_tools(self):
+        # OQ0 (C)：放不下就轉交雲端，但只帶篩過的工具，省雲端 token
+        huge = {"type": "object", "properties": {f"p{i}": {"type": "string", "enum": [f"值{j}" for j in range(1000)]}
+                                                 for i in range(5)}}
+        tools = [{"type": "function", "function": {"name": "bash", "description": "Run a shell command", "parameters": huge}}]
+        tools += [{"type": "function", "function": {"name": f"tool_{i}", "description": "說明" * 200,
+                                                     "parameters": {"type": "object", "properties": {}}}} for i in range(60)]
+        body = {"model": "jiezi", "messages": [{"role": "user", "content": "run the shell command ls"}], "tools": tools}
+        with self.client([{"role": "assistant", "content": "不該送到本機"}], cloud_on=True) as c:
+            r = self.post(c, body)
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.json()["jiezi"]["escalation"], "context_too_large")
+        self.assertEqual(self.local_seen, [])
+        self.assertEqual([t["function"]["name"] for t in self.cloud_calls[0]["tools"]], ["bash"])
+        self.assertEqual(self.traj()[0]["tool_filter"]["stage"], "exhausted")
+
     def test_holiday_question_is_grounded_locally(self):
         from jiezi import laws as L
         from test_holidays import blob, manifest
