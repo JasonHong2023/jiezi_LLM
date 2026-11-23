@@ -88,11 +88,12 @@ class TestSummary(unittest.TestCase):
                 traj(final_tier=3, tiers=[{"tier": 0}, {"tier": 3, "provider": "cloud", "reason": "context_too_large"}],
                      tool_filter={"original": 100, "kept": 10, "stage": "exhausted", "names": ["bash"]},
                      trust={"level": "unverified", "reason": "cloud"}),
-                traj(agent={"terminal_state": "fail_closed", "terminal_reason": "injection_detected"})]
+                traj(agent={"terminal_state": "fail_closed", "terminal_reason": "injection_detected"}),
+                traj(policy="jiezi-local", jiezi={"escalation": "local_only_policy"})]          # 沒轉交 / not escalated
         recs[0]["tiers"][0]["answer"]["content"] = "答案內文不可外流"
         out = O.summary(recs)
-        self.assertEqual(out["requests"], 4)
-        self.assertEqual(out["terminal_states"], {"completed": 2, "aborted": 1, "fail_closed": 1})
+        self.assertEqual(out["requests"], 5)
+        self.assertEqual(out["terminal_states"], {"completed": 3, "aborted": 1, "fail_closed": 1})
         self.assertEqual((out["escalation_reasons"], out["escalated_to"]), ({"context_too_large": 1}, {"cloud": 1}))
         self.assertEqual(out["fail_closed"], {"injection_detected": 1})
         self.assertEqual(out["tool_filter"], {"requests": 1, "avg_original": 100.0, "avg_kept": 10.0})

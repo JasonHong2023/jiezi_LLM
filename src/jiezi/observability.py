@@ -183,9 +183,10 @@ def summary(records: list[dict]) -> dict:
     for rec in records:
         n = normalize(rec, "trajectory")
         states[n.get("terminal_state", "unknown")] += 1
-        if n.get("escalation_reason", "none") != "none":
+        if n.get("escalation_reason", "none") != "none" and n.get("provider") in ("claude", "cloud"):
+            # 只算真的送出去的；local_only_policy 之類是「沒轉交」的原因 / only real escalations count
             reasons[n["escalation_reason"]] += 1
-            providers[n.get("provider") or "unknown"] += 1
+            providers[n["provider"]] += 1
         if n.get("fail_closed"):
             closed[n.get("fail_closed_reason") or "unknown"] += 1
         if isinstance(rec.get("trust"), dict) and rec["trust"].get("reason"):
