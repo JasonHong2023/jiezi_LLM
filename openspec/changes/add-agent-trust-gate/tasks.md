@@ -82,12 +82,12 @@
 
 ### Phase 7: Gateway / Escalation Integration / 閘道與轉交整合
 
-- [ ] **T7.1** Modify `src/jiezi/runtime/gateway.py`
+- [x] **T7.1**（2026-11-23 主控：gateway 新增 `_untrainable(rec, reason, model)`→`get_gate(root).mark_untrainable`；12 處改為 license／injection／memory／private／unverifiable／cloud_hint／helper／consultation，另補雲端回答 reason=cloud；注入時把 `guard()` 的 taints 以 `register_hash` 登記進 taint index；injection 標記不被後來的原因覆蓋） Modify `src/jiezi/runtime/gateway.py`
   - Replace 7 locations setting `rec["training_use"] = False` with `get_gate(root).mark_untrainable(rec, reason, model)`
   - Reasons: "web_content", "translation", "cloud_consultation", "cloud_hint", "cloud_helper", "escalation_feedback", "mcp_tool_result"
   - Ensure trajectory records get trust.level="unverified"＋provenance.source_channel="cloud" and provenance
 
-- [ ] **T7.2** Test gateway enforcement replaces all 7 scattered writes
+- [x] **T7.2**（test_injection_marks_untrainable_and_registers_taint、test_cloud_answer_marked_untrainable_with_reason） Test gateway enforcement replaces all 7 scattered writes
 
 ### Phase 8: MCP Server Integration / MCP 伺服器整合
 

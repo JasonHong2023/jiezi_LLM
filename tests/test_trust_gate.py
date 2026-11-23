@@ -412,6 +412,17 @@ class TestGetGateSingleton(unittest.TestCase):
             gate = T.get_gate(d)
             self.assertEqual(gate.taint_index_path, os.path.join(d, "var", "trust", "taint_index.jsonl"))
 
+    def test_each_root_has_its_own_gate(self):
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            self.assertIsNot(T.get_gate(a), T.get_gate(b))
+            self.assertIs(T.get_gate(a), T.get_gate(a))
+
+    def test_register_hash(self):
+        gate = T.TrustGate(taint_index_path=None)
+        h = gate.compute_content_hash("壞")
+        gate.register_hash(h, "request", "tool:1", "ignore_instructions")
+        self.assertTrue(gate.is_tainted(h))
+
     def test_no_root_is_memory_only(self):
         self.assertIsNone(T.get_gate().taint_index_path)
 

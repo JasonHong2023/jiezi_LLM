@@ -578,7 +578,7 @@ class Gateway:
             rec["sources"] = (rec.get("sources") or []) + sources
             rec["dict_appendix"] = (rec.get("dict_appendix") or "") + appendix
             if not trainable:
-                rec["training_use"] = False  # 例如禁止改作的辭典 / e.g. a no-derivatives dictionary
+                self._untrainable(rec, "license")  # 例如禁止改作的辭典 / e.g. a no-derivatives dictionary
         if self.writing is not None:
             w = self.writing.appendix(last["content"])
             if w:  # 只附連結，不給模型內文 / links only; no article text reaches the model
@@ -603,7 +603,10 @@ class Gateway:
         if external or info["suspected"] or info["cleaned"]:
             rec["injection"] = {k: info[k] for k in ("documents", "tools", "suspected", "where", "cleaned")}
         if info["suspected"]:
-            rec["training_use"] = False
+            self._untrainable(rec, "injection")
+            gate = self._trust_gate()  # 可疑內容進 taint index：之後同一段內容進記憶／技能會被擋（add-agent-trust-gate）
+            for t in info.get("taints") or []:
+                gate.register_hash(t["content_hash"], "request", t["where"], ",".join(info["suspected"]))
             self.log(f"injection guard: suspected {info['suspected']} in {info['where']}")
 
     async def _read_paths(self, body: dict, rec: dict) -> None:
@@ -734,7 +737,7 @@ class Gateway:
         if not pages:
             return
         rec["web_read_ok"] = True
-        rec["training_use"] = False   # 網頁內容的授權不明 / page licences are unknown
+        self._untrainable(rec, "license")   # 網頁內容的授權不明 / page licences are unknown
         if MEMO.search(text):
             rec["web_memo"] = [{"url": p["url"], "title": p["title"]} for p in pages]
             rec["_web_pages"] = [p["text"][:WEB_MEMO_CHARS] for p in pages]   # 摘要用，不寫進軌跡 / not logged
@@ -847,7 +850,7 @@ class Gateway:
                 "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": "stop"}]}
         rec["tiers"].append({"tier": "memory", "answer": resp["choices"][0]["message"]})
         if training is False:
-            rec["training_use"] = False
+            self._untrainable(rec, "memory")
         meta = self._meta(rec, "memory", resp, None, t0)
         meta["provider"] = "memory"
         return self._deliver(resp, meta, rec, stream)
@@ -1351,7 +1354,7 @@ class Gateway:
         if body.get("tools") or json_mode or has_images(body):
             return fail(400, "唯讀代理不能同時帶自己的工具、JSON 格式或圖片 / the agent cannot be combined with client "
                              "tools, JSON mode or images", "agent_unsupported")
-        rec["training_use"] = False  # 內容是使用者的私人檔案 / the user's private files
+        self._untrainable(rec, "private")  # 內容是使用者的私人檔案 / the user's private files
         rec.setdefault("agent", {"steps": []})
         t0 = time.monotonic()
         folders = [str(f) for f in Grants(self.s.root).folders()]
@@ -1510,7 +1513,7 @@ class Gateway:
                 "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": "stop"}]}
         rec["tiers"].append({"tier": tier, "answer": resp["choices"][0]["message"], "verification": ver, "model": model})
         rec["translation"] = info
-        rec["training_use"] = False   # 譯文對不對無法由程式證明；原文多為私人文件 / unverifiable, usually private
+        self._untrainable(rec, "unverifiable")   # 譯文對不對無法由程式證明；原文多為私人文件 / unverifiable, usually private
         rec.pop("dict_appendix", None)
         meta = self._meta(rec, tier, resp, ver, t0)
         meta["translation"] = info
@@ -1677,6 +1680,18 @@ class Gateway:
             self.log(f"skills: could not save: {exc}")
 
     # ── 路由器 v0（add-router；開發計畫 4.5 的規則版）/ Router v0 ──
+    def _trust_gate(self):
+        from ..trust import get_gate
+        return get_gate(self.s.root)
+
+    def _untrainable(self, rec: dict, reason: str, model: str | None = None) -> None:
+        """不可訓練的單一標記點（add-agent-trust-gate）：training_use=False，rec["trust"] 記原因與來源。
+        Single place that marks a trajectory untrainable, keeping the reason and provenance."""
+        if rec.get("trust", {}).get("reason") == "injection" and reason != "injection":
+            rec["training_use"] = False  # 注入標記優先保留 / keep the injection marking
+            return
+        self._trust_gate().mark_untrainable(rec, reason, model)
+
     def _filter_tools(self, body: dict, rec: dict, contract_tools=()) -> dict:
         """工具清單放不進本機槽位時依階梯篩選（add-client-tool-filter）；放得下就原樣。
         放不下時也換成篩過的清單：轉交雲端只帶相關工具，省雲端 token（使用者 2026-11-23 選 OQ0 (C)）。
@@ -1882,7 +1897,7 @@ class Gateway:
                     resp = await self._local_once(base, body, escalation.feedback_messages(
                         body["messages"], last, error, feedback))
                     ver2, help2 = self._ok(resp, body, rec)
-                    rec["training_use"] = False      # 受雲端提示影響 / shaped by the cloud hint
+                    self._untrainable(rec, "cloud_hint", info.get("model"))      # 受雲端提示影響 / shaped by the cloud hint
                     rec["tiers"].append({"tier": 2, "step": "hint", "answer": _message(resp), "verification": ver2,
                                          "model": resp.get("model"), "helper": "cloud", "helper_model": info["model"],
                                          "feedback": feedback[:escalation.FEEDBACK_MAX_CHARS], "training_use": False,
@@ -2125,7 +2140,7 @@ class Gateway:
         if not feedback.strip():
             rec["tiers"].append({"tier": 2, "error": "empty feedback"})
             return None
-        rec["training_use"] = False  # 答案受協助者影響（Claude 的內容不當訓練資料；其他雲端待查條款）/ shaped by the helper
+        self._untrainable(rec, "helper", helper)  # 答案受協助者影響（Claude 的內容不當訓練資料；其他雲端待查條款）/ shaped by the helper
         try:
             resp2 = await self._local_once(base, body, escalation.feedback_messages(
                 body["messages"], _message(last), ver.get("error") or "", feedback))
@@ -2154,6 +2169,7 @@ class Gateway:
             return self._fallback_local(rec, t0, stream, "cloud_failed", f"cloud escalation failed: {exc}")
         rec["tiers"].append({"tier": 3, "provider": "cloud", "answer": _message(resp), "model": info["model"],
                              "reason": reason, "usage": info["usage"], "cost": info["cost"]})
+        self._untrainable(rec, "cloud", info["model"])  # 雲端回答不當訓練資料 / cloud answers are never training data
         self._remember(body, rec, _message(resp), "cloud", info["model"])
         ver = escalation.verify(body, _message(resp)) if rec.get("json_mode") else None
         if ver:
@@ -2183,7 +2199,7 @@ class Gateway:
     def _deliver_consult(self, body: dict, rec: dict, t0: float, stream: bool, resp: dict, ans: dict,
                          tier, reason: str) -> Response:
         """Claude 的回答一律標記為不可用於訓練（design D9）。 / Claude's answers are never usable for training."""
-        rec["training_use"] = consult_mod.TRAINING_USE
+        self._untrainable(rec, "consultation", "claude")
         msg = _message(resp)
         self._remember(body, rec, msg, "claude", ans["model"])
         ver = escalation.verify(body, msg) if body.get("tools") or rec.get("json_mode") else None
@@ -2198,7 +2214,7 @@ class Gateway:
 
     async def _respond_consult(self, body: dict, rec: dict, t0: float, stream: bool) -> Response:
         """`jiezi-ask-claude`：直接請教 Claude（design D9）。 / Ask Claude directly."""
-        rec["training_use"] = consult_mod.TRAINING_USE
+        self._untrainable(rec, "consultation", "claude")
         if self.consultant is None:
             return self._finish_error(rec, 503, "consulting Claude is off (set JIEZI_CONSULT=claude-cli in .env)",
                                       "consult_off")
@@ -2412,7 +2428,7 @@ class Gateway:
         try:
             if route == "consult":
                 resp, ans = await self._consult_once(body)
-                rec["training_use"] = consult_mod.TRAINING_USE
+                self._untrainable(rec, "consultation", "claude")
                 msg = _message(resp)
                 self._remember(body, rec, msg, "claude", ans["model"])
                 rec["tiers"].append({"tier": 3, "provider": "claude", "answer": msg, "model": ans["model"],

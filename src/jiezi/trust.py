@@ -252,6 +252,19 @@ class TrustGate:
         """檢查內容雜湊是否在污染索引中。/ Check if content hash is in taint index."""
         return content_hash[:16] in self.taint_index
 
+    def register_hash(self, content_hash: str, source_channel: str, source_id: str, injection_type: str,
+                      snippet: str = "") -> TaintRecord:
+        """只有雜湊時登記污染（gateway 從 injection.guard() 的 taints 取得）。 / Register a taint from a hash alone."""
+        taint_id = content_hash[:16]
+        if taint_id in self.taint_index:
+            return self.taint_index[taint_id]
+        taint = TaintRecord(taint_id=taint_id, content_hash=content_hash, detected_at=_now_iso_z(),
+                            source_channel=source_channel, source_id=source_id, injection_type=injection_type,
+                            snippet=snippet[:200])
+        self.taint_index[taint_id] = taint
+        self._cleanup()
+        return taint
+
     def register_taint(self, injection_result: Dict[str, Any], content: str,
                        source_channel: str, source_id: str) -> Optional[TaintRecord]:
         """從注入結果註冊污染記錄。/ Register taint from injection result."""
@@ -301,21 +314,21 @@ class TrustGate:
 CLOUD_REASONS = frozenset({"cloud", "cloud_hint", "helper", "consultation", "escalation"})
 
 
-# 全域單例（或由容器注入） / Global singleton (or DI container)
-_default_gate: Optional[TrustGate] = None
+# 每個專案根目錄一個實例；沒給 root 的共用一個只放記憶體的實例 / one gate per project root
+_gates: Dict[Optional[str], TrustGate] = {}
 
 
 def get_gate(root=None) -> TrustGate:
-    """取得全域 TrustGate。給 root 時索引存在 <root>/var/trust/taint_index.jsonl（絕對路徑，不受工作目錄影響）；
-    沒給 root 只放記憶體。 / Global gate; persisted under <root>/var/trust when root is given."""
-    global _default_gate
-    if _default_gate is None:
-        path = os.path.join(str(root), "var", "trust", "taint_index.jsonl") if root is not None else None
-        _default_gate = TrustGate(taint_index_path=path)
-    return _default_gate
+    """取得 TrustGate。給 root 時索引存在 <root>/var/trust/taint_index.jsonl（絕對路徑，不受工作目錄影響）；
+    沒給 root 只放記憶體。不同 root 各自一份，測試的暫存目錄不會共用。
+    Gate per root; persisted under <root>/var/trust when root is given."""
+    key = os.path.abspath(str(root)) if root is not None else None
+    if key not in _gates:
+        path = os.path.join(key, "var", "trust", "taint_index.jsonl") if key is not None else None
+        _gates[key] = TrustGate(taint_index_path=path)
+    return _gates[key]
 
 
 def reset_gate() -> None:
-    """測試用：丟掉全域實例。 / Tests: drop the global instance."""
-    global _default_gate
-    _default_gate = None
+    """測試用：丟掉所有實例。 / Tests: drop every instance."""
+    _gates.clear()
