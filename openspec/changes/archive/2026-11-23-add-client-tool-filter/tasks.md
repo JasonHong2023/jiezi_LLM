@@ -48,7 +48,7 @@
 
 > ⚠️ 以下任務需在夜間時段執行，白天不執行（2026-11-23 主控改為離線重放，純計算約 40 秒，不需夜間）
 
-- [x] 5.1（2026-11-23 23:3x 主控：改用軌跡裡已存的真實請求離線重放〔`python -m jiezi.eval.tool_filter_report`，純計算、不呼叫模型〕，去重後 31 個〔Hermes 26、OpenCode 5〕；更多樣本仍需使用者實際使用累積）取得 Hermes/OpenCode 實際請求樣本（需使用者配合），跑工具過濾實測 / Obtain real Hermes/OpenCode request samples (user cooperation), run filter measurement
+- [x] 5.1（2026-11-23 23:0x 主控：改用軌跡裡已存的真實請求離線重放〔`python -m jiezi.eval.tool_filter_report`，純計算、不呼叫模型〕，去重後 31 個〔Hermes 26、OpenCode 5〕；更多樣本仍需使用者實際使用累積）取得 Hermes/OpenCode 實際請求樣本（需使用者配合），跑工具過濾實測 / Obtain real Hermes/OpenCode request samples (user cooperation), run filter measurement
 - [x] 5.2（工具 token 中位數 20,796 → 5,333；整個請求 36,825 → 21,426；top_k=12 時 29/31 只篩工具仍放不下、精簡提示後 28/29 放得下〔short_descriptions〕；ladder 計算中位數 152 ms、最大 249 ms〔本機生成 3–19 秒〕；保留率：歷史 18 次真實工具呼叫，新工具 8/12。量測中發現並修正：web-read 附上的網頁文字主導排序，擠掉 browser_navigate → select 先去掉附件再取關鍵字，新工具保留率 7/12 → 8/12）量測指標：過濾前後 token 數、保留工具準確率、fallback 觸發率、端到端延遲增加 / Metrics: tokens before/after, tool retention accuracy, fallback trigger rate, latency overhead
 - [x] 5.3（`var/reports/tool-filter-20261123.md`／`.jsonl`）生成報告 `var/reports/tool-filter-YYYYMMDD.md` 與 JSONL / Generate report and JSONL
 - [x] 5.4（建議維持 12：16 保留率相同〔8/12〕但精簡後放得下 24/29；20 保留率 12/12 但只剩 17/29 放得下。剩下沒保留的是同一系列的 browser_console／browser_press——後續 change 可考慮「同前綴工具已呼叫時一起保護」。樣本只有 2 個 Hermes 工作階段，結論僅供參考）若實測發現 `top_k` 需調整，記錄建議值供後續 change 調整 / Record recommended top_k if measurement suggests adjustment

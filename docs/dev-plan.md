@@ -521,3 +521,4 @@
 - **工作方式**：平行 worker（OpenCode＋LiteLLM 免費 NV 模型）產出品質差（編造值、刪主規格原文、型別錯、安全漏洞），每份都需主控逐檔審查、多數重寫；worker 已以設定檔硬性禁止安裝套件與 commit／push。
 - **驗證**：全量 888 測試、`openspec validate --all --strict` 51 項、`scripts/jiezi capabilities check` 皆通過。
 - **殘留**：A3 3.2 第 3 輪 SFT（夜間，待決定是否收外部資料集）；A7 5.x、A6 T30–34 夜間；A8 Phase 2／4／6／7 依新設計多數不需要，未做的項目在 tasks.md 註記；gateway 需重啟才會載入新功能。
+- **2026-11-23 23:1x 補記（R19.4，保留前文）**：A7 5.1–5.4 改離線重放軌跡裡的 31 個真實代理請求（`python -m jiezi.eval.tool_filter_report`）；工具 token 中位數 20,796 → 5,333，精簡提示後 28/29 放得下，新工具保留 8/12，top_k 維持 12。量測中修正 web-read 附件主導工具排序（`89b7b56`）。add-open-teacher、add-client-tool-filter 已歸檔。
