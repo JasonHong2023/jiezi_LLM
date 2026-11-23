@@ -1760,6 +1760,20 @@ class Gateway:
         except Exception as exc:  # noqa: BLE001 - 篩選失敗就照舊送 / a filter bug must not break the request
             self.log(f"tool filter failed, sending all tools: {type(exc).__name__}: {exc}")
             return body
+        if res["stage"] == "exhausted" and self.s.compact_client_prompt:
+            # 客戶端系統提示太長（OQ0 A）：換成精簡版再篩一次；放得下才用 / condensed client prompt, used only if it fits
+            from .tool_filter import with_compact_system
+            msgs, before, after = with_compact_system(body["messages"])
+            small = {**body, "messages": msgs}
+            res2 = ladder(body["tools"], msgs, lambda ts: not self._too_large({**small, "tools": ts}),
+                          contract_tools=[str(t) for t in contract_tools if isinstance(t, str)],
+                          keep=self.s.tool_keep or KEEP_TOOLS, top_k=self.s.tool_filter_top_k)
+            if res2["fits"]:
+                rec["client_prompt"] = {"compacted": True, "before_chars": before, "after_chars": after}
+                self.log(f"client prompt: {before} → {after} chars; {res2['original']} → {len(res2['tools'])} tools")
+                rec["tool_filter"] = {"original": res2["original"], "kept": len(res2["tools"]),
+                                      "stage": res2["stage"] or "full", "names": res2["kept"]}
+                return {**small, "tools": res2["tools"]}
         if res["stage"] is None:
             return body
         if not res["tools"]:  # 一個都沒挑中：轉交時照原清單，不讓雲端沒工具可用 / nothing picked: keep all for the cloud

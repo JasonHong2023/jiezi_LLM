@@ -84,6 +84,30 @@ class SelectTests(unittest.TestCase):
         self.assertIn("browser", F.keywords("打開瀏覽器"))
 
 
+class CompactPromptTests(unittest.TestCase):
+    HERMES = ("## 思考與回覆語言\n回覆一律用繁體中文。\n程式碼保留原文。\n## 工作標準\n" + "很長的規則。" * 3000 +
+              "\nCurrent working directory: /home/u/proj\n# Skills\n" + "skill 說明 " * 2000)
+    OPENCODE = ("## Phase 0 - Intent Gate\n" + "rules " * 8000 + "\n<env>\n  Working directory: /w\n"
+                "  Is directory a git repo: yes\n  Platform: linux\n  Today's date: Mon Nov 23 2026\n</env>")
+
+    def test_keeps_environment_and_language(self):
+        c = F.compact_system(self.HERMES)
+        self.assertIn("Current working directory: /home/u/proj", c)
+        self.assertIn("回覆一律用繁體中文。", c)
+        self.assertNotIn("很長的規則", c)
+        self.assertLessEqual(len(c), F.COMPACT_MAX_CHARS)
+        o = F.compact_system(self.OPENCODE)
+        for line in ("Working directory: /w", "Platform: linux", "Today's date: Mon Nov 23 2026"):
+            self.assertIn(line, o)
+
+    def test_replaces_every_system_message(self):
+        msgs = [{"role": "system", "content": self.HERMES}, {"role": "user", "content": "hi"},
+                {"role": "system", "content": "附加資料"}]
+        out, before, after = F.with_compact_system(msgs)
+        self.assertEqual([m["role"] for m in out], ["system", "user"])
+        self.assertGreater(before, 10 * after)
+
+
 class LadderTests(unittest.TestCase):
     def setUp(self):
         self.big_params = {"type": "object", "properties": {f"p{i}": {"type": "string", "description": "x" * 300}

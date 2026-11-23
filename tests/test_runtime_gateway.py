@@ -540,6 +540,25 @@ class TestGateway(unittest.TestCase):
                   "agent_enabled", "agent_write_enabled", "tool_filter_enabled"):
             self.assertIn(k, out)
 
+    def test_compact_client_prompt_lets_long_agent_prompts_run_locally(self):
+        # OQ0 (A)：客戶端系統提示太長；開啟 JIEZI_COMPACT_CLIENT_PROMPT 才換成精簡版走本機，關閉時照舊 413
+        long_sys = "## 思考與回覆語言\n回覆用繁體中文。\n## 規則\n" + "規則說明" * 6000 + "\nCurrent working directory: /w"
+        tools = [{"type": "function", "function": {"name": n, "description": d, "parameters": {"type": "object", "properties": {}}}}
+                 for n, d in (("read_file", "Read a file"), ("terminal", "Run a shell command"))]
+        body = {"model": "jiezi-local", "messages": [{"role": "system", "content": long_sys},
+                                                     {"role": "user", "content": "list the files here"}], "tools": tools}
+        with self.client([{"role": "assistant", "content": "好"}]) as c:
+            self.assertEqual(self.post(c, body).status_code, 413)                          # 預設關 / off by default
+            self.sup.s.compact_client_prompt = True
+            self.assertEqual(self.post(c, body).status_code, 200)
+        sent = self.local_seen[-1]["messages"][0]["content"]
+        self.assertIn("Current working directory: /w", sent)
+        self.assertNotIn("規則說明規則說明", sent)
+        t = self.traj()
+        cp = next(x["client_prompt"] for x in t if x.get("client_prompt"))
+        self.assertTrue(cp["compacted"])
+        self.assertGreater(cp["before_chars"], cp["after_chars"])
+
     def test_holiday_question_is_grounded_locally(self):
         from jiezi import laws as L
         from test_holidays import blob, manifest

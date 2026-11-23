@@ -35,6 +35,13 @@
 - [x] 4.2 驗證過濾不影響 `escalation.py::verify_tools()` schema 驗證 / Verify filter doesn't break tool schema verification
 - [x] 4.3 驗證過濾不影響 `_attach_skills()` 技能附加 / Verify filter doesn't break skill attachment
 
+## 4b. 客戶端系統提示精簡（OQ0 (A)，2026-11-23 追加）
+
+- [x] 4b.1 `tool_filter.compact_system()`／`with_compact_system()`；gateway 在階梯全部放不下時才試；`JIEZI_COMPACT_CLIENT_PROMPT`（預設關）；軌跡 `client_prompt`
+- [x] 4b.2 離線重放 37 個真實代理請求（Hermes 55 工具、OpenCode 177–179 工具）：不精簡 1 個放得下；精簡後 36 個放得下（35 個在 short_descriptions 階段），1 個仍放不下
+- [x] 4b.3 測試：CompactPromptTests、test_compact_client_prompt_lets_long_agent_prompts_run_locally
+- [ ] 4b.4 夜間：開啟後用 Hermes／OpenCode 實際跑 10 個常見任務，比較本機完成率、工具呼叫正確率與轉交率，決定是否預設開啟（交使用者決定）
+
 ## 5. 重度量測（00:00–07:00） / Heavy measurements (00:00–07:00)
 
 > ⚠️ 以下任務需在夜間時段執行，白天不執行
