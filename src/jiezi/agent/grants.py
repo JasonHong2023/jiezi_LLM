@@ -110,3 +110,36 @@ class Grants:
         keep = [f for f in raw if _resolve(f.get("path", "")) != real]
         self._write(keep)
         return len(keep) != len(raw)
+
+    # ── 受信任的 MCP server（add-agent-trust-gate T8.2）/ Trusted MCP servers ──
+    # 另存一檔：grants.json 只放資料夾，_write 會整檔覆寫 / a separate file; _write rewrites grants.json whole
+    def _trusted_path(self) -> Path:
+        return self.path.parent / "trusted_mcp.json"
+
+    def trusted_servers(self) -> list[str]:
+        try:
+            names = json.loads(self._trusted_path().read_text(encoding="utf-8")).get("servers") or []
+        except (OSError, ValueError):
+            return []
+        return sorted({str(n) for n in names if isinstance(n, str)})
+
+    def is_trusted(self, server: str) -> bool:
+        """每次呼叫都重讀，撤銷立即生效。 / Re-read per call so removal takes effect at once."""
+        return server in self.trusted_servers()
+
+    def trust_mcp(self, server: str, remove: bool = False) -> bool:
+        """標記／取消標記受信任的 MCP server；回傳是否有變更。 / Mark or unmark a server; True when changed."""
+        server = server.strip()
+        if not server or len(server) > 100:
+            raise ValueError("server name must be 1–100 characters")
+        names = set(self.trusted_servers())
+        before = set(names)
+        names.discard(server) if remove else names.add(server)
+        if names == before:
+            return False
+        path = self._trusted_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"servers": sorted(names)}, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(tmp, path)
+        return True

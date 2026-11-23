@@ -99,6 +99,14 @@ class TestTools(Base):
                            self.g, self.root)
         self.assertFalse(ok["result"]["isError"])
         trust = ok["result"]["_meta"]["jiezi/trust"]                                 # add-agent-trust-gate T8.1
+        self.assertTrue(self.g.trust_mcp("jiezi-readonly-files"))                     # T8.2：標記後為 verified
+        self.assertFalse(self.g.trust_mcp("jiezi-readonly-files"))                    # 重複標記不變 / idempotent
+        again = server.handle({"jsonrpc": "2.0", "id": 9, "method": "tools/call",
+                               "params": {"name": "read_file", "arguments": {"path": str(self.docs / "a.txt")}}},
+                              self.g, self.root)
+        self.assertEqual(again["result"]["_meta"]["jiezi/trust"]["level"], "verified")
+        self.assertTrue(self.g.trust_mcp("jiezi-readonly-files", remove=True))
+        self.assertEqual(self.g.trusted_servers(), [])
         self.assertEqual((trust["level"], trust["provenance"]["source_channel"]), ("unverified", "mcp"))
         self.assertNotIn("_meta", ok["result"]["structuredContent"])                  # 結構不變 / schema unchanged
         bad = server.handle({"jsonrpc": "2.0", "id": 4, "method": "tools/call",
@@ -108,7 +116,7 @@ class TestTools(Base):
         self.assertEqual(server.handle({"jsonrpc": "2.0", "id": 5, "method": "x"}, self.g, self.root)["error"]["code"],
                          -32601)
         rows = audit.read(self.root)
-        self.assertEqual([r["allowed"] for r in rows], [True, False])
+        self.assertEqual([r["allowed"] for r in rows], [True, True, False])
         text = "".join(p.read_text(encoding="utf-8") for p in audit.audit_dir(self.root).glob("*.jsonl"))
         self.assertNotIn("甲甲甲", text)                                                # 不存內容 / no contents
         self.assertNotIn("PRIVATE", text)

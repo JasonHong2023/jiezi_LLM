@@ -366,8 +366,9 @@ def main(argv: list[str] | None = None) -> int:
     gp = sub.add_parser("gaps", help="gap report: questions the local model could not handle")
     gp.add_argument("--days", type=int, default=7, help="最近幾天 / how many recent days (default 7)")
     agp = sub.add_parser("agent", help="read-only agent: grants and audit log (add-agent-readonly)")
-    agp.add_argument("action", choices=["grant", "revoke", "grants", "audit", "server"])
-    agp.add_argument("folder", nargs="?")
+    agp.add_argument("action", choices=["grant", "revoke", "grants", "audit", "server", "trust-mcp"])
+    agp.add_argument("folder", nargs="?", help="grant／revoke：資料夾；trust-mcp：MCP server 名稱 / folder or server name")
+    agp.add_argument("--remove", action="store_true", help="trust-mcp：取消標記 / unmark")
     agp.add_argument("--days", type=int, default=1, help="audit: 最近幾天 / recent days")
     gp = sub.add_parser("rag", help="knowledge-base retrieval measurements (tune-knowledge-relevance)")
     gp.add_argument("action", choices=["relevance"])
@@ -612,6 +613,19 @@ def main(argv: list[str] | None = None) -> int:
                 except ValueError as exc:
                     print(f"refused: {exc}", file=sys.stderr)
                     return 2
+                return 0
+            if args.action == "trust-mcp":  # add-agent-trust-gate T8.2
+                if not args.folder:
+                    names = g.trusted_servers()
+                    print("\n".join(names) if names else "（沒有受信任的 MCP server / none trusted）")
+                    return 0
+                try:
+                    changed = g.trust_mcp(args.folder, remove=args.remove)
+                except ValueError as exc:
+                    print(f"refused: {exc}", file=sys.stderr)
+                    return 2
+                state = "untrusted" if args.remove else "trusted"
+                print(f"{state}: {args.folder}" if changed else f"unchanged: {args.folder}")
                 return 0
             if args.action == "grants":
                 folders = g.folders()
