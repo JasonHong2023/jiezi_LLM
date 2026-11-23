@@ -82,14 +82,25 @@ def out_path(root: Path) -> Path:
     return Path(root) / "var" / "training" / "teacher.jsonl"
 
 
-def judge(answers: dict[str, str], delivered: str, question: str = "") -> dict[str, str]:
+def same_model(a: str, b: str) -> bool:
+    """兩個模型名稱是不是同一個實際模型（忽略供應商前綴，如 nvidia_nim/minimaxai/）。 / Same underlying model?"""
+    def key(x: str) -> str:
+        return (x or "").strip().lower().rsplit("/", 1)[-1]
+    return bool(a) and bool(b) and key(a) == key(b)
+
+
+def judge(answers: dict[str, str], delivered: str, question: str = "",
+          self_delivered: set[str] | frozenset = frozenset()) -> dict[str, str]:
     """每位老師的答案要和交付的答案、或另一位老師一致才收；回傳 {老師: 一致的對象}。
-    A teacher's answer is kept when it agrees with the delivered answer or another teacher."""
+    交付答案的就是這位老師的同一個模型時（self_delivered），「和交付答案一致」是自己跟自己比，不算；
+    只能靠另一位老師（2026-11-23 實測：10 題中 9 題由 minimax 交付，minimax 也是老師）。
+    A teacher's answer is kept when it agrees with the delivered answer or another teacher; a teacher that is the
+    same model as the deliverer cannot use the delivered answer."""
     kept = {}
     for m, a in answers.items():
         if not a.strip():
             continue
-        if delivered and agree(a, delivered, question):
+        if delivered and m not in self_delivered and agree(a, delivered, question):
             kept[m] = "delivered"
             continue
         other = next((o for o, b in answers.items() if o != m and b.strip() and agree(a, b, question)), None)
@@ -113,4 +124,5 @@ def load(root: Path) -> list[dict]:
     p = out_path(root)
     if not p.exists():
         return []
-    return [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines() if x.strip()]
+    rows = [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines() if x.strip()]
+    return [r for r in rows if r.get("training_use") is not False]  # 事後判定不可用的不收 / later-rejected rows

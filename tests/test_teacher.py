@@ -129,5 +129,21 @@ class TestTakeConcurrency(unittest.TestCase):
             self.assertTrue(T.take(root, "m", 5))
 
 
+class TestSelfAgreement(unittest.TestCase):
+    """交付答案的模型也是老師時，不能拿「和交付答案一致」當理由。"""
+
+    def test_same_model_cannot_agree_with_itself(self):
+        from jiezi import teacher as T
+        self.assertTrue(T.same_model("nvidia_nim/minimaxai/minimax-m3.1-flash", "minimax-m3.1-flash"))
+        self.assertFalse(T.same_model("", "x"))
+        q = "台北 101 有多高？"
+        answers = {"minimax": "台北 101 高 508 公尺。", "ultra": "", "step": "大約 600 公尺。"}
+        self.assertEqual(T.judge(answers, "台北 101 高 508 公尺。", q, {"minimax"}), {})
+        self.assertEqual(T.judge(answers, "台北 101 高 508 公尺。", q), {"minimax": "delivered"})
+        answers["ultra"] = "508 公尺。"
+        self.assertEqual(T.judge(answers, "台北 101 高 508 公尺。", q, {"minimax"}),
+                         {"minimax": "teacher:ultra", "ultra": "delivered"})
+
+
 if __name__ == "__main__":
     unittest.main()

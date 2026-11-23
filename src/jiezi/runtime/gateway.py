@@ -1999,11 +1999,14 @@ class Gateway:
                 if m.get("role") in ("system", "user", "assistant") and isinstance(m.get("content"), str)]
         try:
             asyncio.get_running_loop().create_task(
-                self._ask_teachers(teachers, msgs, strip_appendix(delivered), rec.get("id") or ""))
+                self._ask_teachers(teachers, msgs, strip_appendix(delivered), rec.get("id") or "",
+                                   next((t.get("model") for t in reversed(rec.get("tiers") or []) if isinstance(t, dict)
+                                         and t.get("tier") == 3 and t.get("model")), "") or ""))
         except RuntimeError:
             pass
 
-    async def _ask_teachers(self, teachers: list[str], msgs: list[dict], delivered: str, tid: str) -> None:
+    async def _ask_teachers(self, teachers: list[str], msgs: list[dict], delivered: str, tid: str,
+                            delivered_model: str = "") -> None:
         from .. import teacher as T
         headers = {"Authorization": f"Bearer {self.s.cloud_key}"} if self.s.cloud_key else {}
 
@@ -2025,13 +2028,16 @@ class Gateway:
                 if not T.allowed(got):
                     self.log(f"teacher: {model} answered as {got}, not kept")
                     return model, ""
+                served[model] = got
                 return model, strip_appendix(_message(data).get("content") or "").strip()
             except Exception as exc:  # noqa: BLE001 - 老師失敗不影響任何事 / failures are harmless
                 self.log(f"teacher: {model}: {type(exc).__name__}: {exc}")
                 return model, ""
+        served: dict[str, str] = {}
         answers = dict(await asyncio.gather(*(one(m) for m in teachers)))
         question = next((m["content"] for m in reversed(msgs) if m["role"] == "user"), "")
-        kept = T.judge(answers, delivered, question)
+        same = {m for m, got in served.items() if T.same_model(got, delivered_model)}
+        kept = T.judge(answers, delivered, question, same)
         for model, agreed in kept.items():
             await anyio.to_thread.run_sync(T.save, self.s.root, msgs, answers[model], model, agreed, tid)
         self.log(f"teacher: {len(kept)}/{len(teachers)} kept for {tid}")
