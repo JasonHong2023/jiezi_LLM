@@ -210,7 +210,7 @@
 
 ### 7.3 全量測試 / Full Test Suite
 
-- [ ] **T7.7** 執行 `PYTHONPATH=src:tests /home/jason_hong/projects/jiezi_LLM/.venv/bin/python -m unittest discover -s tests` → ≥ 759 通過、0 失敗
+- [ ] **T7.7** 執行 `PYTHONPATH=src:tests .venv/bin/python -m unittest discover -s tests` → ≥ 759 通過、0 失敗
 - [ ] **T7.8** 比對基準：確認無回歸、無新增錯誤
 
 ## Phase 8: 文檔同步 / Documentation Sync

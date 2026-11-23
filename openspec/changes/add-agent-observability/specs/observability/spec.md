@@ -79,7 +79,7 @@ The system SHALL provide four centralized masking rules; all records written to 
 
 #### Scenario: 紅隊注入測試 / Red-team injection test
 
-- **WHEN** 測試向工具參數、契約欄位、user 訊息注入 `sk-abcdef123456`、`.env` 內容、`-----BEGIN PRIVATE KEY-----`、檔案路徑 `/home/user/.ssh/id_rsa`。/ **WHEN** a test injects secret patterns into tool args, contract fields, user messages.
+- **WHEN** 測試向工具參數、契約欄位、user 訊息注入 `sk-abcdef123456`、`.env` 內容、私鑰 PEM 開頭行（測試中於執行時組字串，不寫進檔案）、檔案路徑 `/home/user/.ssh/id_rsa`。/ **WHEN** a test injects secret patterns into tool args, contract fields, user messages.
 - **THEN** 寫入 `var/trajectories/`、`var/audit/` 的 JSONL 經 `_scrub_all()` 後，無明文敏感資訊；結構完整、非敏感欄位正常。/ **THEN** written JSONL files contain no plaintext secrets; structure intact; non-sensitive fields normal.
 
 ---
