@@ -145,3 +145,9 @@ Per dev-plan §15.5 A8: unify fields across `audit`, `trajectory`, `process`, `d
 - 既有規格：`trajectory`、`audit`、`agent`、`gateway`、`escalation`、`tools`
 - 既有變更：`add-agent-contract`、`add-agent-hardening`、`add-client-tool-filter`、`add-answer-process`
 - web-research.md §A8：OpenTelemetry GenAI semantic conventions、Langfuse、OpenLLMetry 查證結果
+## 資安掃描 / Security scan（主控 2026-11-23 補）
+
+- 無新相依、連接埠、服務、模型或權限；不引入 OpenTelemetry SDK、Langfuse、OpenLLMetry（見現成方案）。
+- 主要風險是**敏感內容外洩到觀測紀錄或狀態頁**：檔案內容、使用者私人文件、金鑰、本機路徑。對策：Masking Rules 需求（統一欄位表逐欄標記敏感度與遮罩規則）、狀態頁只顯示計數與摘要、稽核維持「不記檔案內容」。
+- 次要風險是**讀取端轉換錯誤造成誤判**（例如把 fail_closed 算成 completed）：以 normalize 的對應表測試與舊紀錄回歸測試緩解；寫入端欄位不改名，所以轉換錯誤不會損壞既有資料。
+- 結論：ok（2026-11-23）。
