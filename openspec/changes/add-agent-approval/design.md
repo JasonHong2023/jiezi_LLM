@@ -1,5 +1,7 @@
 # add-agent-approval 設計文件 / Design Document
 
+> **主控更正（2026-11-23，實作時）**：草稿把一次性 token 放進 `write_file` 的工具結果回給模型——模型（或誘導它的提示注入）就能自己核准自己。實作改為：**模型拿不到任何核准憑證**，工具結果只有 approval_id、路徑、位元組數、內容 sha256、逾時時間；核准只能由人經 `scripts/jiezi agent approve <id> --sha256 <前 12 碼以上>` 或 `POST /v1/agent/approvals/{id}`（gateway 金鑰＋sha256）做出，sha256 證明核准者看過完整內容（`show` 與 `GET /v1/agent/approvals/{id}` 顯示全文）。工具只建立新檔、永不覆寫，所以不需要 BackupManager：rollback＝確認檔案位元組 sha256 未變後刪除該新檔。狀態省略 `previewed`（proposed 即可預覽）。請求每筆一個 JSON 檔（`var/agent/approvals/<id>.json`），不用 JSONL 整檔改寫。預設關閉，`JIEZI_AGENT_WRITE=on` 才出現在工具清單；逾時 `JIEZI_APPROVAL_TIMEOUT_S`（預設 300，30–3600）。下文凡提到 token、BackupManager、previewed 之處，以本註記為準。
+
 ## 現況 / Current State
 
 ### src/jiezi/agent/grants.py (L17-L23, L48-L63, L65-L78, L93-L112)

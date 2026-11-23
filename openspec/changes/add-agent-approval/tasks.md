@@ -1,5 +1,7 @@
 # add-agent-approval 任務清單 / Task List
 
+> **主控更正（2026-11-23，實作時）**：草稿把一次性 token 放進 `write_file` 的工具結果回給模型——模型（或誘導它的提示注入）就能自己核准自己。實作改為：**模型拿不到任何核准憑證**，工具結果只有 approval_id、路徑、位元組數、內容 sha256、逾時時間；核准只能由人經 `scripts/jiezi agent approve <id> --sha256 <前 12 碼以上>` 或 `POST /v1/agent/approvals/{id}`（gateway 金鑰＋sha256）做出，sha256 證明核准者看過完整內容（`show` 與 `GET /v1/agent/approvals/{id}` 顯示全文）。工具只建立新檔、永不覆寫，所以不需要 BackupManager：rollback＝確認檔案位元組 sha256 未變後刪除該新檔。狀態省略 `previewed`（proposed 即可預覽）。請求每筆一個 JSON 檔（`var/agent/approvals/<id>.json`），不用 JSONL 整檔改寫。預設關閉，`JIEZI_AGENT_WRITE=on` 才出現在工具清單；逾時 `JIEZI_APPROVAL_TIMEOUT_S`（預設 300，30–3600）。下文凡提到 token、BackupManager、previewed 之處，以本註記為準。
+
 ## 任務編碼規則
 - `T<編號>-<類別>-<描述>`：類別 ∈ {CORE, TOOLS, SERVER, AUDIT, APPROVAL, GATEWAY, CLI, TEST, REDTEAM, NIGHTLY}
 - 夜間項目標記 `[NIGHTLY]`，白天可跑短測試
@@ -333,3 +335,18 @@ T30-T34 (夜間，獨立排程)
 5. `T29` `git diff --check` 無輸出
 6. `proposal.md`、`design.md`、`tasks.md`、specs delta 三層文件一致（R3）
 7. 無新增相依套件、無新增 port、無修改核心模型
+## 實作狀態 / Implementation status（主控 2026-11-23）
+
+- [x] T01／T02 `Grants.check_write()`；撤銷後下一次核准即拒絕（test_revoke_after_propose_blocks_write）
+- [x] T03–T05 `write_file` 定義在 `agent/approval.py::WRITE_SCHEMA`（不放進唯讀的 `tools.SCHEMAS`）；`server._propose_write()` 只建立請求
+- [x] T06／T08 `agent/approval.py::ApprovalStore`（propose／get／list／decide／cleanup）、常數與環境變數
+- [x] T07 改為不發 token（見開頭更正）；核准憑據＝內容 sha256（≥12 碼）
+- [x] T09／T10 MCP server 流程與稽核欄位 `approval_id`、`outcome`
+- [x] T11 `audit.write` 本來就接受任意欄位且永不寫 content，無需修改
+- [x] T12／T13 `GET /v1/agent/approvals`、`GET|POST /v1/agent/approvals/{id}`；列表時清理逾期紀錄
+- [x] T14 `scripts/jiezi agent approvals|show|approve|deny|rollback`（`--sha256`、`--reason`）
+- [x] T15–T19、T21–T26 `tests/test_agent_approval.py`（19 個，含路徑跳脫、符號連結、TOCTOU 換連結、重放、偽造、提示注入、磁碟空間）＋ `test_agent_approval_endpoints`
+- [ ] T20 CLI 端對端測試：未做（CLI 直接讀寫專案的 var/，測試需可替換專案根目錄的機制；邏輯已由 store 測試涵蓋）
+- [x] T27–T29 全量 873 測試、strict 驗證、diff check
+- [ ] T30–T34 夜間項目（00:00–07:00）
+- [ ] 桌面網頁核准畫面（OQ1 選 B：端點已備，UI 未做）
