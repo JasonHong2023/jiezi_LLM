@@ -505,6 +505,30 @@ class TestGateway(unittest.TestCase):
         self.assertEqual((t["training_use"], t["trust"]["reason"]), (False, "cloud"))
         self.assertEqual(t["trust"]["provenance"]["source_channel"], "cloud")
 
+    def test_agent_approval_endpoints(self):
+        # add-agent-approval：列表不含內容、詳情含完整內容、核准要回填 sha256
+        from jiezi.agent.approval import ApprovalStore
+        from jiezi.agent.grants import Grants
+        with self.client([{"role": "assistant", "content": "x"}]) as c:
+            root = self.sup.s.root
+            docs = self.tmp / "docs"
+            docs.mkdir()
+            g = Grants(root)
+            g.grant(str(docs))
+            r = ApprovalStore(root).propose(g, str(docs / "n.md"), "內容")
+            h = {"Authorization": f"Bearer {KEY}"}
+            self.assertEqual(c.get("/v1/agent/approvals").status_code, 401)
+            lst = c.get("/v1/agent/approvals", headers=h).json()["approvals"]
+            self.assertEqual([x["id"] for x in lst], [r["id"]])
+            self.assertNotIn("content", lst[0])
+            self.assertEqual(c.get(f"/v1/agent/approvals/{r['id']}", headers=h).json()["content"], "內容")
+            bad = c.post(f"/v1/agent/approvals/{r['id']}", headers=h, json={"action": "allow", "sha256": "0" * 12})
+            self.assertEqual(bad.status_code, 409)
+            ok = c.post(f"/v1/agent/approvals/{r['id']}", headers=h,
+                        json={"action": "allow", "sha256": r["sha256"][:12], "reason": "ok"})
+            self.assertEqual(ok.json()["status"], "applied")
+        self.assertEqual((docs / "n.md").read_text(encoding="utf-8"), "內容")
+
     def test_holiday_question_is_grounded_locally(self):
         from jiezi import laws as L
         from test_holidays import blob, manifest

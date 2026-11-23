@@ -1454,6 +1454,40 @@ class Gateway:
 
         return StreamingResponse(gen(), media_type="text/event-stream")
 
+    async def agent_approvals(self, request: Request) -> Response:
+        """`GET /v1/agent/approvals`（列表，不含內容）、`GET /v1/agent/approvals/{id}`（含完整內容與 sha256）、
+        `POST /v1/agent/approvals/{id}` {action: allow|deny|rollback, sha256, reason}（add-agent-approval）。
+        核准必須回填內容 sha256；模型沒有任何管道拿到核准憑證。 / Approve only with the content's sha256."""
+        if not self._authorized(request):
+            return _err(401, "invalid or missing gateway key", "unauthorized")
+        from ..agent.approval import ApprovalError, ApprovalStore, public
+        from ..agent.grants import Grants
+        from ..agent import audit as agent_audit
+        store, rid = ApprovalStore(self.s.root), request.path_params.get("rid")
+        if request.method == "GET":
+            if not rid:
+                store.cleanup()  # 順手清掉超過保留期限的已結案請求（T13）/ prune old closed requests
+                return JSONResponse({"approvals": [public(r) for r in store.list(request.query_params.get("status"))]})
+            try:
+                r = store.get(rid)
+            except ApprovalError as exc:
+                return _err(400, str(exc), "invalid_approval")
+            return JSONResponse(public(r, with_content=True)) if r else _err(404, "no such approval request", "not_found")
+        data = await self._read_json_any(request)
+        if isinstance(data, Response):
+            return data
+        if not isinstance(data, dict):
+            return _err(400, "body must be a JSON object", "invalid_request")
+        try:
+            r = store.decide(Grants(self.s.root), rid or "", str(data.get("action") or ""), str(data.get("sha256") or ""),
+                             str(data.get("reason") or ""), actor="gateway")
+        except ApprovalError as exc:
+            return _err(409, str(exc), "approval_refused")
+        agent_audit.write(self.s.root, {"source": "gateway", "tool": "write_file", "approval_id": r["id"],
+                                        "outcome": r["status"], "reason": str(data.get("reason") or "")[:300],
+                                        "arguments": {"path": r["path"]}, "allowed": True})
+        return JSONResponse(public(r))
+
     async def agent_audit(self, request: Request) -> Response:
         """`GET /v1/agent/audit?days=1`：稽核紀錄（桌面網頁的稽核頁用）。 / Audit entries for the desktop page."""
         if not self._authorized(request):
@@ -2518,6 +2552,8 @@ def create_app(gw: Gateway) -> Starlette:
         Route("/v1/documents", gw.documents, methods=["POST"]),
         Route("/v1/documents/warm", gw.documents_warm, methods=["POST"]),
         Route("/v1/agent/audit", gw.agent_audit, methods=["GET"]),
+        Route("/v1/agent/approvals", gw.agent_approvals, methods=["GET"]),
+        Route("/v1/agent/approvals/{rid}", gw.agent_approvals, methods=["GET", "POST"]),
         Route("/health", gw.health, methods=["GET"]),
         Route("/admin/unload", gw.admin_unload, methods=["POST"]),
         Route("/admin/trajectories", gw.admin_trajectories, methods=["GET"]),

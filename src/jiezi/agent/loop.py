@@ -150,7 +150,10 @@ async def run(messages: list[dict], complete: Complete, mcp: McpClient, folders:
     started = now_iso()
     goal = next((m.get("content") for m in reversed(messages)
                  if m.get("role") == "user" and isinstance(m.get("content"), str)), None)
-    norm = contract_mod.normalize(contract, step_ceiling=max_steps, available_tools=tools.NAMES, implicit_goal=goal)
+    from .approval import WRITE_SCHEMA, write_enabled
+    all_schemas = [*tools.SCHEMAS, *([WRITE_SCHEMA] if write_enabled() else [])]  # add-agent-approval：預設關閉
+    norm = contract_mod.normalize(contract, step_ceiling=max_steps,
+                                  available_tools={s["function"]["name"] for s in all_schemas}, implicit_goal=goal)
     info: dict = {
         "steps": [], "step_limit": False, "suspected": [], "contract": norm.contract,
         "contract_status": "accepted" if norm.ok else "clarification",
@@ -164,7 +167,7 @@ async def run(messages: list[dict], complete: Complete, mcp: McpClient, folders:
 
     budget = norm.contract["effective_budget"]
     eff_tools = set(norm.contract["effective_tools"])
-    schemas = [s for s in tools.SCHEMAS if s["function"]["name"] in eff_tools]
+    schemas = [s for s in all_schemas if s["function"]["name"] in eff_tools]
     steps, call_limit = max(1, int(budget["max_steps"])), max(1, int(budget["max_calls_per_step"]))
     sysmsg = {"role": "system", "content": AGENT_SYSTEM.format(folders="、".join(folders) or "（尚未授權任何資料夾）")}
     msgs = [sysmsg, *messages]

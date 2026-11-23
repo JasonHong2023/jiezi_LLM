@@ -366,9 +366,12 @@ def main(argv: list[str] | None = None) -> int:
     gp = sub.add_parser("gaps", help="gap report: questions the local model could not handle")
     gp.add_argument("--days", type=int, default=7, help="最近幾天 / how many recent days (default 7)")
     agp = sub.add_parser("agent", help="read-only agent: grants and audit log (add-agent-readonly)")
-    agp.add_argument("action", choices=["grant", "revoke", "grants", "audit", "server", "trust-mcp"])
+    agp.add_argument("action", choices=["grant", "revoke", "grants", "audit", "server", "trust-mcp",
+                                        "approvals", "show", "approve", "deny", "rollback"])
     agp.add_argument("folder", nargs="?", help="grant／revoke：資料夾；trust-mcp：MCP server 名稱 / folder or server name")
     agp.add_argument("--remove", action="store_true", help="trust-mcp：取消標記 / unmark")
+    agp.add_argument("--sha256", default="", help="approve：內容 sha256 的前 12 碼以上（show 會顯示）/ content sha256 prefix")
+    agp.add_argument("--reason", default="", help="approve／deny／rollback：理由，寫入稽核 / reason for the audit")
     agp.add_argument("--days", type=int, default=1, help="audit: 最近幾天 / recent days")
     gp = sub.add_parser("rag", help="knowledge-base retrieval measurements (tune-knowledge-relevance)")
     gp.add_argument("action", choices=["relevance"])
@@ -613,6 +616,41 @@ def main(argv: list[str] | None = None) -> int:
                 except ValueError as exc:
                     print(f"refused: {exc}", file=sys.stderr)
                     return 2
+                return 0
+            if args.action in ("approvals", "show", "approve", "deny", "rollback"):  # add-agent-approval
+                from ..agent.approval import ApprovalError, ApprovalStore, public
+                store = ApprovalStore(root)
+                if args.action == "approvals":
+                    rows = store.list()
+                    if not rows:
+                        print("（沒有寫入請求 / no write requests）")
+                    for r in rows:
+                        print(f"{r['id']}  {r['status']:<11} {r['bytes']:>8} B  {r['path']}")
+                    return 0
+                if not args.folder:
+                    print(f"usage: scripts/jiezi agent {args.action} <id>", file=sys.stderr)
+                    return 2
+                if args.action == "show":
+                    r = store.get(args.folder)
+                    if r is None:
+                        print("no such approval request", file=sys.stderr)
+                        return 2
+                    meta = public(r)
+                    print("\n".join(f"{k}: {meta[k]}" for k in ("id", "status", "path", "bytes", "sha256", "expires_at")))
+                    print("----- 將寫入的完整內容 / full content -----")
+                    print(r["content"])
+                    print("----- 結束 / end -----")
+                    print(f"核准 / approve: scripts/jiezi agent approve {r['id']} --sha256 {r['sha256'][:12]}")
+                    return 0
+                action = {"approve": "allow", "deny": "deny", "rollback": "rollback"}[args.action]
+                try:
+                    r = store.decide(g, args.folder, action, args.sha256, args.reason, actor="cli")
+                except ApprovalError as exc:
+                    print(f"refused: {exc}", file=sys.stderr)
+                    return 2
+                AU.write(root, {"source": "cli", "tool": "write_file", "approval_id": r["id"], "outcome": r["status"],
+                                "reason": args.reason[:300], "arguments": {"path": r["path"]}, "allowed": True})
+                print(f"{r['status']}: {r['path']}")
                 return 0
             if args.action == "trust-mcp":  # add-agent-trust-gate T8.2
                 if not args.folder:

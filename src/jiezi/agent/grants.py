@@ -77,6 +77,33 @@ class Grants:
             return None, "refused: outside the granted folders"
         return real, None
 
+    def check_write(self, path: str | Path) -> tuple[Path | None, str | None]:
+        """建立新檔前的檢查（add-agent-approval）：父資料夾存在且在授權內、目標不存在（含壞掉的符號連結）、
+        不在機密位置。回傳 (實際路徑, None) 或 (None, 拒絕原因)。
+        Checks before creating a new file: granted existing parent, nothing at the target, not a secret location."""
+        if not str(path).strip():
+            return None, "empty path"
+        given = Path(os.path.expanduser(str(path)))
+        if not given.is_absolute():
+            return None, "refused: give a full path"
+        if given.name in ("", ".", ".."):
+            return None, "refused: not a file name"
+        if os.path.lexists(given):  # 既有檔、資料夾或符號連結都不行 / existing file, folder or symlink
+            return None, "refused: something already exists at that path; this tool only creates new files"
+        parent = _resolve(given.parent)  # 解析父資料夾的符號連結後再比對授權 / resolve the parent, then check
+        if not parent.is_dir():
+            return None, "refused: parent directory does not exist"
+        real = parent / given.name
+        why = self.denied(real)
+        if why:
+            return None, f"refused: {why}"
+        folders = self.folders()
+        if not folders:
+            return None, "refused: no folder has been granted (scripts/jiezi agent grant <folder>)"
+        if not any(real.parent == f or f in real.parents for f in folders):
+            return None, "refused: outside the granted folders"
+        return real, None
+
     # ── 只有命令列會呼叫 / CLI only ──
     def _write(self, folders: list[dict]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

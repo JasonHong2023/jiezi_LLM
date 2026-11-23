@@ -20,9 +20,35 @@ PROTOCOL = "2025-06-18"
 INFO = {"name": "jiezi-readonly-files", "version": "0.1.0"}
 
 
+def _schemas() -> list[dict]:
+    from .approval import WRITE_SCHEMA, write_enabled
+    return [*tools.SCHEMAS, *([WRITE_SCHEMA] if write_enabled() else [])]  # 寫入預設關閉 / write off by default
+
+
 def _mcp_tools() -> list[dict]:
     return [{"name": s["function"]["name"], "description": s["function"]["description"],
-             "inputSchema": s["function"]["parameters"]} for s in tools.SCHEMAS]
+             "inputSchema": s["function"]["parameters"]} for s in _schemas()]
+
+
+def _propose_write(g: Grants, root: Path, args: dict, meta: dict, source: str) -> tuple[dict | None, str | None]:
+    """write_file 只建立核准請求，不寫檔；回給模型的結果沒有任何核准憑證（add-agent-approval）。
+    write_file only files an approval request; nothing returned to the model can approve it."""
+    from .approval import ApprovalError, ApprovalStore, write_enabled
+    if not write_enabled():
+        return None, "refused: the write tool is off (JIEZI_AGENT_WRITE)"
+    extra = set(args) - {"path", "content"}
+    if extra or not isinstance(args.get("path"), str) or not isinstance(args.get("content"), str):
+        return None, "write_file needs exactly a text path and content"
+    try:
+        req = ApprovalStore(root).propose(g, args["path"], args["content"],
+                                          {"source": source, "trajectory_id": meta.get("trajectory_id"),
+                                           "step": meta.get("step")})
+    except ApprovalError as exc:
+        return None, str(exc)
+    return {"needs_approval": True, "approval_id": req["id"], "path": req["path"], "bytes": req["bytes"],
+            "sha256": req["sha256"], "expires_at": req["expires_at"],
+            "message": "已建立寫入請求，檔案尚未寫入；要等使用者核准。不要重試，也不要要求使用者略過核准。"
+                       " Not written yet; waiting for the user's approval."}, None
 
 
 def _trust(root: Path, text: str, trusted: bool = False) -> dict:
@@ -53,6 +79,19 @@ def handle(msg: dict, g: Grants, root: Path, source: str = "mcp") -> dict | None
         p = msg.get("params") or {}
         name, args = p.get("name"), p.get("arguments") or {}
         meta = p.get("_meta") or {}
+        if name == "write_file":
+            result, error = _propose_write(g, root, args, meta, source)
+            audit.write(root, {"source": source, "trajectory_id": meta.get("trajectory_id"), "step": meta.get("step"),
+                               "tool": name, "arguments": {"path": args.get("path")}, "allowed": error is None,
+                               "approval_id": (result or {}).get("approval_id"),
+                               "outcome": "pending_approval" if error is None else "refused",
+                               "error": error[:300] if error else None})
+            if error:
+                return {"jsonrpc": "2.0", "id": mid, "result": {"isError": True,
+                                                                 "content": [{"type": "text", "text": error}]}}
+            return {"jsonrpc": "2.0", "id": mid, "result": {
+                "isError": False, "structuredContent": result,
+                "content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}]}}
         try:
             result, error = tools.call(g, str(name), args), None
         except tools.ToolError as exc:
