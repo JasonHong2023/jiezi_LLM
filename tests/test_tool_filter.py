@@ -100,6 +100,12 @@ class CompactPromptTests(unittest.TestCase):
         for line in ("Working directory: /w", "Platform: linux", "Today's date: Mon Nov 23 2026"):
             self.assertIn(line, o)
 
+    def test_head_forbids_invented_credentials(self):
+        # 2026-11-23 實機：精簡後模型在 curl 網址裡編了 API 金鑰、瀏覽前沒先開網頁 → 固定指示補兩條規則
+        self.assertIn("不要編造 API 金鑰", F.COMPACT_HEAD)
+        self.assertIn("先開啟網址", F.COMPACT_HEAD)
+        self.assertLessEqual(len(F.COMPACT_HEAD), F.COMPACT_MAX_CHARS // 2)
+
     def test_replaces_every_system_message(self):
         msgs = [{"role": "system", "content": self.HERMES}, {"role": "user", "content": "hi"},
                 {"role": "system", "content": "附加資料"}]

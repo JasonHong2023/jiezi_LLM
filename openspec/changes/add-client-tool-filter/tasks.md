@@ -40,7 +40,7 @@
 - [x] 4b.1 `tool_filter.compact_system()`／`with_compact_system()`；gateway 在階梯全部放不下時才試；`JIEZI_COMPACT_CLIENT_PROMPT`（預設關）；軌跡 `client_prompt`
 - [x] 4b.2 離線重放 37 個真實代理請求（Hermes 55 工具、OpenCode 177–179 工具）：不精簡 1 個放得下；精簡後 36 個放得下（35 個在 short_descriptions 階段），1 個仍放不下
 - [x] 4b.3 測試：CompactPromptTests、test_compact_client_prompt_lets_long_agent_prompts_run_locally
-- [ ] 4b.4 夜間：開啟後用 Hermes／OpenCode 實際跑 10 個常見任務，比較本機完成率、工具呼叫正確率與轉交率，決定是否預設開啟（交使用者決定）
+- [x] 4b.4（2026-11-23 12:3x 使用者同意改成白天實機小量測試；.env 已設 JIEZI_COMPACT_CLIENT_PROMPT=on：9 個真實 Hermes／OpenCode 單回合請求全部由本機作答〔3–19 秒；原本全部轉交或 413〕；列檔、get_weather 正確；問題 2 個——沒有天氣工具時在 curl 網址編造 API 金鑰、瀏覽 Pinterest 前沒先開網頁 → 精簡指示補「不要編造金鑰／先開網址」，直送引擎重測兩題各 2 次都改善〔改用免金鑰的 open-meteo、先 browser_navigate〕。多回合任務與完整成功率仍待夜間）夜間：開啟後用 Hermes／OpenCode 實際跑 10 個常見任務，比較本機完成率、工具呼叫正確率與轉交率，決定是否預設開啟（交使用者決定）
 
 ## 5. 重度量測（00:00–07:00） / Heavy measurements (00:00–07:00)
 
