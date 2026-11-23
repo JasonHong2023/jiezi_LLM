@@ -4,8 +4,8 @@
 
 代理迴圈 SHALL 把每個工具呼叫（工具、參數、允許或拒絕、結果摘要）寫入本機稽核紀錄，SHALL NOT 記錄檔案內容本身；一個請求的工具呼叫 SHALL 有步數上限；客戶端中斷時 SHALL 停止迴圈並終止進行中的工具。工具回傳的內容 SHALL 被當成資料：其中的指示 SHALL NOT 被當成使用者的要求，SHALL NOT 能擴大授權。代理功能關閉時，請求 SHALL 照原本的方式處理。
 The loop SHALL audit every tool call without recording file contents, SHALL cap the number of steps, and SHALL stop and terminate the running tool when the client disconnects. Tool results SHALL be treated as data: instructions in them SHALL NOT count as user requests and SHALL NOT widen grants. With the agent off, requests SHALL be handled as before.
-稽核紀錄 SHALL 另含 `approval_id`、`token_used`、`reason`、`outcome` 欄位（add-agent-approval）；高風險工具（`write_file`）SHALL 經核准流程，未核准 SHALL NOT 執行。讀取沒有這些欄位的舊稽核紀錄 SHALL 照常成功。
-Audit records SHALL also carry `approval_id`, `token_used`, `reason` and `outcome`; the high-risk `write_file` tool SHALL go through approval and SHALL NOT run unapproved. Old audit records without these fields SHALL still parse.
+稽核紀錄 SHALL 另含 `approval_id`、`reason`、`outcome` 欄位（add-agent-approval）；寫入工具（`write_file`）SHALL 經人工核准才寫入，未核准 SHALL NOT 寫入。讀取沒有這些欄位的舊稽核紀錄 SHALL 照常成功。
+Audit records SHALL also carry `approval_id`, `reason` and `outcome`; `write_file` SHALL write only after a person approves. Old audit records without these fields SHALL still parse.
 
 #### Scenario: 檔案內容要求讀別的檔案 / A file asks for another file
 
