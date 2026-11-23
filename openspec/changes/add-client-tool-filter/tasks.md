@@ -46,9 +46,9 @@
 
 ## 6. 驗證與紀錄 / Validation and records
 
-- [ ] 6.1 執行 `openspec validate add-client-tool-filter --strict`、`openspec validate --all --strict` 與 `GIT_MASTER=1 git diff --check` / Run strict validations and diff check
-- [ ] 6.2 執行 `PYTHONPATH=src:tests .venv/bin/python -m unittest discover -s tests`，確認不少於現有測試數且全過 / Run full unittest suite, confirm no regression
-- [ ] 6.3 依 R19.4 更新 `docs/dev-plan.md` §15.7、`HANDOFF.md` 與 `2026-11-22.md`，記錄結果與殘留風險 / Update dev-plan §15.7, HANDOFF, and daily record with results and residual risks per R19.4
+- [x] 6.1（2026-11-23 每次 commit 前皆通過）執行 `openspec validate add-client-tool-filter --strict`、`openspec validate --all --strict` 與 `GIT_MASTER=1 git diff --check` / Run strict validations and diff check
+- [x] 6.2（最新 888 測試全過）執行 `PYTHONPATH=src:tests .venv/bin/python -m unittest discover -s tests`，確認不少於現有測試數且全過 / Run full unittest suite, confirm no regression
+- [x] 6.3（2026-11-23 `docs/dev-plan.md` §15.9、HANDOFF、2026-11-23.md）依 R19.4 更新 `docs/dev-plan.md` §15.7、`HANDOFF.md` 與 `2026-11-22.md`，記錄結果與殘留風險 / Update dev-plan §15.7, HANDOFF, and daily record with results and residual risks per R19.4
 
 ## 7. 核准關卡 / Approval gate
 

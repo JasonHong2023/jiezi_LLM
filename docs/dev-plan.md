@@ -507,3 +507,17 @@
 - **安全**：合成語料、無真實機密；寫入 grant、symlink 逃逸、secret deny、revoke、稽核無內容、budget 對齊都有測試；Claude／雲端輸出不進訓練。無新套件、服務、連接埠、模型或 GPU 工作。
 - **驗證**：`PYTHONPATH=src:tests .venv/bin/python -m unittest -v tests.test_agent_hardening` → 5/5 OK（0.631 秒；先前 12 tests 是 top-level `TestLoop` 重複收集，已改為函式內 import 修正）；`PYTHONPATH=src:tests .venv/bin/python -m unittest discover -s tests` → `Ran 719 tests in 73.939s`、`OK`（原 711 + 新增 8；ResourceWarning 為既有）；`openspec validate add-agent-hardening --strict` valid；`openspec validate --all --strict` 46 passed／0 failed；`GIT_MASTER=1 git diff --check` 無輸出；繁體掃描無真簡體；未 stage／commit／push。
 - **殘留風險**：語料過擬合與真實機密誤入仍需內容審查；大量 fuzz／夜間紅隊排除在本 change 外；未 live smoke 或重啟 gateway；basedpyright 未安裝（使用者先前拒絕），Python LSP 未跑；ResourceWarning 為既有。
+
+### 15.9 A4–A8 與 A3 3.1 實作補記（2026-11-23，R19.4）
+
+> 保留 §15.1／§15.5／§15.7 的原紀錄；本節是更正與補記。使用者 2026-11-23 指示「我不管規則想辦法開發完成」，主控依各提案的建議定案 Open Questions 後直接實作；R4「先給使用者看提案」本輪未逐案執行。push 依使用者指示延到「動用工具能力」完成後。
+
+- **A4 `add-agent-capability-registry`**：完成。`docs/capabilities.toml`（6 筆＋規則前的 19 個 legacy change）、`src/jiezi/capabilities.py`、`scripts/jiezi capabilities check`（檢查每份提案有分類／現成方案／資安掃描三段）。
+- **A5 `add-agent-trust-gate`**：完成（ruff／mypy 未安裝未跑）。`src/jiezi/trust.py`：四級 TrustLevel、雲端為 provenance 標記不是等級、taint index 持久化 `var/trust/taint_index.jsonl`（30 天、每個 root 一份）、`mark_untrainable(rec, reason)` 取代 gateway 12 處分散寫法並保留原因；`injection.guard()` 每段可疑內容一個 sha256；記憶／技能／訓練資料寫入前經 TrustGate；MCP 結果 `_meta["jiezi/trust"]`；`scripts/jiezi agent trust-mcp`。
+- **A6 `add-agent-approval`**：完成（夜間 T30–34 未跑）。唯一寫入工具 `write_file` 只建新檔、不覆寫；預設關（`JIEZI_AGENT_WRITE=on`）；**模型拿不到核准憑證**（更正 W7 草稿把 token 回給模型的漏洞），核准須由人回填內容 sha256（CLI `agent approve`、`/v1/agent/approvals`、桌面狀態頁）；寫入時重查授權、`O_EXCL|O_NOFOLLOW`、磁碟空間；rollback＝sha256 未變才刪。
+- **A7 `add-client-tool-filter`**：完成（夜間 5.x 未跑）。OQ0 選 (C)：放得下走本機，放不下轉交雲端但只帶篩過的工具。**Hermes／OpenCode 的系統提示本身超過 4,096 token，仍會轉交**——改寫系統提示或大槽位（OQ0 A／B）未做。
+- **A8 `add-agent-observability`**：Phase 1／3／5 完成。統一欄位是讀取端檢視（`src/jiezi/observability.py::normalize`，既有 var/ 欄位不改名）；代理迴圈 fail-closed（步數用完 `budget_exceeded`、疑似注入 `injection_detected`：停止工具動作、仍回答）；`/admin/observability`＋狀態頁「代理與工具」。
+- **A3 3.1**：ToolACE、hermes-function-calling-v1（Apache-2.0，鎖 revision）轉成 10,833 筆通過 schema 的訓練範例；`eval_targets` 補上 toolcheck ACEBench／BFCL 1,540 題（原本漏擋）；**預設不收進訓練**（生成模型未載明，交使用者決定；`dataset export --toolcall-datasets`）。違規更正：先下載後登記 licenses.md（R18.3）。
+- **工作方式**：平行 worker（OpenCode＋LiteLLM 免費 NV 模型）產出品質差（編造值、刪主規格原文、型別錯、安全漏洞），每份都需主控逐檔審查、多數重寫；worker 已以設定檔硬性禁止安裝套件與 commit／push。
+- **驗證**：全量 888 測試、`openspec validate --all --strict` 51 項、`scripts/jiezi capabilities check` 皆通過。
+- **殘留**：A3 3.2 第 3 輪 SFT（夜間，待決定是否收外部資料集）；A7 5.x、A6 T30–34 夜間；A8 Phase 2／4／6／7 依新設計多數不需要，未做的項目在 tasks.md 註記；gateway 需重啟才會載入新功能。

@@ -7,7 +7,7 @@
 - [x] **T0.3** 建立 `openspec/changes/add-agent-observability/` 目錄結構
 - [x] **T0.4** 撰寫 `proposal.md`（含分類判定、現成方案、現況盤點、變更範圍、開放問題、驗收標準）
 - [x] **T0.5** 撰寫 `design.md`（統一欄位表、遮罩規則、狀態機、預算對齊、模組對應、規格 Delta、驗證矩陣、優先序）
-- [ ] **T0.6** 撰寫 `tasks.md`（本檔案）
+- [x] **T0.6** 撰寫 `tasks.md`（本檔案）
 
 > **主控實作註記（2026-11-23）**：Phase 1 改為單一模組 `src/jiezi/observability.py`（常數、`normalize(record, kind)`、`scrub_text`／`scrub`）＋ `tests/test_observability.py`。值域取自實際軌跡（2,534 筆全數轉換無例外）。W9 的草稿（observability 套件＋limits 改動）未採用：POLICIES 編造（direct／cloud_only／test）、tool_filter 把計數當清單、遮罩規則誤遮 40 字元雜湊與 `os.environ`、limits 重寫了契約已有的預算收斂並編造 VRAM／CPU 門檻。狀態機（T1.6／T1.7）與 limits（T1.8）留到 Phase 3 接上代理迴圈時再做。下方 Phase 1 勾選以此為準：T1.1–T1.5 完成（單一模組形式）、T1.6–T1.8 未做。
 
@@ -15,25 +15,25 @@
 
 ### 1.1 統一欄位常數 / Unified Field Constants
 
-- [ ] **T1.1** 建立 `src/jiezi/observability/__init__.py`，匯出所有公用 API
-- [ ] **T1.2** 建立 `src/jiezi/observability/fields.py`：
+- [x] **T1.1**（以單一模組 `src/jiezi/observability.py` 與 `tests/test_observability.py` 完成，見 Phase 1 註記） 建立 `src/jiezi/observability/__init__.py`，匯出所有公用 API
+- [x] **T1.2**（以單一模組 `src/jiezi/observability.py` 與 `tests/test_observability.py` 完成，見 Phase 1 註記） 建立 `src/jiezi/observability/fields.py`：
   - `UNIFIED_FIELDS: dict[str, dict]` — 欄位定義（型別、預設值、是否必填、敏感標記、遮罩規則名）
   - `TERMINAL_STATES = ("completed", "failed", "aborted", "fail_closed")`
   - `ESCALATION_REASONS = ("none", "verification_failed", "daily_cap_reached", "self_reported_unsure", "consult_failed", "needs_web", "local_unavailable")`
   - `FAIL_CLOSED_REASONS = ("budget_exceeded", "injection_detected", "verification_loop", "consultation_timeout", "cli_unavailable", "cloud_unavailable", "daily_cap")`
   - `PROVIDERS = ("local", "claude", "cloud")`
   - `POLICIES = ("jiezi", "jiezi-local", "jiezi-cloud", "jiezi-ask-claude")`
-- [ ] **T1.3** 單元測試：`tests/test_observability_fields.py` 驗證常數完整性、值域
+- [x] **T1.3**（以單一模組 `src/jiezi/observability.py` 與 `tests/test_observability.py` 完成，見 Phase 1 註記） 單元測試：`tests/test_observability_fields.py` 驗證常數完整性、值域
 
 ### 1.2 遮罩函數 / Masking Functions
 
-- [ ] **T1.4** 建立 `src/jiezi/observability/masking.py`：
+- [x] **T1.4**（以單一模組 `src/jiezi/observability.py` 與 `tests/test_observability.py` 完成，見 Phase 1 註記） 建立 `src/jiezi/observability/masking.py`：
   - `_SECRET_PATTERNS: list[re.Pattern]` — `sk-`、`ghp_`、`gho_`、`glpat-`、`xoxb-`、`xoxp-`、AWS AK、GCP SA、JWT、私鑰標頭等
   - `_scrub_text(text: str) -> str`：替換秘密模式為 `[REDACTED]`、保留結構
   - `_scrub_tool_result(result: dict) -> dict`：只保留 `tool`、`ok`、`result_chars`、`error_type`、`latency_ms`
   - `_scrub_messages(messages: list[dict]) -> list[dict]`：system 只保留 role、user/assistant 截 200 字並遮罩
   - `_scrub_all(record: dict) -> dict`：遞迴處理整筆記錄，依 `UNIFIED_FIELDS` 敏感標記決定是否處理
-- [ ] **T1.5** 單元測試：`tests/test_observability_masking.py` 覆蓋各模式、巢狀結構、非字串值
+- [x] **T1.5**（以單一模組 `src/jiezi/observability.py` 與 `tests/test_observability.py` 完成，見 Phase 1 註記） 單元測試：`tests/test_observability_masking.py` 覆蓋各模式、巢狀結構、非字串值
 
 ### 1.3 狀態機 / State Machine
 
@@ -87,12 +87,12 @@
 
 ### 3.1 Agent Loop
 
-- [ ] **T3.1** 修改 `src/jiezi/agent/loop.py`：
+- [x] **T3.1**（見 Phase 3 註記） 修改 `src/jiezi/agent/loop.py`：
   - `run()` 回傳 `info` 含 `terminal_state`（統一值域）、`effective_budget`（來自 `limits.to_budget_dict()` 經 `cap_budget()`）、`fail_closed`、`fail_closed_reason`
   - 預算檢查：步數/呼叫數/token 超限時觸發 `fail_closed(reason="budget_exceeded")`
   - 注入檢查：`injection_suspected` 為真時觸發 `fail_closed(reason="injection_detected")`
   - 驗證迴圈超過 N 次（建議 3）觸發 `fail_closed(reason="verification_loop")`
-- [ ] **T3.2** 單元測試：`tests/test_loop_fail_closed.py` 覆蓋三種觸發路徑
+- [x] **T3.2**（見 Phase 3 註記） 單元測試：`tests/test_loop_fail_closed.py` 覆蓋三種觸發路徑
 
 ### 3.2 Contract Normalization
 
