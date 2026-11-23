@@ -13,6 +13,7 @@ Detection is heuristic; the real protection is (2) plus never letting external c
 
 from __future__ import annotations
 
+import hashlib
 import re
 
 # 零寬、方向控制、BOM 等看不見的字元 / invisible characters
@@ -96,15 +97,22 @@ def guard(messages: list[dict], data_ids: set[int] | None = None) -> dict:
     data_ids). The client's own system prompts are not scanned.
 
     回傳 / Returns {"untrusted": bool, "documents": bool, "tools": bool, "suspected": [...], "where": [...],
-    "cleaned": n}"""
+    "cleaned": n, "taints": [{"where", "taint_id", "content_hash"}], "taint_id", "content_hash"}
+    taints：每段可疑內容各自的 sha256（add-agent-trust-gate），之後同一段內容進記憶／技能時可被 taint index 擋下；
+    taint_id／content_hash 是第一筆，沒有可疑內容時為 None。 / One hash per suspicious item; the first is mirrored."""
     from .documents import DOC_RE
-    info = {"untrusted": False, "documents": False, "tools": False, "suspected": [], "where": [], "cleaned": 0}
+    info = {"untrusted": False, "documents": False, "tools": False, "suspected": [], "where": [], "cleaned": 0,
+            "taints": [], "taint_id": None, "content_hash": None}
 
     def note(where: str, text: str) -> None:
         hits = scan(text)
         if hits:
             info["where"].append(where)
             info["suspected"] += [h for h in hits if h not in info["suspected"]]
+            digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+            info["taints"].append({"where": where, "taint_id": digest[:16], "content_hash": digest})
+            if info["taint_id"] is None:
+                info["taint_id"], info["content_hash"] = digest[:16], digest
 
     for i, m in enumerate(messages):
         role = m.get("role")
