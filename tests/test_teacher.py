@@ -88,5 +88,46 @@ class TestGatewayTeachers(unittest.TestCase):
             self.assertEqual((rows[0]["teacher"], rows[0]["messages"][-1]["content"]), ("nemotron-teacher", "cloud"))
 
 
+
+
+class TestTakeConcurrency(unittest.TestCase):
+    """2026-11-23 實測：8 位老師同時扣額度會讀到寫一半的檔案。 / Concurrent takes must not corrupt the usage file."""
+
+    def test_concurrent_takes_count_exactly(self):
+        import tempfile
+        import threading
+        from pathlib import Path
+        from jiezi import teacher as T
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            errors = []
+
+            def go(model):
+                try:
+                    for _ in range(25):
+                        T.take(root, model, 1000)
+                except Exception as exc:  # noqa: BLE001
+                    errors.append(exc)
+            threads = [threading.Thread(target=go, args=(f"m{i}",)) for i in range(8)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            self.assertEqual(errors, [])
+            import json
+            day = next(iter(json.loads(T.usage_path(root).read_text(encoding="utf-8")).values()))
+            self.assertEqual(day, {f"m{i}": 25 for i in range(8)})
+
+    def test_corrupt_usage_file_starts_over(self):
+        import tempfile
+        from pathlib import Path
+        from jiezi import teacher as T
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            T.usage_path(root).parent.mkdir(parents=True)
+            T.usage_path(root).write_text('{"2026-', encoding="utf-8")
+            self.assertTrue(T.take(root, "m", 5))
+
+
 if __name__ == "__main__":
     unittest.main()

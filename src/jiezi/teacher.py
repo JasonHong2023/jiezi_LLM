@@ -11,7 +11,9 @@ The user chose to use any free model, verified or not; services whose terms expl
 from __future__ import annotations
 
 import json
+import os
 import re
+import threading
 from datetime import date
 from pathlib import Path
 
@@ -51,17 +53,28 @@ def usage_path(root: Path) -> Path:
     return Path(root) / "var" / "training" / "teacher-usage.json"
 
 
+_TAKE_LOCK = threading.Lock()
+
+
 def take(root: Path, model: str, daily_max: int = DAILY_MAX) -> bool:
-    """今天這位老師還有額度就扣一次。 / Use one of today's questions for this teacher if any are left."""
+    """今天這位老師還有額度就扣一次。多位老師同時呼叫：加鎖、原子寫入；檔案壞掉當作今天從 0 開始
+    （2026-11-23 實測：8 位老師同時讀寫，讀到寫一半的檔案 → JSONDecodeError，整批老師都沒問到）。
+    Use one of today's questions for this teacher; locked and written atomically since teachers run concurrently."""
     p = usage_path(root)
-    data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-    today = date.today().isoformat()
-    day = data.get(today, {})
-    if day.get(model, 0) >= daily_max:
-        return False
-    day[model] = day.get(model, 0) + 1
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps({today: day}, ensure_ascii=False), encoding="utf-8")
+    with _TAKE_LOCK:
+        try:
+            data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+        except (OSError, ValueError):
+            data = {}
+        today = date.today().isoformat()
+        day = data.get(today, {}) if isinstance(data, dict) else {}
+        if day.get(model, 0) >= daily_max:
+            return False
+        day[model] = day.get(model, 0) + 1
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(json.dumps({today: day}, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, p)
     return True
 
 

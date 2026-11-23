@@ -2008,7 +2008,11 @@ class Gateway:
         headers = {"Authorization": f"Bearer {self.s.cloud_key}"} if self.s.cloud_key else {}
 
         async def one(model: str) -> tuple[str, str]:
-            if not await anyio.to_thread.run_sync(T.take, self.s.root, model, self.s.teacher_daily_max):
+            try:  # 用量記錄出錯只略過這位老師，不拖垮整批 / a usage error skips this teacher only
+                if not await anyio.to_thread.run_sync(T.take, self.s.root, model, self.s.teacher_daily_max):
+                    return model, ""
+            except Exception as exc:  # noqa: BLE001
+                self.log(f"teacher: {model}: usage: {type(exc).__name__}: {exc}")
                 return model, ""
             try:
                 r = await self.cloud.post(f"{self.s.cloud_base}/v1/chat/completions", headers=headers, json={
