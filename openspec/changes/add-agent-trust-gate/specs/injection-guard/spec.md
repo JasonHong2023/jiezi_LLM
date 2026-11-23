@@ -2,9 +2,9 @@
 
 ### Requirement: Enriched Injection Result / 豐富化注入結果
 
-`injection.guard()` SHALL return an `InjectionResult` with additional fields:
+`injection.guard()` SHALL return its result dict with additional fields (per suspicious item in `taints`, the first mirrored in `taint_id`／`content_hash`):
 
-`injection.guard()` 必須回傳包含額外欄位的 `InjectionResult`：
+`injection.guard()` 必須在回傳的結果 dict 加上下列欄位（每段可疑內容一筆在 `taints`，第一筆同時放在 `taint_id`／`content_hash`）：
 
 - `taint_id: str` (content_hash[:16])
 - `content_hash: str` (full SHA-256 hex)
@@ -23,9 +23,9 @@ And injection_result.content_hash == sha256(content)
 
 ### Requirement: Taint Index Registration / 污染索引登錄
 
-When `InjectionResult.detected == True`, TrustGate SHALL register the `taint_id` in `taint_index` with a `TaintRecord` containing:
+When the result's `suspected` list is non-empty, TrustGate SHALL register the `taint_id` in `taint_index` with a `TaintRecord` containing:
 
-當 `InjectionResult.detected == True` 時，TrustGate 必須將 `taint_id` 登錄至 `taint_index`，包含以下 `TaintRecord`：
+當結果的 `suspected` 非空時，TrustGate 必須將 `taint_id` 登錄至 `taint_index`，包含以下 `TaintRecord`：
 
 - `taint_id`, `content_hash`, `detected_at`, `source_channel`, `source_id`, `injection_type`, `snippet`
 
@@ -42,9 +42,9 @@ And the TaintRecord has correct source_channel, source_id, injection_type, snipp
 
 ### Requirement: Suspected Injection Is Flagged and Isolated
 
-外部內容命中注入句型時，gateway SHALL 在軌跡記錄 `injection`（句型名稱與位置）並設 `training_use=false`，SHALL NOT 把這次的結果學進技能庫或存進記憶，SHALL 在回應的 `jiezi.injection` 附上警告；訓練資料匯出 SHALL 排除這些軌跡；`jiezi chat`、`jiezi ask` 與桌面網頁 SHALL 顯示警告。回答本身 SHALL 照常回傳。偵測為啟發式，SHALL NOT 被當成唯一的保護：外部內容 SHALL NOT 能觸發有副作用的動作。**`injection.guard()` SHALL 回傳豐富化的 `InjectionResult`，新增 `taint_id`（content_hash 前 16 碼）與 `content_hash`（完整 SHA-256）。偵測到注入時，TrustGate SHALL 將 `taint_id` 登錄至 `taint_index`，跨管道攔截相同雜湊內容。**
+外部內容命中注入句型時，gateway SHALL 在軌跡記錄 `injection`（句型名稱與位置）並設 `training_use=false`，SHALL NOT 把這次的結果學進技能庫或存進記憶，SHALL 在回應的 `jiezi.injection` 附上警告；訓練資料匯出 SHALL 排除這些軌跡；`jiezi chat`、`jiezi ask` 與桌面網頁 SHALL 顯示警告。回答本身 SHALL 照常回傳。偵測為啟發式，SHALL NOT 被當成唯一的保護：外部內容 SHALL NOT 能觸發有副作用的動作。**`injection.guard()` SHALL 在回傳的結果 dict 加上 `taints`（每段可疑內容一筆）並新增 `taint_id`（content_hash 前 16 碼）與 `content_hash`（完整 SHA-256）。偵測到注入時，TrustGate SHALL 將 `taint_id` 登錄至 `taint_index`，跨管道攔截相同雜湊內容。**
 
-When external content matches an injection pattern the gateway SHALL record `injection`, set `training_use=false`, SHALL NOT learn a skill or save memory from the request, and SHALL return a warning in `jiezi.injection`; the training export SHALL exclude such trajectories and the clients SHALL show the warning. The answer SHALL still be returned. Detection is heuristic and SHALL NOT be the only protection: external content SHALL NOT be able to trigger side effects. **`injection.guard()` SHALL return an enriched `InjectionResult` with additional `taint_id` (first 16 chars of content_hash) and `content_hash` (full SHA-256). When injection is detected, TrustGate SHALL register the `taint_id` in `taint_index` for cross-channel blocking of same-hash content.**
+When external content matches an injection pattern the gateway SHALL record `injection`, set `training_use=false`, SHALL NOT learn a skill or save memory from the request, and SHALL return a warning in `jiezi.injection`; the training export SHALL exclude such trajectories and the clients SHALL show the warning. The answer SHALL still be returned. Detection is heuristic and SHALL NOT be the only protection: external content SHALL NOT be able to trigger side effects. **`injection.guard()` SHALL add `taints` (one per suspicious item) to its result dict, plus `taint_id` (first 16 chars of content_hash) and `content_hash` (full SHA-256). When injection is detected, TrustGate SHALL register the `taint_id` in `taint_index` for cross-channel blocking of same-hash content.**
 
 #### Scenario: 文件要求忽略指示 / A document says to ignore instructions
 

@@ -22,13 +22,13 @@
 
 ### Phase 2: Memory Integration / 記憶整合
 
-- [ ] **T2.1** Modify `src/jiezi/memory.py`
+- [x] **T2.1**（W8 實作、主控修正：Memory(wiki, root) 共用 gateway 的 taint index；頁面前言記 trust_level／provenance_*；被污染的內容不寫入） Modify `src/jiezi/memory.py`
   - `render_page()` adds `trust_level`, `source_url`, `source_version`, `content_hash`, `fetched_at` to frontmatter
   - `save_answer()` calls `get_gate().evaluate_trust(content, "cloud", model, {...})` before writing
   - `save_correction()` calls `get_gate().evaluate_trust(content, "correction", "user", {...})` before writing
   - Page reading: missing trust/provenance fields default to UNVERIFIED/unknown
 
-- [ ] **T2.2** Extend `tests/test_memory.py`
+- [x] **T2.2**（含 TestTaintAcrossChannels：gateway 登記的污染內容擋下記憶寫入） Extend `tests/test_memory.py`
   - save_answer() frontmatter includes trust.level=unverified＋provenance.source_channel=cloud, provenance with source_channel=cloud
   - save_correction() frontmatter includes trust_level, provenance with source_channel=correction
   - Reading old pages without trust fields defaults correctly
@@ -36,14 +36,14 @@
 
 ### Phase 3: Skills Integration / 技能整合
 
-- [ ] **T3.1** Modify `src/jiezi/skills.py`
+- [x] **T3.1**（W8 實作、主控修正：Skills(path, root)；既有技能缺欄位視為 verified——它們都由 schema 驗證成功的呼叫產生，否則現有技能會全部失效；examples 只用 verified 以上） Modify `src/jiezi/skills.py`
   - SkillItem dataclass adds `trust_level: str`, `provenance: Dict`
   - `collect()` filters: only include items with `trust_level in ("verified", "trusted")`
   - `build()` writes trust_level and provenance to skills.jsonl
   - `add()` (online learning) calls `get_gate().evaluate_trust()` before appending
   - `load_skills()` reads trust_level/provenance, defaults to UNVERIFIED
 
-- [ ] **T3.2** Create `tests/test_skills.py` (or extend existing)
+- [x] **T3.2** Create `tests/test_skills.py` (or extend existing)
   - collect() excludes UNVERIFIED and TAINTED items
   - build() output JSONL includes trust_level and provenance fields
   - add() with cloud content gets trust.level=unverified＋provenance.source_channel=cloud, not added to skills
@@ -51,12 +51,12 @@
 
 ### Phase 4: Training Data Integration / 訓練資料整合
 
-- [ ] **T4.1** Modify `src/jiezi/training_data.py`
+- [x] **T4.1**（2026-11-23 主控：不改既有篩選規則〔已只收本機、強驗證、授權允許〕，通過者標 trust_level=trusted＋provenance；另排除 taint index 內的答案〔why: tainted_content〕。原草稿「只收 TRUSTED」若照字面套在舊資料上會讓匯出變空，故採此解讀） Modify `src/jiezi/training_data.py`
   - `_ex()` adds `trust_level`, `provenance`, `fetched_at` to each example dict
   - `export()` filters: only `trust_level == "trusted" and training_use == True`
   - Reading: missing fields default to UNVERIFIED/unknown/fetched_at=created_at
 
-- [ ] **T4.2** Extend `tests/test_training_data.py`
+- [x] **T4.2**（test_trust_fields_and_tainted_content） Extend `tests/test_training_data.py`
   - export() excludes UNVERIFIED, VERIFIED, CLOUD, TAINTED examples
   - export() includes only TRUSTED + training_use=True examples
   - Example dict has all new fields populated
@@ -97,30 +97,30 @@
   - Metadata: trusted=grants.is_trusted(server_name), retrieval_method="mcp_call"
   - Attach trust_level and provenance to structuredContent return
 
-- [x] **T8.2**（2026-11-23 主控決定不做：目前芥子唯一會呼叫的外部 MCP server 是 Scrapling，其結果已走注入防護且後端預設關閉；沒有其他消費端時 `trust-mcp` 只是死碼。有第二個外部 MCP server 時再加） Add `scripts/jiezi agent trust-mcp <name>` command to mark MCP server as trusted
+- [x] **T8.2**（2026-11-23 主控：原決定不做，後改為實作以符合規格：`Grants.trust_mcp()／is_trusted()／trusted_servers()`，存 `var/agent/trusted_mcp.json`〔不放 grants.json，因 `_write` 會整檔覆寫〕；`scripts/jiezi agent trust-mcp <name> [--remove]`，不帶名稱時列出；server 每次呼叫重讀） Add `scripts/jiezi agent trust-mcp <name>` command to mark MCP server as trusted
   - Updates grants/trust config (new file or extend Grants class)
 
 ### Phase 9: Specs / 規格文件
 
-- [ ] **T9.1** Create `openspec/changes/add-agent-trust-gate/specs/trust-gate/spec.md` (delta spec)
+- [x] **T9.1**（9.x 的 delta 在提案階段已建立〔W3〕；2026-11-23 實作後由主控依實作更正：cloud 改為 provenance 標記、`mark_untrainable`、guard 回傳 dict 的 `taints`） Create `openspec/changes/add-agent-trust-gate/specs/trust-gate/spec.md` (delta spec)
   - SHALL/MUST requirements with #### Scenario blocks (Traditional Chinese + English)
   - Cover: TrustLevel semantics, Provenance structure, taint_index behavior, gateway enforcement, MCP integration
 
-- [ ] **T9.2** Update `openspec/specs/memory/spec.md` (delta) - add trust/provenance fields to page frontmatter
-- [ ] **T9.3** Create `openspec/specs/skills/spec.md` (delta) - skill item trust/provenance, collect filter
-- [ ] **T9.4** Update `openspec/specs/training-data/spec.md` (delta) - example trust/provenance/fetched_at, export filter
-- [ ] **T9.5** Update `openspec/specs/injection-guard/spec.md` (delta) - guard returns taint_id, cross-channel isolation
-- [ ] **T9.6** Update `openspec/specs/trajectory/spec.md` (delta) - record trust_level/provenance
-- [ ] **T9.7** Create `openspec/specs/escalation/spec.md` (delta) - cloud output enforcement
+- [x] **T9.2** Update `openspec/specs/memory/spec.md` (delta) - add trust/provenance fields to page frontmatter
+- [x] **T9.3** Create `openspec/specs/skills/spec.md` (delta) - skill item trust/provenance, collect filter
+- [x] **T9.4** Update `openspec/specs/training-data/spec.md` (delta) - example trust/provenance/fetched_at, export filter
+- [x] **T9.5** Update `openspec/specs/injection-guard/spec.md` (delta) - guard returns taint_id, cross-channel isolation
+- [x] **T9.6** Update `openspec/specs/trajectory/spec.md` (delta) - record trust_level/provenance
+- [x] **T9.7** Create `openspec/specs/escalation/spec.md` (delta) - cloud output enforcement
 
 ### Phase 10: Validation & Polish / 驗證與收尾
 
-- [ ] **T10.1** Run `openspec validate add-agent-trust-gate --strict` - must pass
-- [ ] **T10.2** Run `openspec validate --all --strict` - must pass
-- [ ] **T10.3** Run `PYTHONPATH=src:tests .venv/bin/python -m unittest discover -s tests` - all tests pass
-- [ ] **T10.3** Run `GIT_MASTER=1 git diff --check` - no whitespace errors
-- [ ] **T10.4** Run `mypy src/jiezi/trust.py` and `ruff check src/jiezi/trust.py` - clean
-- [ ] **T10.5** Verify no `src/` or `tests/` files modified outside this change scope (proposal only - wait, this IS the implementation phase)
+- [x] **T10.1** Run `openspec validate add-agent-trust-gate --strict` - must pass
+- [x] **T10.2** Run `openspec validate --all --strict` - must pass
+- [x] **T10.3** Run `PYTHONPATH=src:tests .venv/bin/python -m unittest discover -s tests` - all tests pass
+- [x] **T10.3** Run `GIT_MASTER=1 git diff --check` - no whitespace errors
+- [ ] **T10.4**（未執行：專案未安裝 ruff／mypy，依使用者「不准自行安裝套件」不裝；以 `python -m py_compile` 代替，通過。要不要加進 dev 相依由使用者決定） Run `mypy src/jiezi/trust.py` and `ruff check src/jiezi/trust.py` - clean
+- [x] **T10.5**（實作範圍：trust.py、injection.py、memory.py、skills.py、training_data.py、agent/server.py、agent/grants.py、runtime/gateway.py、runtime/__main__.py 與對應 tests） Verify no `src/` or `tests/` files modified outside this change scope (proposal only - wait, this IS the implementation phase)
 
 > **Note**: This task list is for the **implementation phase**. The current phase is **proposal only** - tasks T1-T10 will be executed after the proposal is approved. The proposal deliverables are:
 > - `.openspec.yaml` ✓

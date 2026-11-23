@@ -340,9 +340,9 @@ And cloud examples are excluded
 
 ### Requirement: Enriched Injection Result / 豐富化注入結果
 
-`injection.guard()` SHALL return an `InjectionResult` with additional fields:
+`injection.guard()` SHALL return its result dict with additional fields (per suspicious item in `taints`, the first mirrored in `taint_id`／`content_hash`):
 
-`injection.guard()` 必須回傳包含額外欄位的 `InjectionResult`：
+`injection.guard()` 必須在回傳的結果 dict 加上下列欄位（每段可疑內容一筆在 `taints`，第一筆同時放在 `taint_id`／`content_hash`）：
 
 - `taint_id: str` (content_hash[:16])
 - `content_hash: str` (full SHA-256 hex)
@@ -361,9 +361,9 @@ And injection_result.content_hash == sha256(content)
 
 ### Requirement: Taint Index Registration / 污染索引登錄
 
-When `InjectionResult.detected == True`, TrustGate SHALL register the `taint_id` in `taint_index` with a `TaintRecord` containing:
+When the result's `suspected` list is non-empty, TrustGate SHALL register the `taint_id` in `taint_index` with a `TaintRecord` containing:
 
-當 `InjectionResult.detected == True` 時，TrustGate 必須將 `taint_id` 登錄至 `taint_index`，包含以下 `TaintRecord`：
+當結果的 `suspected` 非空時，TrustGate 必須將 `taint_id` 登錄至 `taint_index`，包含以下 `TaintRecord`：
 
 - `taint_id`, `content_hash`, `detected_at`, `source_channel`, `source_id`, `injection_type`, `snippet`
 
