@@ -256,7 +256,7 @@ class Gateway:
         self.skills = None
         if settings.skills:
             from ..skills import Skills, skills_path
-            self.skills = Skills(skills_path(settings.root))
+            self.skills = Skills(skills_path(settings.root), settings.root)
         self.laws, self.laws_note = None, None
         if settings.laws:
             from ..laws import Laws, db_path as laws_db
