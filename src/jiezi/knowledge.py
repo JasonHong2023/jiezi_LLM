@@ -276,7 +276,8 @@ class Knowledge:
         if not sids and hybrid is not None:
             try:
                 # 向量判定沒有相關段落時回傳空的，不改用寬鬆的全文結果 / no relevant vectors means no grounding
-                return [self.section(s) for s, _ in hybrid(text, MAX_SECTIONS)]
+                # 帶向量分數給 sources（tune-knowledge-relevance 2.2）/ vector score travels into sources
+                return [{**self.section(s), "score": round(float(sc), 4)} for s, sc in hybrid(text, MAX_SECTIONS)]
             except Exception as exc:  # noqa: BLE001 - 向量檢索出錯才退回全文 / fall back to full text on errors
                 self.last_error = str(exc)
         if not sids:
@@ -297,7 +298,10 @@ def grounding(k: Knowledge, text: str, hybrid=None) -> tuple[str, list[dict], bo
         note = "" if h["reviewed"] else "（未經人工審核）"
         if all(h["url"] not in r for r in refs):
             refs.append(f"- {h['title']}{note}：{h['url']}")
-        sources.append({"source": k.meta.get("source"), "article": h["name"], "section": h["heading"]})
+        src = {"source": k.meta.get("source"), "article": h["name"], "section": h["heading"]}
+        if h.get("score") is not None:  # 只有向量檢索才有；全文與點名沒有 / vector hits only
+            src["score"] = h["score"]
+        sources.append(src)
     content = ("以下是 Taiwan.md 台灣知識庫的相關段落，可能有錯。請依它用繁體中文回答，段落沒有提到的事不要編造；"
                "不必另外註明出處，系統會在你的回答後附上出處。\n\n" + "\n\n".join(blocks))
     appendix = "\n\n---\n【參考資料】\n" + "\n".join(refs) + "\n" + k.meta.get("attribution", "")

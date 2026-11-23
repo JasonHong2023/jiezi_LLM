@@ -71,6 +71,11 @@ class TestLaws(unittest.TestCase):
         self.assertIn("不構成法律意見", appendix)
         self.assertTrue(trainable)
 
+    def test_vector_hits_carry_scores(self):
+        aid = self.lw.con.execute("SELECT id FROM articles ORDER BY id LIMIT 1").fetchone()[0]
+        _, sources, _, _ = L.grounding(self.lw, "加班費有什麼規定", hybrid=lambda text, n: [(aid, 0.6612)])
+        self.assertEqual(sources[0]["score"], 0.6612)
+
     def test_missing_abolished_and_triggers(self):
         content, sources, _, _ = L.grounding(self.lw, "勞基法第999條")
         self.assertEqual(sources, [])

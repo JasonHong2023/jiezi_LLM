@@ -197,6 +197,7 @@ def grounding(lw: Laws, text: str, hybrid=None) -> tuple[str, list[dict], bool, 
     named = lw.law_in(text)
     hits: list[dict] = []
     notes = []
+    scores: dict = {}  # 向量分數（只有語意檢索才有）/ vector scores, semantic path only
     if named:
         lid, name = named
         for m in ARTICLE.finditer(text):
@@ -212,7 +213,9 @@ def grounding(lw: Laws, text: str, hybrid=None) -> tuple[str, list[dict], bool, 
         ids = []
         if hybrid is not None:  # 語意向量：「酒駕」也找得到「酒精濃度…駕駛」/ semantic match across wording
             try:
-                ids = [i for i, _ in hybrid(text, 2)]
+                pairs = hybrid(text, 2)
+                ids = [i for i, _ in pairs]
+                scores = {i: round(float(sc), 4) for i, sc in pairs}
             except Exception:  # noqa: BLE001 - 出錯就用全文 / full text on errors
                 ids = lw.search(text)
         else:
@@ -231,5 +234,6 @@ def grounding(lw: Laws, text: str, hybrid=None) -> tuple[str, list[dict], bool, 
                "並提醒使用者這不是法律意見；系統會在回答後附上條文與出處。\n\n" + body)
     appendix = ("\n\n---\n【法規原文】\n" + body + ("\n" + links if links else "") + "\n" +
                 lw.meta.get("attribution", "") + f"（資料日期 {lw.meta.get('data_date', '')}）\n" + DISCLAIMER)
-    sources = [{"source": "moj-laws", "law": a["law"], "article": a["no"]} for a in hits]
+    sources = [{"source": "moj-laws", "law": a["law"], "article": a["no"],
+                **({"score": scores[a["id"]]} if a["id"] in scores else {})} for a in hits]
     return content, sources, lw.meta.get("training_use") == "1", appendix

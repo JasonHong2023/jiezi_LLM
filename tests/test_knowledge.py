@@ -115,6 +115,15 @@ class TestKnowledge(unittest.TestCase):
         _, sources, _, _ = K.grounding(k, "尾牙為什麼要吃虎咬豬慰勞職工")  # 全文檢索 / full-text match
         self.assertEqual(sources[0]["section"], "尾牙與職工")
 
+    def test_vector_hits_carry_scores(self):
+        # tune-knowledge-relevance 2.2：向量檢索的分數帶進 sources；全文與點名沒有分數
+        k = self.built()
+        sid = k.con.execute("SELECT id FROM sections ORDER BY id LIMIT 1").fetchone()[0]
+        _, sources, _, _ = K.grounding(k, "早安你好", hybrid=lambda text, n: [(sid, 0.712345)])
+        self.assertEqual(sources[0]["score"], 0.7123)
+        _, sources, _, _ = K.grounding(k, "刈包是什麼？")
+        self.assertNotIn("score", sources[0])
+
     def test_gateway(self):
         self.built()
         import httpx
