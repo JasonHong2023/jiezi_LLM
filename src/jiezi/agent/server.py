@@ -25,6 +25,15 @@ def _mcp_tools() -> list[dict]:
              "inputSchema": s["function"]["parameters"]} for s in tools.SCHEMAS]
 
 
+def _trust(root: Path, text: str) -> dict:
+    """工具結果的信任評估（add-agent-trust-gate T8.1）：使用者的檔案預設 unverified，命中 taint index 或注入句型為
+    tainted。放在 `_meta`，不改 structuredContent（客戶端依賴其結構）。
+    Trust for a tool result, carried in `_meta` so structuredContent keeps its schema."""
+    from ..trust import get_gate
+    level, prov, _ = get_gate(root).evaluate_trust(text, "mcp", INFO["name"], {"retrieval_method": "mcp_call"})
+    return {"level": level.name.lower(), "provenance": prov.to_dict()}
+
+
 def handle(msg: dict, g: Grants, root: Path, source: str = "mcp") -> dict | None:
     """處理一個訊息；通知（沒有 id）回傳 None。 / Handle one message; notifications return None."""
     mid, method = msg.get("id"), msg.get("method")
@@ -56,9 +65,10 @@ def handle(msg: dict, g: Grants, root: Path, source: str = "mcp") -> dict | None
         if error:
             return {"jsonrpc": "2.0", "id": mid, "result": {"isError": True,
                                                              "content": [{"type": "text", "text": error}]}}
+        text = json.dumps(result, ensure_ascii=False)
         return {"jsonrpc": "2.0", "id": mid, "result": {
-            "isError": False, "structuredContent": result,
-            "content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}]}}
+            "isError": False, "structuredContent": result, "_meta": {"jiezi/trust": _trust(root, text)},
+            "content": [{"type": "text", "text": text}]}}
     return {"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": f"method not found: {method}"}}
 
 

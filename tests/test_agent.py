@@ -98,6 +98,9 @@ class TestTools(Base):
                             "params": {"name": "read_file", "arguments": {"path": str(self.docs / "a.txt")}}},
                            self.g, self.root)
         self.assertFalse(ok["result"]["isError"])
+        trust = ok["result"]["_meta"]["jiezi/trust"]                                 # add-agent-trust-gate T8.1
+        self.assertEqual((trust["level"], trust["provenance"]["source_channel"]), ("unverified", "mcp"))
+        self.assertNotIn("_meta", ok["result"]["structuredContent"])                  # 結構不變 / schema unchanged
         bad = server.handle({"jsonrpc": "2.0", "id": 4, "method": "tools/call",
                              "params": {"name": "read_file", "arguments": {"path": str(self.home / ".ssh" / "id_rsa")}}},
                             self.g, self.root)

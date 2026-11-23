@@ -73,12 +73,12 @@
 
 ### Phase 6: Trajectory Integration / 軌跡整合
 
-- [ ] **T6.1** Modify `src/jiezi/runtime/trajectory.py`
+- [x] **T6.1**（2026-11-23 主控：不另加 TrajectoryRecord 欄位；`mark_untrainable` 直接把 `trust={level, reason, provenance}` 寫進軌跡紀錄 rec，JSON 照常序列化） Modify `src/jiezi/runtime/trajectory.py`
   - `TrajectoryRecord` dataclass adds `trust_level: Optional[str]`, `provenance: Optional[Dict]`
   - `record_step()` includes trust_level and provenance from gateway enforcement
   - JSON serialization includes new fields
 
-- [ ] **T6.2** Test trajectory records have trust_level/provenance
+- [x] **T6.2**（test_injection_marks_untrainable_and_registers_taint、test_cloud_answer_marked_untrainable_with_reason 檢查軌跡的 trust 欄位） Test trajectory records have trust_level/provenance
 
 ### Phase 7: Gateway / Escalation Integration / 閘道與轉交整合
 
@@ -91,13 +91,13 @@
 
 ### Phase 8: MCP Server Integration / MCP 伺服器整合
 
-- [ ] **T8.1** Modify `src/jiezi/agent/server.py`
+- [x] **T8.1**（2026-11-23 主控：`agent/server.py::_trust()`，結果放 `result._meta["jiezi/trust"]`，不改 structuredContent；本 server 只讀使用者授權的檔案，一律 source_channel=mcp、預設 unverified） Modify `src/jiezi/agent/server.py`
   - In `tools/call` handler, before returning result, call `get_gate().evaluate_trust()` on tool output
   - Source channel: "mcp", source_id: server name from grants
   - Metadata: trusted=grants.is_trusted(server_name), retrieval_method="mcp_call"
   - Attach trust_level and provenance to structuredContent return
 
-- [ ] **T8.2** Add `scripts/jiezi agent trust-mcp <name>` command to mark MCP server as trusted
+- [x] **T8.2**（2026-11-23 主控決定不做：目前芥子唯一會呼叫的外部 MCP server 是 Scrapling，其結果已走注入防護且後端預設關閉；沒有其他消費端時 `trust-mcp` 只是死碼。有第二個外部 MCP server 時再加） Add `scripts/jiezi agent trust-mcp <name>` command to mark MCP server as trusted
   - Updates grants/trust config (new file or extend Grants class)
 
 ### Phase 9: Specs / 規格文件
