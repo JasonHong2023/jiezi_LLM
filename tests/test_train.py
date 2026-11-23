@@ -67,6 +67,26 @@ class TestTraining(unittest.TestCase):
         self.assertEqual(e["labels"][:3], [S.IGNORE] * 3)                                   # 提問不算 / prompt masked
         self.assertIsNone(S.encode(ex, Tok(), 3))                                           # 太長略過 / too long
 
+    def test_tools_reach_the_chat_template(self):
+        # 2026-11-23 修正：工具呼叫範例要把 tools 傳給 chat template，否則模型看不到可用的工具
+        seen = []
+
+        class Tok:
+            def apply_chat_template(self, msgs, tokenize, add_generation_prompt, enable_thinking, tools=None):
+                seen.append(tools)
+                ids = [ord(c) for c in json.dumps(tools or [])[:5]]
+                for m in msgs:
+                    ids += [ord(c) for c in (m.get("content") or "x")] + [0]
+                return ids
+        tools = [{"type": "function", "function": {"name": "f", "parameters": {"type": "object", "properties": {}}}}]
+        ex = {"messages": [{"role": "user", "content": "ab"}, {"role": "assistant", "content": None, "tool_calls": [
+            {"id": "c", "type": "function", "function": {"name": "f", "arguments": "{}"}}]}], "tools": tools}
+        self.assertIsNotNone(S.encode(ex, Tok(), 1000))
+        self.assertEqual(seen, [tools, tools])
+        seen.clear()
+        S.encode({"messages": ex["messages"][:1] + [{"role": "assistant", "content": "x"}]}, Tok(), 1000)
+        self.assertEqual(seen, [None, None])                                               # 沒工具不傳 / no tools, no kwarg
+
     def test_gguf_pipeline_commands(self):
         calls = []
 

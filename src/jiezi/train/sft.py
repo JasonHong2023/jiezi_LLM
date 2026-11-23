@@ -66,10 +66,13 @@ def encode(example: dict, tokenizer, max_len: int) -> dict | None:
     def ids(x):  # transformers 5 預設回傳 dict / transformers 5 returns a dict by default
         x = x.get("input_ids", x) if hasattr(x, "get") else x
         return list(x[0]) if x and isinstance(x[0], (list, tuple)) else list(x)
+    # 工具呼叫範例要把工具定義一起編進去（2026-11-23 修正：之前沒傳 tools，模型只學到呼叫、看不到可用的工具）
+    # Tool-call examples must carry their tool definitions (fixed 2026-11-23: tools were not passed before)
+    kw = {"tools": example["tools"]} if example.get("tools") else {}
     prompt_ids = ids(tokenizer.apply_chat_template(msgs[:-1], tokenize=True, add_generation_prompt=True,
-                                                   enable_thinking=False))
+                                                   enable_thinking=False, **kw))
     full_ids = ids(tokenizer.apply_chat_template(msgs, tokenize=True, add_generation_prompt=False,
-                                                 enable_thinking=False))
+                                                 enable_thinking=False, **kw))
     if len(full_ids) > max_len or full_ids[:len(prompt_ids)] != prompt_ids:
         return None  # 太長或模板不一致就略過 / too long or template mismatch
     labels = [IGNORE] * len(prompt_ids) + full_ids[len(prompt_ids):]
