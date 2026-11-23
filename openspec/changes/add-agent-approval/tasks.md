@@ -348,5 +348,6 @@ T30-T34 (夜間，獨立排程)
 - [x] T15–T19、T21–T26 `tests/test_agent_approval.py`（19 個，含路徑跳脫、符號連結、TOCTOU 換連結、重放、偽造、提示注入、磁碟空間）＋ `test_agent_approval_endpoints`
 - [x] T20 CLI 端對端測試（2026-11-23：`TestCli.test_cli_flow`，以 `JIEZI_HOME` 指到暫存專案；approvals→show→錯 sha 拒→approve→rollback→deny 拒）
 - [x] T27–T29 全量 873 測試、strict 驗證、diff check
-- [ ] T30–T34 夜間項目（00:00–07:00）
+- [x] T30–T33（2026-11-23：原標夜間，實際輕量，改為單元測試 `TestRobustness`：600 個固定種子的模糊路徑、8 執行緒同時核准只寫一次、大小上限邊界。**模糊測試找到 bug**：`docs/.env/../outside.txt` 解析後落在既有的符號連結上，check_write 誤判可建立〔寫入時 O_EXCL 仍會擋〕；已改為對解析後路徑再查一次。T33 備份壓測不適用〔不覆寫所以沒有備份〕）
+- [ ] T34 完整注入語料（夜間）
 - [x] 桌面網頁核准畫面（狀態頁「寫入請求」：列表→看完整內容→核准／拒絕／撤回，送出畫面上內容的 sha256；`npm run build` 通過，實際點按待使用者在桌面版確認）

@@ -94,6 +94,8 @@ class Grants:
         if not parent.is_dir():
             return None, "refused: parent directory does not exist"
         real = parent / given.name
+        if os.path.lexists(real):  # 解析後的實際路徑也要檢查（模糊測試：docs/.env/../outside.txt）/ re-check after resolving
+            return None, "refused: something already exists at that path; this tool only creates new files"
         why = self.denied(real)
         if why:
             return None, f"refused: {why}"

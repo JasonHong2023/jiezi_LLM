@@ -40,6 +40,7 @@ class TestCheckWrite(Base):
             str(self.root / "var" / "x.json"): "var/",                         # 專案 var 不可寫 / project var
             "relative.txt": "full path",
             str(self.docs / ".env.local"): "secret location",
+            str(self.docs / ".env" / ".." / "outside.txt"): "already exists",    # 模糊測試找到的 / found by fuzzing
         }
         for path, expect in cases.items():
             with self.subTest(path=path):
@@ -158,6 +159,56 @@ class TestApprovalStore(Base):
         self.assertIsNone(self.store.get(r["id"]))
         self.assertIsNotNone(self.store.get(pending["id"]))
         self.assertTrue(os.path.exists(self.path))                              # 寫好的檔不動 / file stays
+
+
+class TestRobustness(Base):
+    """T30–T33（原標夜間，實際很輕量）：路徑模糊測試、同時核准、大小上限邊界。"""
+
+    def setUp(self):
+        super().setUp()
+        self.g.grant(str(self.docs))
+        self.store = A.ApprovalStore(self.root)
+
+    def test_fuzzed_paths_never_escape(self):
+        import random
+        rng = random.Random(20261123)
+        pieces = ["..", ".", "sub", "ssh", ".ssh", ".env", "outside.txt", "a.txt", "x", "//", "~", "%2e%2e",
+                  "new.md", "..\\..", "\x00", " ", "id_rsa", "var"]
+        bases = [str(self.docs), str(self.home), str(self.tmp), str(self.root), "~", ""]
+        for _ in range(600):
+            path = rng.choice(bases) + "/" + "/".join(rng.choice(pieces) for _ in range(rng.randint(1, 5)))
+            try:
+                real, why = self.g.check_write(path)
+            except (ValueError, OSError):
+                continue                                                         # 不合法路徑直接拒 / rejected outright
+            if real is not None:
+                self.assertTrue(real.parent == self.docs or self.docs in real.parents, path)
+                self.assertFalse(os.path.lexists(real), path)
+                self.assertNotIn(".ssh", real.parts)
+
+    def test_concurrent_approvals_write_once(self):
+        import threading
+        r = self.store.propose(self.g, str(self.docs / "c.md"), "內容")
+        results = []
+
+        def go():
+            try:
+                results.append(A.ApprovalStore(self.root).decide(self.g, r["id"], "allow", r["sha256"])["status"])
+            except A.ApprovalError as exc:
+                results.append(str(exc))
+        threads = [threading.Thread(target=go) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(results.count("applied"), 1)
+        self.assertEqual((self.docs / "c.md").read_text(encoding="utf-8"), "內容")
+
+    def test_size_limit_boundary(self):
+        with mock.patch.object(A, "MAX_CONTENT_BYTES", 12):
+            self.store.propose(self.g, str(self.docs / "ok.md"), "甲" * 4)          # 12 bytes
+            with self.assertRaisesRegex(A.ApprovalError, "limit"):
+                self.store.propose(self.g, str(self.docs / "big.md"), "甲" * 4 + "x")
 
 
 class TestServerFlow(Base):
