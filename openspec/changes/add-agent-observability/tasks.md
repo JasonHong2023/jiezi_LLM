@@ -1,5 +1,7 @@
 # add-agent-observability 任務清單 / Tasks
 
+> **主控收尾註記（2026-11-23）**：本 change 依「讀取端檢視」設計完成——Phase 1（normalize、遮罩）、Phase 3（代理 fail-closed）、Phase 5（/admin/observability＋狀態頁）。spec 已依實作重寫為 observability 的 5 條 ADDED；W6 草稿中的 dashboard／process／audit 規格、狀態機、預算對齊、寫入端改名（Phase 2）、回應端全面改欄位（Phase 4）均不做：寫入欄位不改名是本 change 的核心決定，預算單一來源已由 add-agent-hardening 的測試保證（limits.EFFECTIVE_LIMITS == contract.CEILINGS）。下列未勾選項目一律屬於「不做」，不是待辦。
+
 ## Phase 0: 準備 / Preparation
 
 - [x] **T0.1** 讀取 dev-plan.md §15.5 A8、rules_20261114.md、既有規格與變更參考

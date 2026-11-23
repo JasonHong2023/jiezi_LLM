@@ -1,5 +1,7 @@
 # add-agent-observability 提案 / Proposal
 
+> **主控收尾更正（2026-11-23，歸檔前）**：最終 spec 只有 observability 能力的 5 條 ADDED（讀取端統一欄位、轉交原因碼、代理 fail-closed、保守遮罩、狀態頁彙整）；下文提到的 dashboard、process、audit、trajectory、gateway、escalation、agent 規格變更均未採用，見 tasks.md 開頭。
+
 > **主控更正（2026-11-23）**：W6 兩輪草稿的 MODIFIED 需求都刪改了主規格原文（英文句、Scenario 內容），且 `Claude Consultation`、`Training-Use Flag` 與 A5 `add-agent-trust-gate` 重疊（後歸檔者會覆蓋前者）。改為**不修改任何既有主規格需求**：統一欄位定為讀取端檢視（`observability.normalize()`），**既有寫入 `var/` 的欄位名稱不改名**（原草稿把 `final_tier`→`tier`、`status`→`terminal_state` 等直接改名，會弄壞狀態頁、統計、缺口報告與訓練資料匯出）；原 MODIFIED 的新增內容併入 observability 的 ADDED 需求（Standardized Escalation Reasons、Agent Terminal States and Fail-Closed Recording）；草稿另 ADDED 的 `Task Contract Schema` 與已完成的 `add-agent-contract`（agent-contract 能力）重複，已刪除。下文表格中的「原欄位 → 新欄位」一律理解為 normalize 的對應，不是改名。OQ 依建議定案（OQ1 命名參考 OTel GenAI 不引入 SDK；OQ2–OQ5 依設計）。
 
 ## 1. 概述 / Overview
