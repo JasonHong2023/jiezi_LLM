@@ -1,5 +1,7 @@
 > **狀態 / Status**：提案草稿，待使用者審閱（R4）。初稿由 OpenCode worker（nvidia-kimi-k3，兩輪）撰寫，主控（Claude Code）2026-11-23 審查更正：spec 改為正確 delta 格式；MODIFIED 需求名稱對齊主規格、刪除未變更的需求、新需求移到 ADDED（歸檔時才能正確合併）；更正 training_use 寫入點與原因。/ Draft awaiting review.
 
+> **主控更正（2026-11-23，歸檔前）**：spec delta 最終只有 trust-gate、skills（ADDED）與 injection-guard、memory、training-data、trajectory（MODIFIED）；原列的 escalation delta 不需要（雲端標記由 trajectory 的 `trust` 欄位描述）。
+
 > **主控更正（2026-11-23，實作時）**：依 OQ1 決定，雲端不是信任等級。原草稿的 `gateway_enforce_training_use_false()`／`trust_level="cloud"` 一律改為 `TrustGate.mark_untrainable(rec, reason, model)`：寫 `rec["training_use"]=False` 與 `rec["trust"]={level, reason, provenance}`；雲端原因（cloud／cloud_hint／helper／consultation／escalation）的 provenance.source_channel="cloud"、level=unverified；injection→tainted；其餘原因（license／private／unverifiable…）source_channel="local"。`get_gate(root)` 以絕對路徑 `<root>/var/trust/taint_index.jsonl` 持久化；`injection.guard()` 回傳 `taints`（每段可疑內容各一個 sha256）。
 
 ## Why / 動機

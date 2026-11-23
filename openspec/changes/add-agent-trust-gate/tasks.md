@@ -130,4 +130,4 @@
 > - `specs/trust-gate/spec.md` (next)
 ## 歸檔前待辦 / Before archiving（主控 2026-11-23）
 
-- [ ] A1 整理 spec delta 再歸檔：MODIFIED 的 `Claude Consultation`、`Recall From Memory` 等少了主規格原有的 Scenario 文字（歸檔會整段覆蓋主規格）；trust-gate 裡的 `Test Suite`、`Code Quality`、`OpenSpec Validation` 是開發流程不是系統行為，應刪；與 skills／injection-guard 重複的需求只留一處。整理方法：每個 MODIFIED 先貼主規格原文全文，再加上新句子與新 Scenario（檢查腳本見 2026-11-23.md #3 對 A8 的做法）。
+- [x] A1（2026-11-23 主控：W10 回報完成但檢查腳本仍有 7 個問題、且內容與實作不符〔寫成頂層 trust_level、本機回答 trusted〕，改由主控以腳本重新產生：MODIFIED＝主規格原文全文＋描述實際實作的新句與新 Scenario；未修改的需求〔Recall From Memory、escalation 各項〕移出 delta；trust-gate 收斂為 5 條 ADDED；skills 1 條 ADDED。check_modified ALL OK、strict 通過）整理 spec delta 再歸檔：MODIFIED 的 `Claude Consultation`、`Recall From Memory` 等少了主規格原有的 Scenario 文字（歸檔會整段覆蓋主規格）；trust-gate 裡的 `Test Suite`、`Code Quality`、`OpenSpec Validation` 是開發流程不是系統行為，應刪；與 skills／injection-guard 重複的需求只留一處。整理方法：每個 MODIFIED 先貼主規格原文全文，再加上新句子與新 Scenario（檢查腳本見 2026-11-23.md #3 對 A8 的做法）。
