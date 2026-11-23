@@ -96,6 +96,9 @@ class Settings:
     sample_temperature: float = 0.7
     vision_tools: bool = False      # 本機看圖工具：偵測、提示、核對（add-vision-tools；量測過才預設開）/ off until measured
     image_paths: bool = True        # 使用者訊息裡的本機圖片／文件路徑由 gateway 讀檔附上（add-image-paths）/ read typed file paths
+    tool_filter: bool = True        # 代理客戶端工具太多時篩選（add-client-tool-filter）/ trim agent clients' tool lists
+    tool_filter_top_k: int = 12     # 篩選後最多幾個工具（受保護的工具不算名額外）/ tools kept after filtering
+    tool_keep: tuple[str, ...] = () # 必留工具名稱，空＝內建 Hermes／OpenCode 名單 / keep-list; empty = built-in list
     tool_note: bool = True          # 帶工具的請求加參數填寫規則（add-strong-tool-calling）/ argument rules for tool requests
     tools: bool = True              # 計算、單位換算、日期由程式算好（add-tools）/ computed by code
     memory: bool = True             # 記憶 wiki：請教過的答案、記住的事、更正（add-memory）/ memory wiki
@@ -152,6 +155,9 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         tw_phrases=_onoff(env, "JIEZI_TW_PHRASES", True),
         memory=_onoff(env, "JIEZI_MEMORY", True),
         tools=_onoff(env, "JIEZI_TOOLS", True),
+        tool_filter=_onoff(env, "JIEZI_TOOL_FILTER", True),
+        tool_filter_top_k=max(1, min(64, _int(env, "JIEZI_TOOL_FILTER_TOP_K", 12))),
+        tool_keep=tuple(x.strip() for x in env.get("JIEZI_TOOL_KEEP", "").split(",") if x.strip()),
         tool_note=_onoff(env, "JIEZI_TOOL_NOTE", True),
         image_paths=_onoff(env, "JIEZI_IMAGE_PATHS", True),
         vision_tools=_onoff(env, "JIEZI_VISION_TOOLS", False),

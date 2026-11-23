@@ -1,0 +1,1268 @@
+{
+ "version": 1,
+ "note": "合成語料，非真實請求 / synthetic cases",
+ "cases": [
+  {
+   "id": "contract-1",
+   "category": "contract_specified",
+   "input": {
+    "contract": [
+     "misc_7"
+    ],
+    "user_message": "hello",
+    "tools": [
+     {
+      "name": "misc_0",
+      "description": "Unrelated utility number 0 for blender scenes"
+     },
+     {
+      "name": "misc_1",
+      "description": "Unrelated utility number 1 for blender scenes"
+     },
+     {
+      "name": "misc_2",
+      "description": "Unrelated utility number 2 for blender scenes"
+     },
+     {
+      "name": "misc_3",
+      "description": "Unrelated utility number 3 for blender scenes"
+     },
+     {
+      "name": "misc_4",
+      "description": "Unrelated utility number 4 for blender scenes"
+     },
+     {
+      "name": "misc_5",
+      "description": "Unrelated utility number 5 for blender scenes"
+     },
+     {
+      "name": "misc_6",
+      "description": "Unrelated utility number 6 for blender scenes"
+     },
+     {
+      "name": "misc_7",
+      "description": "Unrelated utility number 7 for blender scenes"
+     },
+     {
+      "name": "misc_8",
+      "description": "Unrelated utility number 8 for blender scenes"
+     },
+     {
+      "name": "misc_9",
+      "description": "Unrelated utility number 9 for blender scenes"
+     },
+     {
+      "name": "misc_10",
+      "description": "Unrelated utility number 10 for blender scenes"
+     },
+     {
+      "name": "misc_11",
+      "description": "Unrelated utility number 11 for blender scenes"
+     },
+     {
+      "name": "misc_12",
+      "description": "Unrelated utility number 12 for blender scenes"
+     },
+     {
+      "name": "misc_13",
+      "description": "Unrelated utility number 13 for blender scenes"
+     },
+     {
+      "name": "misc_14",
+      "description": "Unrelated utility number 14 for blender scenes"
+     },
+     {
+      "name": "misc_15",
+      "description": "Unrelated utility number 15 for blender scenes"
+     },
+     {
+      "name": "misc_16",
+      "description": "Unrelated utility number 16 for blender scenes"
+     },
+     {
+      "name": "misc_17",
+      "description": "Unrelated utility number 17 for blender scenes"
+     },
+     {
+      "name": "misc_18",
+      "description": "Unrelated utility number 18 for blender scenes"
+     },
+     {
+      "name": "misc_19",
+      "description": "Unrelated utility number 19 for blender scenes"
+     },
+     {
+      "name": "misc_20",
+      "description": "Unrelated utility number 20 for blender scenes"
+     },
+     {
+      "name": "misc_21",
+      "description": "Unrelated utility number 21 for blender scenes"
+     },
+     {
+      "name": "misc_22",
+      "description": "Unrelated utility number 22 for blender scenes"
+     },
+     {
+      "name": "misc_23",
+      "description": "Unrelated utility number 23 for blender scenes"
+     },
+     {
+      "name": "misc_24",
+      "description": "Unrelated utility number 24 for blender scenes"
+     },
+     {
+      "name": "misc_25",
+      "description": "Unrelated utility number 25 for blender scenes"
+     },
+     {
+      "name": "misc_26",
+      "description": "Unrelated utility number 26 for blender scenes"
+     },
+     {
+      "name": "misc_27",
+      "description": "Unrelated utility number 27 for blender scenes"
+     },
+     {
+      "name": "misc_28",
+      "description": "Unrelated utility number 28 for blender scenes"
+     },
+     {
+      "name": "misc_29",
+      "description": "Unrelated utility number 29 for blender scenes"
+     }
+    ]
+   },
+   "expected": {
+    "includes": [
+     "misc_7"
+    ],
+    "max_count": 12
+   },
+   "synthetic": true
+  },
+  {
+   "id": "keyword-en",
+   "category": "keyword_match",
+   "input": {
+    "user_message": "what is the weather in Taipei tomorrow",
+    "tools": [
+     {
+      "name": "misc_0",
+      "description": "Unrelated utility number 0 for blender scenes"
+     },
+     {
+      "name": "misc_1",
+      "description": "Unrelated utility number 1 for blender scenes"
+     },
+     {
+      "name": "misc_2",
+      "description": "Unrelated utility number 2 for blender scenes"
+     },
+     {
+      "name": "misc_3",
+      "description": "Unrelated utility number 3 for blender scenes"
+     },
+     {
+      "name": "misc_4",
+      "description": "Unrelated utility number 4 for blender scenes"
+     },
+     {
+      "name": "misc_5",
+      "description": "Unrelated utility number 5 for blender scenes"
+     },
+     {
+      "name": "misc_6",
+      "description": "Unrelated utility number 6 for blender scenes"
+     },
+     {
+      "name": "misc_7",
+      "description": "Unrelated utility number 7 for blender scenes"
+     },
+     {
+      "name": "misc_8",
+      "description": "Unrelated utility number 8 for blender scenes"
+     },
+     {
+      "name": "misc_9",
+      "description": "Unrelated utility number 9 for blender scenes"
+     },
+     {
+      "name": "misc_10",
+      "description": "Unrelated utility number 10 for blender scenes"
+     },
+     {
+      "name": "misc_11",
+      "description": "Unrelated utility number 11 for blender scenes"
+     },
+     {
+      "name": "misc_12",
+      "description": "Unrelated utility number 12 for blender scenes"
+     },
+     {
+      "name": "misc_13",
+      "description": "Unrelated utility number 13 for blender scenes"
+     },
+     {
+      "name": "misc_14",
+      "description": "Unrelated utility number 14 for blender scenes"
+     },
+     {
+      "name": "misc_15",
+      "description": "Unrelated utility number 15 for blender scenes"
+     },
+     {
+      "name": "misc_16",
+      "description": "Unrelated utility number 16 for blender scenes"
+     },
+     {
+      "name": "misc_17",
+      "description": "Unrelated utility number 17 for blender scenes"
+     },
+     {
+      "name": "misc_18",
+      "description": "Unrelated utility number 18 for blender scenes"
+     },
+     {
+      "name": "misc_19",
+      "description": "Unrelated utility number 19 for blender scenes"
+     },
+     {
+      "name": "misc_20",
+      "description": "Unrelated utility number 20 for blender scenes"
+     },
+     {
+      "name": "misc_21",
+      "description": "Unrelated utility number 21 for blender scenes"
+     },
+     {
+      "name": "misc_22",
+      "description": "Unrelated utility number 22 for blender scenes"
+     },
+     {
+      "name": "misc_23",
+      "description": "Unrelated utility number 23 for blender scenes"
+     },
+     {
+      "name": "misc_24",
+      "description": "Unrelated utility number 24 for blender scenes"
+     },
+     {
+      "name": "misc_25",
+      "description": "Unrelated utility number 25 for blender scenes"
+     },
+     {
+      "name": "misc_26",
+      "description": "Unrelated utility number 26 for blender scenes"
+     },
+     {
+      "name": "misc_27",
+      "description": "Unrelated utility number 27 for blender scenes"
+     },
+     {
+      "name": "misc_28",
+      "description": "Unrelated utility number 28 for blender scenes"
+     },
+     {
+      "name": "misc_29",
+      "description": "Unrelated utility number 29 for blender scenes"
+     },
+     {
+      "name": "weather_lookup",
+      "description": "Get the weather forecast for a city"
+     }
+    ]
+   },
+   "expected": {
+    "includes": [
+     "weather_lookup"
+    ],
+    "excludes": [
+     "misc_3"
+    ]
+   },
+   "synthetic": true
+  },
+  {
+   "id": "keyword-zh",
+   "category": "keyword_match",
+   "input": {
+    "user_message": "幫我搜尋專案裡的 TODO",
+    "tools": [
+     {
+      "name": "misc_0",
+      "description": "Unrelated utility number 0 for blender scenes"
+     },
+     {
+      "name": "misc_1",
+      "description": "Unrelated utility number 1 for blender scenes"
+     },
+     {
+      "name": "misc_2",
+      "description": "Unrelated utility number 2 for blender scenes"
+     },
+     {
+      "name": "misc_3",
+      "description": "Unrelated utility number 3 for blender scenes"
+     },
+     {
+      "name": "misc_4",
+      "description": "Unrelated utility number 4 for blender scenes"
+     },
+     {
+      "name": "misc_5",
+      "description": "Unrelated utility number 5 for blender scenes"
+     },
+     {
+      "name": "misc_6",
+      "description": "Unrelated utility number 6 for blender scenes"
+     },
+     {
+      "name": "misc_7",
+      "description": "Unrelated utility number 7 for blender scenes"
+     },
+     {
+      "name": "misc_8",
+      "description": "Unrelated utility number 8 for blender scenes"
+     },
+     {
+      "name": "misc_9",
+      "description": "Unrelated utility number 9 for blender scenes"
+     },
+     {
+      "name": "misc_10",
+      "description": "Unrelated utility number 10 for blender scenes"
+     },
+     {
+      "name": "misc_11",
+      "description": "Unrelated utility number 11 for blender scenes"
+     },
+     {
+      "name": "misc_12",
+      "description": "Unrelated utility number 12 for blender scenes"
+     },
+     {
+      "name": "misc_13",
+      "description": "Unrelated utility number 13 for blender scenes"
+     },
+     {
+      "name": "misc_14",
+      "description": "Unrelated utility number 14 for blender scenes"
+     },
+     {
+      "name": "misc_15",
+      "description": "Unrelated utility number 15 for blender scenes"
+     },
+     {
+      "name": "misc_16",
+      "description": "Unrelated utility number 16 for blender scenes"
+     },
+     {
+      "name": "misc_17",
+      "description": "Unrelated utility number 17 for blender scenes"
+     },
+     {
+      "name": "misc_18",
+      "description": "Unrelated utility number 18 for blender scenes"
+     },
+     {
+      "name": "misc_19",
+      "description": "Unrelated utility number 19 for blender scenes"
+     },
+     {
+      "name": "misc_20",
+      "description": "Unrelated utility number 20 for blender scenes"
+     },
+     {
+      "name": "misc_21",
+      "description": "Unrelated utility number 21 for blender scenes"
+     },
+     {
+      "name": "misc_22",
+      "description": "Unrelated utility number 22 for blender scenes"
+     },
+     {
+      "name": "misc_23",
+      "description": "Unrelated utility number 23 for blender scenes"
+     },
+     {
+      "name": "misc_24",
+      "description": "Unrelated utility number 24 for blender scenes"
+     },
+     {
+      "name": "misc_25",
+      "description": "Unrelated utility number 25 for blender scenes"
+     },
+     {
+      "name": "misc_26",
+      "description": "Unrelated utility number 26 for blender scenes"
+     },
+     {
+      "name": "misc_27",
+      "description": "Unrelated utility number 27 for blender scenes"
+     },
+     {
+      "name": "misc_28",
+      "description": "Unrelated utility number 28 for blender scenes"
+     },
+     {
+      "name": "misc_29",
+      "description": "Unrelated utility number 29 for blender scenes"
+     },
+     {
+      "name": "search_code",
+      "description": "Search the codebase with a regex"
+     }
+    ]
+   },
+   "expected": {
+    "includes": [
+     "search_code"
+    ]
+   },
+   "synthetic": true
+  },
+  {
+   "id": "keyword-zh-run",
+   "category": "keyword_match",
+   "input": {
+    "user_message": "執行單元測試",
+    "tools": [
+     {
+      "name": "misc_0",
+      "description": "Unrelated utility number 0 for blender scenes"
+     },
+     {
+      "name": "misc_1",
+      "description": "Unrelated utility number 1 for blender scenes"
+     },
+     {
+      "name": "misc_2",
+      "description": "Unrelated utility number 2 for blender scenes"
+     },
+     {
+      "name": "misc_3",
+      "description": "Unrelated utility number 3 for blender scenes"
+     },
+     {
+      "name": "misc_4",
+      "description": "Unrelated utility number 4 for blender scenes"
+     },
+     {
+      "name": "misc_5",
+      "description": "Unrelated utility number 5 for blender scenes"
+     },
+     {
+      "name": "misc_6",
+      "description": "Unrelated utility number 6 for blender scenes"
+     },
+     {
+      "name": "misc_7",
+      "description": "Unrelated utility number 7 for blender scenes"
+     },
+     {
+      "name": "misc_8",
+      "description": "Unrelated utility number 8 for blender scenes"
+     },
+     {
+      "name": "misc_9",
+      "description": "Unrelated utility number 9 for blender scenes"
+     },
+     {
+      "name": "misc_10",
+      "description": "Unrelated utility number 10 for blender scenes"
+     },
+     {
+      "name": "misc_11",
+      "description": "Unrelated utility number 11 for blender scenes"
+     },
+     {
+      "name": "misc_12",
+      "description": "Unrelated utility number 12 for blender scenes"
+     },
+     {
+      "name": "misc_13",
+      "description": "Unrelated utility number 13 for blender scenes"
+     },
+     {
+      "name": "misc_14",
+      "description": "Unrelated utility number 14 for blender scenes"
+     },
+     {
+      "name": "misc_15",
+      "description": "Unrelated utility number 15 for blender scenes"
+     },
+     {
+      "name": "misc_16",
+      "description": "Unrelated utility number 16 for blender scenes"
+     },
+     {
+      "name": "misc_17",
+      "description": "Unrelated utility number 17 for blender scenes"
+     },
+     {
+      "name": "misc_18",
+      "description": "Unrelated utility number 18 for blender scenes"
+     },
+     {
+      "name": "misc_19",
+      "description": "Unrelated utility number 19 for blender scenes"
+     },
+     {
+      "name": "misc_20",
+      "description": "Unrelated utility number 20 for blender scenes"
+     },
+     {
+      "name": "misc_21",
+      "description": "Unrelated utility number 21 for blender scenes"
+     },
+     {
+      "name": "misc_22",
+      "description": "Unrelated utility number 22 for blender scenes"
+     },
+     {
+      "name": "misc_23",
+      "description": "Unrelated utility number 23 for blender scenes"
+     },
+     {
+      "name": "misc_24",
+      "description": "Unrelated utility number 24 for blender scenes"
+     },
+     {
+      "name": "misc_25",
+      "description": "Unrelated utility number 25 for blender scenes"
+     },
+     {
+      "name": "misc_26",
+      "description": "Unrelated utility number 26 for blender scenes"
+     },
+     {
+      "name": "misc_27",
+      "description": "Unrelated utility number 27 for blender scenes"
+     },
+     {
+      "name": "misc_28",
+      "description": "Unrelated utility number 28 for blender scenes"
+     },
+     {
+      "name": "misc_29",
+      "description": "Unrelated utility number 29 for blender scenes"
+     },
+     {
+      "name": "run_command",
+      "description": "Execute a shell command and return output"
+     }
+    ]
+   },
+   "expected": {
+    "includes": [
+     "run_command"
+    ]
+   },
+   "synthetic": true
+  },
+  {
+   "id": "keep-hermes",
+   "category": "whitelist_preserved",
+   "input": {
+    "user_message": "hi",
+    "tools": [
+     {
+      "name": "misc_0",
+      "description": "Unrelated utility number 0 for blender scenes"
+     },
+     {
+      "name": "misc_1",
+      "description": "Unrelated utility number 1 for blender scenes"
+     },
+     {
+      "name": "misc_2",
+      "description": "Unrelated utility number 2 for blender scenes"
+     },
+     {
+      "name": "misc_3",
+      "description": "Unrelated utility number 3 for blender scenes"
+     },
+     {
+      "name": "misc_4",
+      "description": "Unrelated utility number 4 for blender scenes"
+     },
+     {
+      "name": "misc_5",
+      "description": "Unrelated utility number 5 for blender scenes"
+     },
+     {
+      "name": "misc_6",
+      "description": "Unrelated utility number 6 for blender scenes"
+     },
+     {
+      "name": "misc_7",
+      "description": "Unrelated utility number 7 for blender scenes"
+     },
+     {
+      "name": "misc_8",
+      "description": "Unrelated utility number 8 for blender scenes"
+     },
+     {
+      "name": "misc_9",
+      "description": "Unrelated utility number 9 for blender scenes"
+     },
+     {
+      "name": "misc_10",
+      "description": "Unrelated utility number 10 for blender scenes"
+     },
+     {
+      "name": "misc_11",
+      "description": "Unrelated utility number 11 for blender scenes"
+     },
+     {
+      "name": "misc_12",
+      "description": "Unrelated utility number 12 for blender scenes"
+     },
+     {
+      "name": "misc_13",
+      "description": "Unrelated utility number 13 for blender scenes"
+     },
+     {
+      "name": "misc_14",
+      "description": "Unrelated utility number 14 for blender scenes"
+     },
+     {
+      "name": "misc_15",
+      "description": "Unrelated utility number 15 for blender scenes"
+     },
+     {
+      "name": "misc_16",
+      "description": "Unrelated utility number 16 for blender scenes"
+     },
+     {
+      "name": "misc_17",
+      "description": "Unrelated utility number 17 for blender scenes"
+     },
+     {
+      "name": "misc_18",
+      "description": "Unrelated utility number 18 for blender scenes"
+     },
+     {
+      "name": "misc_19",
+      "description": "Unrelated utility number 19 for blender scenes"
+     },
+     {
+      "name": "misc_20",
+      "description": "Unrelated utility number 20 for blender scenes"
+     },
+     {
+      "name": "misc_21",
+      "description": "Unrelated utility number 21 for blender scenes"
+     },
+     {
+      "name": "misc_22",
+      "description": "Unrelated utility number 22 for blender scenes"
+     },
+     {
+      "name": "misc_23",
+      "description": "Unrelated utility number 23 for blender scenes"
+     },
+     {
+      "name": "misc_24",
+      "description": "Unrelated utility number 24 for blender scenes"
+     },
+     {
+      "name": "misc_25",
+      "description": "Unrelated utility number 25 for blender scenes"
+     },
+     {
+      "name": "misc_26",
+      "description": "Unrelated utility number 26 for blender scenes"
+     },
+     {
+      "name": "misc_27",
+      "description": "Unrelated utility number 27 for blender scenes"
+     },
+     {
+      "name": "misc_28",
+      "description": "Unrelated utility number 28 for blender scenes"
+     },
+     {
+      "name": "misc_29",
+      "description": "Unrelated utility number 29 for blender scenes"
+     },
+     {
+      "name": "terminal",
+      "description": "Run a command"
+     },
+     {
+      "name": "read_file",
+      "description": "Read a file"
+     }
+    ]
+   },
+   "expected": {
+    "includes": [
+     "terminal",
+     "read_file"
+    ]
+   },
+   "synthetic": true
+  },
+  {
+   "id": "keep-opencode",
+   "category": "whitelist_preserved",
+   "input": {
+    "user_message": "hi",
+    "tools": [
+     {
+      "name": "misc_0",
+      "description": "Unrelated utility number 0 for blender scenes"
+     },
+     {
+      "name": "misc_1",
+      "description": "Unrelated utility number 1 for blender scenes"
+     },
+     {
+      "name": "misc_2",
+      "description": "Unrelated utility number 2 for blender scenes"
+     },
+     {
+      "name": "misc_3",
+      "description": "Unrelated utility number 3 for blender scenes"
+     },
+     {
+      "name": "misc_4",
+      "description": "Unrelated utility number 4 for blender scenes"
+     },
+     {
+      "name": "misc_5",
+      "description": "Unrelated utility number 5 for blender scenes"
+     },
+     {
+      "name": "misc_6",
+      "description": "Unrelated utility number 6 for blender scenes"
+     },
+     {
+      "name": "misc_7",
+      "description": "Unrelated utility number 7 for blender scenes"
+     },
+     {
+      "name": "misc_8",
+      "description": "Unrelated utility number 8 for blender scenes"
+     },
+     {
+      "name": "misc_9",
+      "description": "Unrelated utility number 9 for blender scenes"
+     },
+     {
+      "name": "misc_10",
+      "description": "Unrelated utility number 10 for blender scenes"
+     },
+     {
+      "name": "misc_11",
+      "description": "Unrelated utility number 11 for blender scenes"
+     },
+     {
+      "name": "misc_12",
+      "description": "Unrelated utility number 12 for blender scenes"
+     },
+     {
+      "name": "misc_13",
+      "description": "Unrelated utility number 13 for blender scenes"
+     },
+     {
+      "name": "misc_14",
+      "description": "Unrelated utility number 14 for blender scenes"
+     },
+     {
+      "name": "misc_15",
+      "description": "Unrelated utility number 15 for blender scenes"
+     },
+     {
+      "name": "misc_16",
+      "description": "Unrelated utility number 16 for blender scenes"
+     },
+     {
+      "name": "misc_17",
+      "description": "Unrelated utility number 17 for blender scenes"
+     },
+     {
+      "name": "misc_18",
+      "description": "Unrelated utility number 18 for blender scenes"
+     },
+     {
+      "name": "misc_19",
+      "description": "Unrelated utility number 19 for blender scenes"
+     },
+     {
+      "name": "misc_20",
+      "description": "Unrelated utility number 20 for blender scenes"
+     },
+     {
+      "name": "misc_21",
+      "description": "Unrelated utility number 21 for blender scenes"
+     },
+     {
+      "name": "misc_22",
+      "description": "Unrelated utility number 22 for blender scenes"
+     },
+     {
+      "name": "misc_23",
+      "description": "Unrelated utility number 23 for blender scenes"
+     },
+     {
+      "name": "misc_24",
+      "description": "Unrelated utility number 24 for blender scenes"
+     },
+     {
+      "name": "misc_25",
+      "description": "Unrelated utility number 25 for blender scenes"
+     },
+     {
+      "name": "misc_26",
+      "description": "Unrelated utility number 26 for blender scenes"
+     },
+     {
+      "name": "misc_27",
+      "description": "Unrelated utility number 27 for blender scenes"
+     },
+     {
+      "name": "misc_28",
+      "description": "Unrelated utility number 28 for blender scenes"
+     },
+     {
+      "name": "misc_29",
+      "description": "Unrelated utility number 29 for blender scenes"
+     },
+     {
+      "name": "bash",
+      "description": "generic helper"
+     },
+     {
+      "name": "edit",
+      "description": "generic helper"
+     },
+     {
+      "name": "todowrite",
+      "description": "generic helper"
+     }
+    ]
+   },
+   "expected": {
+    "includes": [
+     "bash",
+     "edit",
+     "todowrite"
+    ]
+   },
+   "synthetic": true
+  },
+  {
+   "id": "called-kept",
+   "category": "whitelist_preserved",
+   "input": {
+    "user_message": "continue",
+    "called": [
+     "misc_11"
+    ],
+    "tools": [
+     {
+      "name": "misc_0",
+      "description": "Unrelated utility number 0 for blender scenes"
+     },
+     {
+      "name": "misc_1",
+      "description": "Unrelated utility number 1 for blender scenes"
+     },
+     {
+      "name": "misc_2",
+      "description": "Unrelated utility number 2 for blender scenes"
+     },
+     {
+      "name": "misc_3",
+      "description": "Unrelated utility number 3 for blender scenes"
+     },
+     {
+      "name": "misc_4",
+      "description": "Unrelated utility number 4 for blender scenes"
+     },
+     {
+      "name": "misc_5",
+      "description": "Unrelated utility number 5 for blender scenes"
+     },
+     {
+      "name": "misc_6",
+      "description": "Unrelated utility number 6 for blender scenes"
+     },
+     {
+      "name": "misc_7",
+      "description": "Unrelated utility number 7 for blender scenes"
+     },
+     {
+      "name": "misc_8",
+      "description": "Unrelated utility number 8 for blender scenes"
+     },
+     {
+      "name": "misc_9",
+      "description": "Unrelated utility number 9 for blender scenes"
+     },
+     {
+      "name": "misc_10",
+      "description": "Unrelated utility number 10 for blender scenes"
+     },
+     {
+      "name": "misc_11",
+      "description": "Unrelated utility number 11 for blender scenes"
+     },
+     {
+      "name": "misc_12",
+      "description": "Unrelated utility number 12 for blender scenes"
+     },
+     {
+      "name": "misc_13",
+      "description": "Unrelated utility number 13 for blender scenes"
+     },
+     {
+      "name": "misc_14",
+      "description": "Unrelated utility number 14 for blender scenes"
+     },
+     {
+      "name": "misc_15",
+      "description": "Unrelated utility number 15 for blender scenes"
+     },
+     {
+      "name": "misc_16",
+      "description": "Unrelated utility number 16 for blender scenes"
+     },
+     {
+      "name": "misc_17",
+      "description": "Unrelated utility number 17 for blender scenes"
+     },
+     {
+      "name": "misc_18",
+      "description": "Unrelated utility number 18 for blender scenes"
+     },
+     {
+      "name": "misc_19",
+      "description": "Unrelated utility number 19 for blender scenes"
+     },
+     {
+      "name": "misc_20",
+      "description": "Unrelated utility number 20 for blender scenes"
+     },
+     {
+      "name": "misc_21",
+      "description": "Unrelated utility number 21 for blender scenes"
+     },
+     {
+      "name": "misc_22",
+      "description": "Unrelated utility number 22 for blender scenes"
+     },
+     {
+      "name": "misc_23",
+      "description": "Unrelated utility number 23 for blender scenes"
+     },
+     {
+      "name": "misc_24",
+      "description": "Unrelated utility number 24 for blender scenes"
+     },
+     {
+      "name": "misc_25",
+      "description": "Unrelated utility number 25 for blender scenes"
+     },
+     {
+      "name": "misc_26",
+      "description": "Unrelated utility number 26 for blender scenes"
+     },
+     {
+      "name": "misc_27",
+      "description": "Unrelated utility number 27 for blender scenes"
+     },
+     {
+      "name": "misc_28",
+      "description": "Unrelated utility number 28 for blender scenes"
+     },
+     {
+      "name": "misc_29",
+      "description": "Unrelated utility number 29 for blender scenes"
+     }
+    ]
+   },
+   "expected": {
+    "includes": [
+     "misc_11"
+    ]
+   },
+   "synthetic": true
+  },
+  {
+   "id": "zero-width",
+   "category": "injection_clean",
+   "input": {
+    "user_message": "weather please",
+    "tools": [
+     {
+      "name": "misc_0",
+      "description": "Unrelated utility number 0 for blender scenes"
+     },
+     {
+      "name": "misc_1",
+      "description": "Unrelated utility number 1 for blender scenes"
+     },
+     {
+      "name": "misc_2",
+      "description": "Unrelated utility number 2 for blender scenes"
+     },
+     {
+      "name": "misc_3",
+      "description": "Unrelated utility number 3 for blender scenes"
+     },
+     {
+      "name": "misc_4",
+      "description": "Unrelated utility number 4 for blender scenes"
+     },
+     {
+      "name": "misc_5",
+      "description": "Unrelated utility number 5 for blender scenes"
+     },
+     {
+      "name": "misc_6",
+      "description": "Unrelated utility number 6 for blender scenes"
+     },
+     {
+      "name": "misc_7",
+      "description": "Unrelated utility number 7 for blender scenes"
+     },
+     {
+      "name": "misc_8",
+      "description": "Unrelated utility number 8 for blender scenes"
+     },
+     {
+      "name": "misc_9",
+      "description": "Unrelated utility number 9 for blender scenes"
+     },
+     {
+      "name": "misc_10",
+      "description": "Unrelated utility number 10 for blender scenes"
+     },
+     {
+      "name": "misc_11",
+      "description": "Unrelated utility number 11 for blender scenes"
+     },
+     {
+      "name": "misc_12",
+      "description": "Unrelated utility number 12 for blender scenes"
+     },
+     {
+      "name": "misc_13",
+      "description": "Unrelated utility number 13 for blender scenes"
+     },
+     {
+      "name": "misc_14",
+      "description": "Unrelated utility number 14 for blender scenes"
+     },
+     {
+      "name": "misc_15",
+      "description": "Unrelated utility number 15 for blender scenes"
+     },
+     {
+      "name": "misc_16",
+      "description": "Unrelated utility number 16 for blender scenes"
+     },
+     {
+      "name": "misc_17",
+      "description": "Unrelated utility number 17 for blender scenes"
+     },
+     {
+      "name": "misc_18",
+      "description": "Unrelated utility number 18 for blender scenes"
+     },
+     {
+      "name": "misc_19",
+      "description": "Unrelated utility number 19 for blender scenes"
+     },
+     {
+      "name": "misc_20",
+      "description": "Unrelated utility number 20 for blender scenes"
+     },
+     {
+      "name": "misc_21",
+      "description": "Unrelated utility number 21 for blender scenes"
+     },
+     {
+      "name": "misc_22",
+      "description": "Unrelated utility number 22 for blender scenes"
+     },
+     {
+      "name": "misc_23",
+      "description": "Unrelated utility number 23 for blender scenes"
+     },
+     {
+      "name": "misc_24",
+      "description": "Unrelated utility number 24 for blender scenes"
+     },
+     {
+      "name": "misc_25",
+      "description": "Unrelated utility number 25 for blender scenes"
+     },
+     {
+      "name": "misc_26",
+      "description": "Unrelated utility number 26 for blender scenes"
+     },
+     {
+      "name": "misc_27",
+      "description": "Unrelated utility number 27 for blender scenes"
+     },
+     {
+      "name": "misc_28",
+      "description": "Unrelated utility number 28 for blender scenes"
+     },
+     {
+      "name": "misc_29",
+      "description": "Unrelated utility number 29 for blender scenes"
+     },
+     {
+      "name": "forecast",
+      "description": "Get we​ather data"
+     }
+    ]
+   },
+   "expected": {
+    "includes": [
+     "forecast"
+    ]
+   },
+   "synthetic": true
+  },
+  {
+   "id": "no-match",
+   "category": "keyword_match",
+   "input": {
+    "user_message": "hi",
+    "tools": [
+     {
+      "name": "misc_0",
+      "description": "Unrelated utility number 0 for blender scenes"
+     },
+     {
+      "name": "misc_1",
+      "description": "Unrelated utility number 1 for blender scenes"
+     },
+     {
+      "name": "misc_2",
+      "description": "Unrelated utility number 2 for blender scenes"
+     },
+     {
+      "name": "misc_3",
+      "description": "Unrelated utility number 3 for blender scenes"
+     },
+     {
+      "name": "misc_4",
+      "description": "Unrelated utility number 4 for blender scenes"
+     },
+     {
+      "name": "misc_5",
+      "description": "Unrelated utility number 5 for blender scenes"
+     },
+     {
+      "name": "misc_6",
+      "description": "Unrelated utility number 6 for blender scenes"
+     },
+     {
+      "name": "misc_7",
+      "description": "Unrelated utility number 7 for blender scenes"
+     },
+     {
+      "name": "misc_8",
+      "description": "Unrelated utility number 8 for blender scenes"
+     },
+     {
+      "name": "misc_9",
+      "description": "Unrelated utility number 9 for blender scenes"
+     },
+     {
+      "name": "misc_10",
+      "description": "Unrelated utility number 10 for blender scenes"
+     },
+     {
+      "name": "misc_11",
+      "description": "Unrelated utility number 11 for blender scenes"
+     },
+     {
+      "name": "misc_12",
+      "description": "Unrelated utility number 12 for blender scenes"
+     },
+     {
+      "name": "misc_13",
+      "description": "Unrelated utility number 13 for blender scenes"
+     },
+     {
+      "name": "misc_14",
+      "description": "Unrelated utility number 14 for blender scenes"
+     },
+     {
+      "name": "misc_15",
+      "description": "Unrelated utility number 15 for blender scenes"
+     },
+     {
+      "name": "misc_16",
+      "description": "Unrelated utility number 16 for blender scenes"
+     },
+     {
+      "name": "misc_17",
+      "description": "Unrelated utility number 17 for blender scenes"
+     },
+     {
+      "name": "misc_18",
+      "description": "Unrelated utility number 18 for blender scenes"
+     },
+     {
+      "name": "misc_19",
+      "description": "Unrelated utility number 19 for blender scenes"
+     },
+     {
+      "name": "misc_20",
+      "description": "Unrelated utility number 20 for blender scenes"
+     },
+     {
+      "name": "misc_21",
+      "description": "Unrelated utility number 21 for blender scenes"
+     },
+     {
+      "name": "misc_22",
+      "description": "Unrelated utility number 22 for blender scenes"
+     },
+     {
+      "name": "misc_23",
+      "description": "Unrelated utility number 23 for blender scenes"
+     },
+     {
+      "name": "misc_24",
+      "description": "Unrelated utility number 24 for blender scenes"
+     },
+     {
+      "name": "misc_25",
+      "description": "Unrelated utility number 25 for blender scenes"
+     },
+     {
+      "name": "misc_26",
+      "description": "Unrelated utility number 26 for blender scenes"
+     },
+     {
+      "name": "misc_27",
+      "description": "Unrelated utility number 27 for blender scenes"
+     },
+     {
+      "name": "misc_28",
+      "description": "Unrelated utility number 28 for blender scenes"
+     },
+     {
+      "name": "misc_29",
+      "description": "Unrelated utility number 29 for blender scenes"
+     }
+    ]
+   },
+   "expected": {
+    "count": 0
+   },
+   "synthetic": true
+  }
+ ]
+}
