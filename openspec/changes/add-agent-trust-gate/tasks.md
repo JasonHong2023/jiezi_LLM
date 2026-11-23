@@ -128,3 +128,6 @@
 > - `design.md` ✓
 > - `tasks.md` ✓ (this file)
 > - `specs/trust-gate/spec.md` (next)
+## 歸檔前待辦 / Before archiving（主控 2026-11-23）
+
+- [ ] A1 整理 spec delta 再歸檔：MODIFIED 的 `Claude Consultation`、`Recall From Memory` 等少了主規格原有的 Scenario 文字（歸檔會整段覆蓋主規格）；trust-gate 裡的 `Test Suite`、`Code Quality`、`OpenSpec Validation` 是開發流程不是系統行為，應刪；與 skills／injection-guard 重複的需求只留一處。整理方法：每個 MODIFIED 先貼主規格原文全文，再加上新句子與新 Scenario（檢查腳本見 2026-11-23.md #3 對 A8 的做法）。
