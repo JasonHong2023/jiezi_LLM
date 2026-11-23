@@ -57,3 +57,9 @@ Scrapling is an existing Python framework with an official MCP server and Agent 
 - **Q2 — 相依群組 / dependency groups**：使用者決定「兩個都存在，`web-fetch` 無法使用時切換到 `scrapling`」。因此 SHALL 宣告 `web-fetch` 與 `scrapling` 兩個可選群組；`web-fetch` 為首選靜態抓取後端，沿用既有 `httpx==0.28.1`，不新增重型套件；`scrapling` 為回退與 JS／stealth 後端，兩個群組都不進預設安裝。/ Both optional groups SHALL exist; `web-fetch` is the preferred static backend and `scrapling` is the fallback/JS backend.
 - **Q3 — 未解 High／Critical / unresolved findings**：使用者決定「盡可能找出方法抓取不放棄」。這不授予繞過 R23.2 的權限：若完整稽核仍有未修補 High／Critical，受影響後端 SHALL 保持關閉，但專案 SHALL 繼續尋找合規替代路徑（修補版、上游修正、隔離 venv 內有限 PoC、其他合規 MCP、既有 `add-web-read` 靜態路徑或人工授權抓取），並把選項回報使用者；不得直接放棄抓取目標，也不得 silent bypass。/ The project SHALL keep seeking a compliant fetch path and SHALL NOT bypass R23.2 or abandon the fetch objective.
 - Impact / 影響：新增後端選擇與回退邏輯、更新政策 allowlist、更新 PoC 量測與文件；不改分類（仍為 MCP）、不改核心模型、不新增 port、不允許寫入／shell／一般網路工具。/ Add backend selection/fallback, policy allowlist, PoC measurements, and docs; classification, model, ports, and tool boundaries are unchanged.
+
+## 三段證據補記 / Evidence summary（2026-11-23 主控補記，依 A4 登錄表檢查；原文不動）
+
+- **分類 / Classification**：MCP（使用 Scrapling 官方 MCP server，經 stdio）；預設關閉。
+- **現成方案 / Existing-solution search**：Scrapling 官方 MCP server 與 Agent Skill（見上文 Why）；芥子只寫 adapter 與政策層，不重新實作抓取。
+- **資安掃描 / Security scan**：2026-11-22 審查並修正 SSRF（DNS 解析後拒絕非公用位址）、設定非正數上限、stdio 回應略過 notification 與 log、每請求讀取上限與整體 deadline（tasks 第 9 節、commit 9fc3e5f、aac0fd7）；2026-11-19 已固定版本並掃描（pip-audit 0、OSV 74 個套件 0、CISA KEV 0，見 design）；第三方稽核 17 項未全數查證，所以後端維持預設關閉。
