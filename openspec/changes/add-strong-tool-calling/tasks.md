@@ -13,4 +13,4 @@
 ## 3. 訓練 / Training（第 2 輪結果之後）
 
 - [x] 3.1（2026-11-23 主控：ToolACE、hermes-function-calling-v1 鎖定 revision 下載到 var/datasets/toolcall/，登記 docs/licenses.md〔⚠️ 先下載後登記，違反 R18.3，已註明〕；`src/jiezi/toolcall_data.py` 轉成訓練範例：只取第一個呼叫回合、須過 `verify_tools`、含中日韓文字不收；共 10,833 筆〔toolace 8,753、hermes-fc 2,080〕。`eval_targets` 補上 toolcheck 的 ACEBench／BFCL 1,540 題〔原本漏掉〕，外部資料再加正規化前 48 字比對，重疊 0。xLAM 需 HF 登入，未下載。⚠️ 兩資料集的生成模型未載明，是否用於第 3 輪 SFT 交使用者決定）查證並下載授權允許的工具呼叫資料集，登記 `docs/licenses.md`
-- [ ] 3.2 第 3 輪 SFT（工具呼叫＋複習資料），R20 回歸門檻，過了交使用者決定換核心
+- [ ] 3.2（2026-11-23 主控已備妥、未執行：`configs/qwen3.5-4b-r3.json`；夜間腳本只有 `var/train/r3-approved` 存在才跑第 3 輪，內容含 `datasets` 才收外部資料集；SFT 編碼已修正為帶工具定義〔d76cb31〕；⚠️ max_len 768 只留約 37% 的帶工具範例。等使用者決定）第 3 輪 SFT（工具呼叫＋複習資料），R20 回歸門檻，過了交使用者決定換核心

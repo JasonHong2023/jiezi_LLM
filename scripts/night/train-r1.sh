@@ -12,6 +12,13 @@ cd "$ROOT"
 log="var/train/night-$(date +%F).log"; mkdir -p var/train
 key=$(grep '^JIEZI_GATEWAY_KEY=' .env | cut -d= -f2-)
 run="qwen3.5-4b-r2"   # add-sft-round2（r1 已回滾，2026-11-18）/ round 2; r1 was rolled back
+data="sft-r2"; export_extra=""
+# 第 3 輪（add-strong-tool-calling 3.2）只在使用者核准後跑：建立 var/train/r3-approved；內容含 datasets 才收外部工具呼叫資料集
+# Round 3 runs only after the user creates var/train/r3-approved; "datasets" in it adds the licensed tool-call datasets
+if [ -f var/train/r3-approved ]; then
+  run="qwen3.5-4b-r3"; data="sft-r3"
+  grep -q datasets var/train/r3-approved && export_extra="--toolcall-datasets"
+fi
 hold() { curl -s -m 30 -X POST "http://127.0.0.1:36100/admin/unload" -H "Authorization: Bearer $key" \
   -H 'Content-Type: application/json' -d "$1" >> "$log" 2>&1; echo >> "$log"; }
 echo "=== $(date -Iseconds) start" >> "$log"
@@ -29,20 +36,20 @@ fi
 hold "{\"hold_until\": \"$(date +%F)T07:00\", \"reason\": \"nightly training and evaluation\"}"
 # 第二輪的資料：凍結核心對 MBPP 作答、沙盒驗證（約 40 分鐘 GPU），再匯出每源 800 筆＋複習資料補到 50%
 # Round-2 data: frozen-core MBPP replay (verified in the sandbox), then the export with replay topped up to 50%
-if [ ! -f "var/train/$run/adapter/adapter_config.json" ] && [ ! -f var/training/sft-r2.jsonl ]; then
+if [ ! -f "var/train/$run/adapter/adapter_config.json" ] && [ ! -f "var/training/$data.jsonl" ]; then
   if [ ! -s var/training/replay-mbpp.jsonl ]; then
     echo "=== replay $(date -Iseconds)" >> "$log"
     scripts/jiezi train replay >> "$log" 2>&1
     echo "--- replay rc=$? $(date -Iseconds)" >> "$log"
   fi
   if [ -s var/training/replay-mbpp.jsonl ]; then
-    scripts/jiezi dataset export --limit 800 --replay var/training/replay-mbpp.jsonl --replay-ratio 0.5 >> "$log" 2>&1 \
-      && cp "var/training/sft-$(date +%F).jsonl" var/training/sft-r2.jsonl \
-      && cp "var/training/sft-$(date +%F).manifest.json" var/training/sft-r2.manifest.json
+    scripts/jiezi dataset export --limit 800 --replay var/training/replay-mbpp.jsonl --replay-ratio 0.5 $export_extra >> "$log" 2>&1 \
+      && cp "var/training/sft-$(date +%F).jsonl" "var/training/$data.jsonl" \
+      && cp "var/training/sft-$(date +%F).manifest.json" "var/training/$data.manifest.json"
     echo "--- dataset rc=$? $(date -Iseconds)" >> "$log"
   fi
 fi
-if [ ! -f "var/train/$run/adapter/adapter_config.json" ] && [ -f var/training/sft-r2.jsonl ]; then
+if [ ! -f "var/train/$run/adapter/adapter_config.json" ] && [ -f "var/training/$data.jsonl" ]; then
   HF_HUB_OFFLINE=1 scripts/jiezi train sft --config "src/jiezi/train/configs/$run.json" >> "$log" 2>&1
   echo "--- train rc=$? (0 done, 3 paused) $(date -Iseconds)" >> "$log"
 fi

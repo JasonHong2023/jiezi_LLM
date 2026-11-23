@@ -1,0 +1,22 @@
+{
+ "base_model": "Qwen/Qwen3.5-4B",
+ "base_revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+ "dataset": "var/training/sft-r3.jsonl",
+ "run_name": "qwen3.5-4b-r3",
+ "lora_r": 16,
+ "lora_alpha": 32,
+ "lora_dropout": 0.05,
+ "learning_rate": 5e-05,
+ "epochs": 1,
+ "max_len": 768,
+ "batch_size": 1,
+ "grad_accum": 16,
+ "load_in_4bit": true,
+ "gradient_checkpointing": true,
+ "seed": 20261123,
+ "extra": {
+  "stop_at": "06:30",
+  "vram_ceiling_mib": 5500,
+  "note": "add-strong-tool-calling 3.2（2026-11-23 準備，未經使用者核准不跑：夜間只有 var/train/r3-approved 存在才訓練）：沿用第 2 輪參數；SFT 編碼已改為帶工具定義（d76cb31）。標記檔內容含 datasets 才收 ToolACE／hermes-fc。⚠️ 帶工具定義的範例中位數約 867 token，max_len 768 只留約 37%；放寬到 1024 約 70%，但第 1 輪 1024 峰值 6,367 MiB 超過實體 6,141 MiB / round 3, prepared but gated on var/train/r3-approved; tool definitions now encoded; max_len trade-off noted"
+ }
+}
