@@ -40,7 +40,7 @@ Given a cloud consultation response from Claude
 When TrustGate.evaluate_trust() is called with source_channel="cloud", source_id="claude"
 Then the returned TrustLevel is UNVERIFIED (base level for cloud)
 And Provenance.source_type == "cloud"
-And the record has training_use == false (enforced by gateway_enforce_training_use_false)
+And the record has training_use == false (enforced by mark_untrainable)
 And the record is allowed into memory (UNVERIFIED.can_memory == True)
 But not allowed into skills (UNVERIFIED.can_skill == False)
 And not allowed into training (UNVERIFIED.can_train == False)
@@ -151,27 +151,27 @@ And total count <= max_taint_records
 
 ### Requirement: Single Enforcement Point / 單一強制點
 
-All cloud output paths SHALL call `TrustGate.gateway_enforce_training_use_false(record, reason, model)` instead of directly setting `training_use: false`.
+All cloud output paths SHALL call `TrustGate.mark_untrainable(record, reason, model)` instead of directly setting `training_use: false`.
 
-所有雲端輸出路徑必須呼叫 `TrustGate.gateway_enforce_training_use_false(record, reason, model)`，而非直接設定 `training_use: false`。
+所有雲端輸出路徑必須呼叫 `TrustGate.mark_untrainable(record, reason, model)`，而非直接設定 `training_use: false`。
 
 #### Scenario: Gateway Replaces Scattered Writes / 閘道取代分散寫入
 
 ```gherkin
 Given the 12+ cloud output locations in gateway.py with distinct reasons
 When each location is refactored
-Then all call gateway_enforce_training_use_false() with appropriate reason
+Then all call mark_untrainable() with appropriate reason
 And no location directly sets rec["training_use"] = False
-And each call adds trust_level="cloud" and provenance with source_channel="cloud" and extra.reason=<reason>
+And each call adds trust.level="unverified"＋provenance.source_channel="cloud" and provenance with source_channel="cloud" and extra.reason=<reason>
 ```
 
 ---
 
 ### Requirement: Enforcement Record Structure / 強制執行記錄結構
 
-`gateway_enforce_training_use_false()` SHALL produce a record with:
+`mark_untrainable()` SHALL produce a record with:
 
-`gateway_enforce_training_use_false()` 必須產生包含以下內容的記錄：
+`mark_untrainable()` 必須產生包含以下內容的記錄：
 
 - `training_use: false`
 - `trust_level: "cloud"`
@@ -181,7 +181,7 @@ And each call adds trust_level="cloud" and provenance with source_channel="cloud
 
 ```gherkin
 Given a trajectory record from cloud escalation
-When gateway_enforce_training_use_false(rec, "cloud_hint", "claude") is called
+When mark_untrainable(rec, "cloud_hint", "claude") is called
 Then rec.training_use == false
 And rec.trust_level == "cloud"
 And rec.provenance.source_channel == "cloud"
@@ -285,7 +285,7 @@ And unverified, cloud, tainted items are excluded
 ```gherkin
 Given a cloud consultation produces a valid tool call
 When SkillBuilder.add() attempts to learn it online
-Then TrustGate evaluates it as trust_level="cloud" (UNVERIFIED base)
+Then TrustGate evaluates it as trust.level="unverified"＋provenance.source_channel="cloud" (UNVERIFIED base)
 And the skill is NOT added to skills.jsonl
 And no error is raised (silently dropped per UNVERIFIED.can_skill == False)
 ```

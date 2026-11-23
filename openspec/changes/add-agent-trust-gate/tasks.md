@@ -1,21 +1,23 @@
 ## Implementation Tasks / 實作任務
 
+> **主控更正（2026-11-23，實作時）**：依 OQ1 決定，雲端不是信任等級。原草稿的 `gateway_enforce_training_use_false()`／`trust_level="cloud"` 一律改為 `TrustGate.mark_untrainable(rec, reason, model)`：寫 `rec["training_use"]=False` 與 `rec["trust"]={level, reason, provenance}`；雲端原因（cloud／cloud_hint／helper／consultation／escalation）的 provenance.source_channel="cloud"、level=unverified；injection→tainted；其餘原因（license／private／unverifiable…）source_channel="local"。`get_gate(root)` 以絕對路徑 `<root>/var/trust/taint_index.jsonl` 持久化；`injection.guard()` 回傳 `taints`（每段可疑內容各一個 sha256）。
+
 ### Phase 1: Core Trust Gate Module / 核心信任閘門模組
 
-- [ ] **T1.1** Create `src/jiezi/trust.py` with `TrustLevel`, `Provenance`, `TaintRecord`, `TrustGate` classes
+- [x] **T1.1** Create `src/jiezi/trust.py` with `TrustLevel`, `Provenance`, `TaintRecord`, `TrustGate` classes
   - TrustLevel IntEnum (TAINTED=0, UNVERIFIED=1, VERIFIED=2, TRUSTED=3) with property methods
   - Provenance dataclass with to_dict/from_dict, content_hash, fetched_at, version, retrieval_method
   - TaintRecord dataclass with taint_id, content_hash, detected_at, injection_type, snippet
-  - TrustGate with evaluate_trust(), gateway_enforce_training_use_false(), taint_index LRU+TTL
+  - TrustGate with evaluate_trust(), mark_untrainable(), taint_index LRU+TTL
   - Global `get_gate()` singleton accessor
 
-- [ ] **T1.2** Add `tests/test_trust_gate.py` unit tests
+- [x] **T1.2** Add `tests/test_trust_gate.py` unit tests
   - TrustLevel ordering and property methods (can_memory, can_skill, can_train)
   - Provenance serialization round-trip
   - TaintRecord creation and taint_id extraction (SHA-256[:16])
   - TrustGate.evaluate_trust() returns correct TrustLevel for each source_channel
   - TrustGate.taint_index deduplication across channels (same content_hash blocked)
-  - TrustGate.gateway_enforce_training_use_false() sets training_use=false, trust_level=cloud, provenance
+  - TrustGate.mark_untrainable() sets training_use=false, trust.level=unverified＋provenance.source_channel=cloud, provenance
   - LRU+TTL cleanup triggers at max_records and ttl_days
 
 ### Phase 2: Memory Integration / 記憶整合
@@ -27,7 +29,7 @@
   - Page reading: missing trust/provenance fields default to UNVERIFIED/unknown
 
 - [ ] **T2.2** Extend `tests/test_memory.py`
-  - save_answer() frontmatter includes trust_level=cloud, provenance with source_channel=cloud
+  - save_answer() frontmatter includes trust.level=unverified＋provenance.source_channel=cloud, provenance with source_channel=cloud
   - save_correction() frontmatter includes trust_level, provenance with source_channel=correction
   - Reading old pages without trust fields defaults correctly
   - Injection-detected content blocked from memory write
@@ -44,7 +46,7 @@
 - [ ] **T3.2** Create `tests/test_skills.py` (or extend existing)
   - collect() excludes UNVERIFIED and TAINTED items
   - build() output JSONL includes trust_level and provenance fields
-  - add() with cloud content gets trust_level=cloud, not added to skills
+  - add() with cloud content gets trust.level=unverified＋provenance.source_channel=cloud, not added to skills
   - add() with trusted MCP content gets trust_level=verified, added to skills
 
 ### Phase 4: Training Data Integration / 訓練資料整合
@@ -61,12 +63,11 @@
 
 ### Phase 5: Injection Guard Integration / 注入防護整合
 
-- [ ] **T5.1** Modify `src/jiezi/injection.py`
-  - `InjectionResult` dataclass adds `taint_id: str`, `content_hash: str`
+- [x] **T5.1** Modify `src/jiezi/injection.py`
   - `guard()` computes SHA-256 of content, sets taint_id=hash[:16], content_hash=hash
   - Returns enriched result to TrustGate for taint_index registration
 
-- [ ] **T5.2** Extend `tests/test_injection.py`
+- [x] **T5.2** Extend tests (in `tests/test_trust_gate.py` as `TestInjectionIntegration`)
   - guard() returns taint_id and content_hash
   - Same injected content blocked across memory/skills/training channels via taint_index
 
@@ -82,9 +83,9 @@
 ### Phase 7: Gateway / Escalation Integration / 閘道與轉交整合
 
 - [ ] **T7.1** Modify `src/jiezi/runtime/gateway.py`
-  - Replace 7 locations setting `rec["training_use"] = False` with `get_gate().gateway_enforce_training_use_false(rec, reason, model)`
+  - Replace 7 locations setting `rec["training_use"] = False` with `get_gate(root).mark_untrainable(rec, reason, model)`
   - Reasons: "web_content", "translation", "cloud_consultation", "cloud_hint", "cloud_helper", "escalation_feedback", "mcp_tool_result"
-  - Ensure trajectory records get trust_level="cloud" and provenance
+  - Ensure trajectory records get trust.level="unverified"＋provenance.source_channel="cloud" and provenance
 
 - [ ] **T7.2** Test gateway enforcement replaces all 7 scattered writes
 

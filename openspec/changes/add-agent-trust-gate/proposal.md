@@ -1,5 +1,7 @@
 > **狀態 / Status**：提案草稿，待使用者審閱（R4）。初稿由 OpenCode worker（nvidia-kimi-k3，兩輪）撰寫，主控（Claude Code）2026-11-23 審查更正：spec 改為正確 delta 格式；MODIFIED 需求名稱對齊主規格、刪除未變更的需求、新需求移到 ADDED（歸檔時才能正確合併）；更正 training_use 寫入點與原因。/ Draft awaiting review.
 
+> **主控更正（2026-11-23，實作時）**：依 OQ1 決定，雲端不是信任等級。原草稿的 `gateway_enforce_training_use_false()`／`trust_level="cloud"` 一律改為 `TrustGate.mark_untrainable(rec, reason, model)`：寫 `rec["training_use"]=False` 與 `rec["trust"]={level, reason, provenance}`；雲端原因（cloud／cloud_hint／helper／consultation／escalation）的 provenance.source_channel="cloud"、level=unverified；injection→tainted；其餘原因（license／private／unverifiable…）source_channel="local"。`get_gate(root)` 以絕對路徑 `<root>/var/trust/taint_index.jsonl` 持久化；`injection.guard()` 回傳 `taints`（每段可疑內容各一個 sha256）。
+
 ## Why / 動機
 
 芥子已有 `training_use` 旗標（memory.py、trajectory.py、training_data.py、gateway.py）、防提示注入（injection.py）、技能庫僅收驗證成功呼叫（skills.py），但 **缺少統一的信任閘門**：
@@ -42,7 +44,7 @@
 3. **擴充技能項目**：`skills.jsonl` 每筆新增 `trust_level`、`provenance`（含 `source_channel`、`source_id`、`content_hash`、`fetched_at`）；`collect()`、`build()`、`add()` 同步寫入。
 4. **擴充訓練資料範例**：`_ex()` 產出的範例新增 `trust_level`、`provenance`、`fetched_at`；`export()` 只匯出 `trust_level in (Trusted, Verified)` 且 `training_use=True` 的範例。
 5. **注入防護整合**：`injection.guard()` 偵測到注入時，回傳 `taint_id`（內容 SHA-256 前 16 碼）；Trust Gate 維護 `taint_index`，跨管道攔截相同雜湊內容。
-6. **雲端輸出統一強制點**：新增 `gateway_enforce_training_use_false(rec, reason, model)` 單一函式，取代 12+ 處分散寫法；`reason` 欄位保留具體原因（`license`、`injection`、`private`、`unverifiable`、`cloud_hint`、`helper`、`consultation` 等），不是全部標 `cloud`；寫入軌跡時自動附加 `trust_level: cloud`、`provenance: {source: "cloud", model: ..., at: ..., extra: {reason: ...}}`。
+6. **雲端輸出統一強制點**：新增 `mark_untrainable(rec, reason, model)` 單一函式，取代 12+ 處分散寫法；`reason` 欄位保留具體原因（`license`、`injection`、`private`、`unverifiable`、`cloud_hint`、`helper`、`consultation` 等），不是全部標 `cloud`；寫入軌跡時自動附加 `trust.level: unverified`＋`provenance.source_channel: cloud`、`provenance: {source: "cloud", model: ..., at: ..., extra: {reason: ...}}`。
 7. **MCP 工具輸出納入 Trust Gate**：`agent/server.py` 的 `tools/call` 回傳前，經 Trust Gate 評估 `trust_level`（預設 `unverified`，受信任 server 可標 `verified`），並記錄 `provenance`。
 
 ## Non-Goals / 不做的範圍
@@ -66,7 +68,7 @@
 - `training-data`：範例新增 trust/provenance/fetched_at；匯出門檻加入 `trust_level` 條件。/ Examples gain trust/provenance/fetched_at; export gate adds trust_level condition.
 - `injection-guard`：偵測結果回傳 `taint_id`、`content_hash`；Trust Gate 維護跨管道污染索引。/ Detection returns `taint_id`, `content_hash`; Trust Gate maintains cross-channel taint index.
 - `trajectory`：記錄新增 `trust_level`、`provenance` 欄位。/ Records gain trust_level and provenance fields.
-- `escalation` / `gateway`：雲端輸出統一經 `gateway_enforce_training_use_false()`，自動附加 trust/provenance。/ Cloud outputs go through single enforcement function with auto trust/provenance.
+- `escalation` / `gateway`：雲端輸出統一經 `mark_untrainable()`，自動附加 trust/provenance。/ Cloud outputs go through single enforcement function with auto trust/provenance.
 
 ## Impact / 影響
 

@@ -37,8 +37,8 @@ Jiezi SHALL keep consulted answers, notes and corrections as Hermes-format Markd
 
 - **WHEN** 芥子請教 Claude「台灣最高的山是哪一座？」得到「玉山」
   Jiezi consults Claude and gets 玉山
-- **THEN** 記憶 wiki 多了這一筆問答，來源標 Claude 與模型名稱，**前言含 trust_level="cloud"、provenance、content_hash、fetched_at**
-  The memory wiki gains the Q&A with Claude and the model as the source, **frontmatter contains trust_level="cloud", provenance, content_hash, fetched_at**
+- **THEN** 記憶 wiki 多了這一筆問答，來源標 Claude 與模型名稱，**前言含 trust.level="unverified"＋provenance.source_channel="cloud"、provenance、content_hash、fetched_at**
+  The memory wiki gains the Q&A with Claude and the model as the source, **frontmatter contains trust.level="unverified"＋provenance.source_channel="cloud", provenance, content_hash, fetched_at**
 
 #### Scenario: 即時問題 / Live question
 

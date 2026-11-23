@@ -41,7 +41,7 @@ And unverified, cloud, tainted items are excluded
 #### Scenario: Cloud Skills Not Collected / 雲端技能不被收集
 
 ```gherkin
-Given a skill learned from Claude consultation (trust_level="cloud")
+Given a skill learned from Claude consultation (trust.level="unverified"＋provenance.source_channel="cloud")
 When SkillCollector.collect() runs
 Then the cloud skill is excluded from collected skills
 ```
@@ -59,7 +59,7 @@ Then the cloud skill is excluded from collected skills
 ```gherkin
 Given a cloud consultation produces a valid tool call
 When SkillBuilder.add() attempts to learn it online
-Then TrustGate evaluates it as trust_level="cloud" (UNVERIFIED base)
+Then TrustGate evaluates it as trust.level="unverified"＋provenance.source_channel="cloud" (UNVERIFIED base)
 And the skill is NOT added to skills.jsonl
 And no error is raised (silently dropped per UNVERIFIED.can_skill == False)
 ```

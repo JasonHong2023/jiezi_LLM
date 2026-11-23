@@ -1,5 +1,7 @@
 ## Context / 背景
 
+> **主控更正（2026-11-23，實作時）**：依 OQ1 決定，雲端不是信任等級。原草稿的 `gateway_enforce_training_use_false()`／`trust_level="cloud"` 一律改為 `TrustGate.mark_untrainable(rec, reason, model)`：寫 `rec["training_use"]=False` 與 `rec["trust"]={level, reason, provenance}`；雲端原因（cloud／cloud_hint／helper／consultation／escalation）的 provenance.source_channel="cloud"、level=unverified；injection→tainted；其餘原因（license／private／unverifiable…）source_channel="local"。`get_gate(root)` 以絕對路徑 `<root>/var/trust/taint_index.jsonl` 持久化；`injection.guard()` 回傳 `taints`（每段可疑內容各一個 sha256）。
+
 芥子專案已具備 `training_use` 旗標（R6、R18.3、R20）、防提示注入（injection.py）、技能庫僅收驗證成功呼叫（skills.py）、記憶 wiki（memory.py）、訓練資料匯出管線（training_data.py）、軌跡記錄（trajectory.py）。但缺少統一的**前置信任閘門**，導致：
 - 同一份外部內容可能以不同管道（網頁、文件、MCP 工具、雲端回答）重複進入，缺乏去重與污染追蹤
 - 來源追溯欄位零散，無法完整回答「這筆技能來自哪次軌跡、哪個版本的文件、何時被加入」
@@ -12,7 +14,7 @@
 1. **統一信任評估**：所有外部內容進入記憶/技能/訓練前，經單一 `evaluate_trust()` 判斷 `TrustLevel` 與 `Provenance`
 2. **完整 Provenance**：每筆寫入自動記錄 `source_channel`、`source_id`、`content_hash`、`fetched_at`、`version`、`retrieval_method`
 3. **跨管道污染隔離**：注入偵測產生 `taint_id`（SHA-256 前 16 碼），Trust Gate 維護 `taint_index`，攔截相同雜湊內容再次進入
-4. **雲端輸出單一強制點**：`gateway_enforce_training_use_false()` 取代分散寫法，自動附加 `trust_level: cloud`、`provenance`（含 `extra.reason` 保留具體原因）
+4. **雲端輸出單一強制點**：`mark_untrainable()` 取代分散寫法，自動附加 `trust.level: unverified`＋`provenance.source_channel: cloud`、`provenance`（含 `extra.reason` 保留具體原因）
 5. **MCP 工具輸出納管**：`agent/server.py` 回傳前經 Trust Gate 評估，預設 `unverified`，受信任 server 可升級
 6. **零新相依**：不引入外部服務、資料庫、連接埠、模型或 GPU 負載
 
@@ -62,7 +64,7 @@
 | Prompt Injection | 外部網頁、文件、MCP tool result | 污染記憶、技能、訓練資料 | injection.guard() + Trust Gate taint_index 跨管道攔截 |
 | Tool Poisoning | 惡意 MCP server 回傳偽造結果 | 技能學到錯誤呼叫、記憶存入錯誤資訊 | MCP tool output 經 Trust Gate，預設 `unverified`，需人工升級 |
 | Memory Poisoning | 重複注入同一惡意內容繞過單管道檢查 | 長期記憶被污染 | taint_index 以 content_hash 去重，跨管道生效 |
-| Training Data Contamination | `training_use=true` 錯誤標記雲端輸出 | 模型學到 Anthropic 禁止訓練的內容 | gateway_enforce_training_use_false() 單一強制點 + trust_level: cloud |
+| Training Data Contamination | `training_use=true` 錯誤標記雲端輸出 | 模型學到 Anthropic 禁止訓練的內容 | mark_untrainable() 單一強制點 + trust.level: unverified＋provenance.source_channel: cloud |
 | Provenance Tampering | 攻擊者修改 provenance 欄位掩蓋來源 | 審計失效、無法追溯 | provenance 由 Trust Gate 寫入，不接受外部輸入；content_hash 自我驗證 |
 | Taint Index DoS | 大量惡意內容填滿 taint_index 記憶體 | 記憶體耗盡、拒絕服務 | LRU + TTL（30 天）自動清理，上限可配置 |
 
@@ -215,7 +217,7 @@ class TrustGate:
         base_level = self._base_trust_level(source_channel, metadata)
         
         # 4. 若為 cloud 輸出，強制 training_use=false 並標記 cloud
-        # （由 gateway_enforce_training_use_false 處理，這裡只回傳基礎等級）
+        # （由 mark_untrainable 處理，這裡只回傳基礎等級）
         
         provenance = Provenance(
             source_channel=source_channel,
@@ -240,8 +242,8 @@ class TrustGate:
     def is_tainted(self, content_hash: str) -> bool:
         return content_hash[:16] in self.taint_index
     
-    def gateway_enforce_training_use_false(self, rec: Dict, reason: str, model: str = "claude") -> Dict:
-        """雲端輸出單一強制點：設 training_use=false、trust_level: cloud、provenance（含 reason）"""
+    def mark_untrainable(self, rec: Dict, reason: str, model: str = "claude") -> Dict:
+        """雲端輸出單一強制點：設 training_use=false、trust.level: unverified＋provenance.source_channel: cloud、provenance（含 reason）"""
         content = json.dumps(rec, ensure_ascii=False, sort_keys=True)
         content_hash = self.compute_content_hash(content)
         rec["training_use"] = False
@@ -276,7 +278,7 @@ def get_gate() -> TrustGate:
 | `training_data.py` | `_ex()`、`export()` | 範例新增 trust/provenance/fetched_at；匯出加條件 `trust_level == TRUSTED and training_use` |
 | `injection.py` | `guard()` 回傳值 | 新增 `taint_id`、`content_hash` 回傳；Trust Gate 維護索引 |
 | `trajectory.py` | `TrajectoryRecord` | 新增 `trust_level`、`provenance` 欄位 |
-| `gateway.py` | 12+ 處 `training_use=False` | 統一改呼叫 `get_gate().gateway_enforce_training_use_false(reason, model)` |
+| `gateway.py` | 12+ 處 `training_use=False` | 統一改呼叫 `get_gate(root).mark_untrainable(reason, model)` |
 | `agent/server.py` | `tools/call` 回傳前 | 經 Trust Gate 評估 MCP tool output，記錄 provenance |
 
 ## Configuration / 設定
