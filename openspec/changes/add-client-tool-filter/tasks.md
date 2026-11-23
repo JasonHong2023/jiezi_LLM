@@ -42,6 +42,8 @@
 - [x] 4b.3 測試：CompactPromptTests、test_compact_client_prompt_lets_long_agent_prompts_run_locally
 - [x] 4b.4（2026-11-23 12:3x 使用者同意改成白天實機小量測試；.env 已設 JIEZI_COMPACT_CLIENT_PROMPT=on：9 個真實 Hermes／OpenCode 單回合請求全部由本機作答〔3–19 秒；原本全部轉交或 413〕；列檔、get_weather 正確；問題 2 個——沒有天氣工具時在 curl 網址編造 API 金鑰、瀏覽 Pinterest 前沒先開網頁 → 精簡指示補「不要編造金鑰／先開網址」，直送引擎重測兩題各 2 次都改善〔改用免金鑰的 open-meteo、先 browser_navigate〕。多回合任務與完整成功率仍待夜間）夜間：開啟後用 Hermes／OpenCode 實際跑 10 個常見任務，比較本機完成率、工具呼叫正確率與轉交率，決定是否預設開啟（交使用者決定）
 
+- [x] 4b.5（2026-11-23 12:4x 實機多回合 5 個：都由本機作答〔3–10 秒〕但品質差——使用者回「B」時前面的選擇題已被裁掉、Hermes 背景「整理技能庫」選了 browser_console。→ 精簡只在「否則會失敗」時用：`jiezi-local`，或 `jiezi` 但沒有可轉交的去處；`jiezi` 有雲端時照舊轉交）
+
 ## 5. 重度量測（00:00–07:00） / Heavy measurements (00:00–07:00)
 
 > ⚠️ 以下任務需在夜間時段執行，白天不執行

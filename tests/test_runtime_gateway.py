@@ -553,6 +553,11 @@ class TestGateway(unittest.TestCase):
             self.assertEqual(self.post(c, body).status_code, 200)
         sent = self.local_seen[-1]["messages"][0]["content"]
         self.assertIn("Current working directory: /w", sent)
+        # jiezi 有雲端可轉交時不精簡，照舊轉交（品質較好）/ with a cloud route, jiezi still escalates
+        with self.client([{"role": "assistant", "content": "不該送到本機"}], cloud_on=True) as c:
+            self.sup.s.compact_client_prompt = True
+            r = self.post(c, {**body, "model": "jiezi"})
+            self.assertEqual(r.json()["jiezi"]["escalation"], "context_too_large")
         self.assertNotIn("規則說明規則說明", sent)
         t = self.traj()
         cp = next(x["client_prompt"] for x in t if x.get("client_prompt"))

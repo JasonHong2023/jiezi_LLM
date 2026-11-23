@@ -1275,7 +1275,7 @@ class Gateway:
             return self._finish_error(rec, 400, "目前的核心模型不支援圖片（需要有視覺模組的核心，例如 Qwen3.5 加 mmproj）"
                                       "；也沒有可用的雲端模型 / the core model cannot read images", "vision_unavailable")
         if body.get("tools") and self.s.tool_filter:
-            body = self._filter_tools(body, rec, (agent_contract or {}).get("allowed_tools") or ())
+            body = self._filter_tools(body, rec, (agent_contract or {}).get("allowed_tools") or (), policy)
         big = self._too_large(body)
         if big:
             from .tool_filter import STAGES as TOOL_STAGES
@@ -1748,7 +1748,7 @@ class Gateway:
             return
         self._trust_gate().mark_untrainable(rec, reason, model)
 
-    def _filter_tools(self, body: dict, rec: dict, contract_tools=()) -> dict:
+    def _filter_tools(self, body: dict, rec: dict, contract_tools=(), policy: str = "jiezi-local") -> dict:
         """工具清單放不進本機槽位時依階梯篩選（add-client-tool-filter）；放得下就原樣。
         放不下時也換成篩過的清單：轉交雲端只帶相關工具，省雲端 token（使用者 2026-11-23 選 OQ0 (C)）。
         Trim an oversized tool list stage by stage; when nothing fits, the stage-1 selection still goes to the cloud."""
@@ -1760,7 +1760,11 @@ class Gateway:
         except Exception as exc:  # noqa: BLE001 - 篩選失敗就照舊送 / a filter bug must not break the request
             self.log(f"tool filter failed, sending all tools: {type(exc).__name__}: {exc}")
             return body
-        if res["stage"] == "exhausted" and self.s.compact_client_prompt:
+        # 只在「不精簡就會失敗」時才精簡：jiezi-local（否則 413），或 jiezi 但沒有可轉交的去處。
+        # 2026-11-23 實機：單回合尚可，多回合歷史被裁、選錯工具，品質不如轉交雲端，所以 jiezi 有雲端時照舊轉交。
+        # Compact only when the request would otherwise fail: jiezi-local, or jiezi with nowhere to escalate.
+        compact_ok = policy == "jiezi-local" or (policy == "jiezi" and not self._auto_route())
+        if res["stage"] == "exhausted" and self.s.compact_client_prompt and compact_ok:
             # 客戶端系統提示太長（OQ0 A）：換成精簡版再篩一次；放得下才用 / condensed client prompt, used only if it fits
             from .tool_filter import with_compact_system
             msgs, before, after = with_compact_system(body["messages"])

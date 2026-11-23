@@ -72,8 +72,8 @@ gateway SHALL 在 `_chat()` 做 `_too_large()` 檢查之前（即本機 `fit()` 
 - **THEN** `_attach_skills()` 正常附加 `grep` 範例。 / **THEN** `_attach_skills()` attaches `grep` examples normally.
 ### Requirement: Optional compact client system prompt / 可選的客戶端系統提示精簡
 
-`JIEZI_COMPACT_CLIENT_PROMPT=on` 時，工具篩選的所有階段都放不下，gateway SHALL 把客戶端所有 system 訊息換成一則精簡版（固定的代理指示＋「鍵: 值」格式的環境行＋語言偏好段落前幾行，上限 1,500 字元），再跑一次工具篩選階梯；放得下才採用，並在軌跡記錄 `client_prompt={compacted, before_chars, after_chars}`；仍放不下 SHALL 照原規則轉交或回 413。預設 SHALL 為關閉（會失去客戶端大部分指示，需量測後再決定）。
-With `JIEZI_COMPACT_CLIENT_PROMPT=on`, when no filtering stage fits, the gateway SHALL replace the client's system messages with one condensed prompt (fixed agent rules, `key: value` environment lines, the first lines of a language section; at most 1,500 characters), rerun the ladder, use it only if it fits, and record `client_prompt`; otherwise it SHALL escalate or return 413 as before. It SHALL be off by default.
+`JIEZI_COMPACT_CLIENT_PROMPT=on` 時，工具篩選的所有階段都放不下，且策略是 `jiezi-local`（否則會回 413）或 `jiezi` 但沒有可轉交的去處，gateway SHALL 把客戶端所有 system 訊息換成一則精簡版（固定的代理指示＋「鍵: 值」格式的環境行＋語言偏好段落前幾行，上限 1,500 字元），再跑一次工具篩選階梯；放得下才採用，並在軌跡記錄 `client_prompt={compacted, before_chars, after_chars}`；仍放不下 SHALL 照原規則轉交或回 413。預設 SHALL 為關閉（會失去客戶端大部分指示，需量測後再決定）。
+With `JIEZI_COMPACT_CLIENT_PROMPT=on`, when no filtering stage fits and the policy is jiezi-local or jiezi with nowhere to escalate, the gateway SHALL replace the client's system messages with one condensed prompt (fixed agent rules, `key: value` environment lines, the first lines of a language section; at most 1,500 characters), rerun the ladder, use it only if it fits, and record `client_prompt`; otherwise it SHALL escalate or return 413 as before. It SHALL be off by default.
 
 #### Scenario: 長系統提示的代理請求 / An agent request with a long system prompt
 
@@ -88,3 +88,10 @@ With `JIEZI_COMPACT_CLIENT_PROMPT=on`, when no filtering stage fits, the gateway
   The same request without the setting
 - **THEN** 行為與未加本需求前相同（`jiezi-local` 回 413、`jiezi` 轉交雲端）
   Behaviour is unchanged (413 for jiezi-local, escalation for jiezi)
+
+#### Scenario: 有雲端時照舊轉交 / Escalation still wins when available
+
+- **WHEN** 開啟精簡，策略 `jiezi`，雲端可用
+  Compaction is on, policy jiezi, the cloud is available
+- **THEN** 照舊轉交雲端（2026-11-23 實機：多回合時本機會裁掉歷史、選錯工具，品質不如雲端）
+  The request escalates as before (live tests showed weaker multi-turn quality locally)
