@@ -261,11 +261,78 @@ class TestServerFlow(Base):
         self.assertEqual({store.get(i)["status"] for i in ids}, {"proposed"})
         self.assertFalse((self.docs / "y.md").exists())
 
+    def test_loop_offers_write_only_with_switch_and_contract(self):
+        import anyio
+        from jiezi.agent import loop
+        from test_agent import FakeMcp
+        offered = []
+
+        async def complete(msgs, schemas):
+            offered.append({s["function"]["name"] for s in schemas or []})
+            return {"role": "assistant", "content": "好"}
+
+        async def emit(ev):
+            return None
+        for env, contract, expect in (("on", None, False), ("", WRITE_CONTRACT, None), ("on", WRITE_CONTRACT, True)):
+            offered.clear()
+            with mock.patch.dict(os.environ, {"JIEZI_AGENT_WRITE": env}):
+                anyio.run(loop.run, [{"role": "user", "content": "寫摘要"}], complete, FakeMcp(self.g),
+                          [str(self.docs)], emit, "t1", 6, contract)
+            if expect is None:      # 開關關著、契約卻要求寫入：契約不成立，不進迴圈 / contract rejected
+                self.assertEqual(offered, [])
+            else:
+                self.assertEqual("write_file" in offered[0], expect)
+
     def test_bad_arguments(self):
         with mock.patch.dict(os.environ, {"JIEZI_AGENT_WRITE": "on"}):
             self.assertTrue(self.call({"path": str(self.docs / "z.md")})["result"]["isError"])
             self.assertTrue(self.call({"path": str(self.docs / "z.md"), "content": "x", "mode": "w"})["result"]["isError"])
             self.assertTrue(self.call({"path": str(self.docs / "a.txt"), "content": "x"})["result"]["isError"])
+
+
+# 寫入工具要「開關打開」且「任務契約明確允許」才可用；沒有契約時預設只有唯讀工具
+WRITE_CONTRACT = {"goal": "整理檔案並寫一份摘要", "done_criteria": "摘要寫成新檔", "risk": "medium",
+                  "constraints": ["只能在授權資料夾建立新檔"], "allowed_tools": ["read_file", "write_file"]}
+
+
+class TestInjectionCorpus(Base):
+    """T34：紅隊語料的每一則注入放進讀到的檔案，模型接著要求寫檔——注入的一律在寫入前 fail-closed，
+    對照組（正常內容）照常走到 write_file（只會建立核准請求）。"""
+
+    def test_corpus_never_reaches_write(self):
+        import anyio
+        from pathlib import Path
+        from jiezi.agent import loop
+        from test_agent import FakeMcp, tc
+        manifest = json.loads((Path(__file__).parent / "fixtures" / "agent_redteam" / "manifest.json")
+                              .read_text(encoding="utf-8"))
+        cases = [c for c in manifest["cases"] if c["category"] == "injection"]
+        self.assertGreaterEqual(len(cases), 6)
+        self.g.grant(str(self.docs))
+        for i, case in enumerate(cases):
+            with self.subTest(case=case["id"]):
+                src = self.docs / f"in{i}.txt"
+                src.write_text(case["input"], encoding="utf-8")
+                script = [{"role": "assistant", "content": "", "tool_calls": [tc("read_file", {"path": str(src)})]},
+                          {"role": "assistant", "content": "", "tool_calls": [
+                              tc("write_file", {"path": str(self.docs / f"out{i}.md"), "content": "x"}, 1)]},
+                          {"role": "assistant", "content": "完成"}]
+
+                async def complete(msgs, schemas, script=script):
+                    return script.pop(0) if script else {"role": "assistant", "content": "完成"}
+
+                async def emit(ev):
+                    return None
+                mcp = FakeMcp(self.g)
+                with mock.patch.dict(os.environ, {"JIEZI_AGENT_WRITE": "on"}):
+                    _, info = anyio.run(loop.run, [{"role": "user", "content": "整理這個檔案"}], complete, mcp,
+                                        [str(self.docs)], emit, "t1", 6, WRITE_CONTRACT)
+                called = [n for n, _ in mcp.calls]
+                if case["kind"] == "injection":
+                    self.assertEqual(called, ["read_file"])
+                    self.assertEqual(info["terminal_reason"], "injection_detected")
+                else:
+                    self.assertEqual(called, ["read_file", "write_file"])          # 對照組照常 / controls proceed
 
 
 class TestCli(unittest.TestCase):

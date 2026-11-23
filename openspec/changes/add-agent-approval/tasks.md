@@ -349,5 +349,5 @@ T30-T34 (夜間，獨立排程)
 - [x] T20 CLI 端對端測試（2026-11-23：`TestCli.test_cli_flow`，以 `JIEZI_HOME` 指到暫存專案；approvals→show→錯 sha 拒→approve→rollback→deny 拒）
 - [x] T27–T29 全量 873 測試、strict 驗證、diff check
 - [x] T30–T33（2026-11-23：原標夜間，實際輕量，改為單元測試 `TestRobustness`：600 個固定種子的模糊路徑、8 執行緒同時核准只寫一次、大小上限邊界。**模糊測試找到 bug**：`docs/.env/../outside.txt` 解析後落在既有的符號連結上，check_write 誤判可建立〔寫入時 O_EXCL 仍會擋〕；已改為對解析後路徑再查一次。T33 備份壓測不適用〔不覆寫所以沒有備份〕）
-- [ ] T34 完整注入語料（夜間）
+- [x] T34（2026-11-23：`TestInjectionCorpus`，紅隊語料 8 則〔注入＋對照〕：注入的在寫入前 fail-closed，對照組照常走到 write_file。另確認並測試：**寫入工具要 `JIEZI_AGENT_WRITE=on` 且任務契約 `allowed_tools` 明確列出 `write_file` 才會提供**——沒有契約時預設只有唯讀工具；開關關著卻要求寫入的契約不成立）完整注入語料
 - [x] 桌面網頁核准畫面（狀態頁「寫入請求」：列表→看完整內容→核准／拒絕／撤回，送出畫面上內容的 sha256；`npm run build` 通過，實際點按待使用者在桌面版確認）
