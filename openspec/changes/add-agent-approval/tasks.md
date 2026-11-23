@@ -346,7 +346,7 @@ T30-T34 (夜間，獨立排程)
 - [x] T12／T13 `GET /v1/agent/approvals`、`GET|POST /v1/agent/approvals/{id}`；列表時清理逾期紀錄
 - [x] T14 `scripts/jiezi agent approvals|show|approve|deny|rollback`（`--sha256`、`--reason`）
 - [x] T15–T19、T21–T26 `tests/test_agent_approval.py`（19 個，含路徑跳脫、符號連結、TOCTOU 換連結、重放、偽造、提示注入、磁碟空間）＋ `test_agent_approval_endpoints`
-- [ ] T20 CLI 端對端測試：未做（CLI 直接讀寫專案的 var/，測試需可替換專案根目錄的機制；邏輯已由 store 測試涵蓋）
+- [x] T20 CLI 端對端測試（2026-11-23：`TestCli.test_cli_flow`，以 `JIEZI_HOME` 指到暫存專案；approvals→show→錯 sha 拒→approve→rollback→deny 拒）
 - [x] T27–T29 全量 873 測試、strict 驗證、diff check
 - [ ] T30–T34 夜間項目（00:00–07:00）
 - [x] 桌面網頁核准畫面（狀態頁「寫入請求」：列表→看完整內容→核准／拒絕／撤回，送出畫面上內容的 sha256；`npm run build` 通過，實際點按待使用者在桌面版確認）

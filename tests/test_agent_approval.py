@@ -217,5 +217,47 @@ class TestServerFlow(Base):
             self.assertTrue(self.call({"path": str(self.docs / "a.txt"), "content": "x"})["result"]["isError"])
 
 
+class TestCli(unittest.TestCase):
+    """T20：`scripts/jiezi agent approvals|show|approve|deny|rollback` 端對端（JIEZI_HOME 指到暫存專案）。"""
+
+    def test_cli_flow(self):
+        import contextlib
+        import io
+        import tempfile
+        from pathlib import Path
+        from jiezi.agent.grants import Grants
+        from jiezi.runtime import __main__ as M
+        with tempfile.TemporaryDirectory() as d:
+            root, docs = Path(d) / "proj", Path(d) / "docs"
+            (root / "var").mkdir(parents=True)
+            docs.mkdir()
+            g = Grants(root)
+            g.grant(str(docs))
+            r = A.ApprovalStore(root).propose(g, str(docs / "n.md"), "第一行\n第二行")
+
+            def cli(*args):
+                out, err = io.StringIO(), io.StringIO()
+                with mock.patch.dict(os.environ, {"JIEZI_HOME": str(root)}), \
+                        contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                    rc = M.main(["agent", *args])
+                return rc, out.getvalue() + err.getvalue()
+
+            rc, out = cli("approvals")
+            self.assertEqual(rc, 0)
+            self.assertIn(r["id"], out)
+            rc, out = cli("show", r["id"])
+            self.assertIn("第二行", out)                                          # 完整內容 / full content
+            self.assertIn(r["sha256"][:12], out)
+            self.assertEqual(cli("approve", r["id"], "--sha256", "0" * 12)[0], 2)  # sha 不對 / wrong sha
+            self.assertFalse((docs / "n.md").exists())
+            rc, out = cli("approve", r["id"], "--sha256", r["sha256"][:12], "--reason", "看過了")
+            self.assertEqual((rc, (docs / "n.md").read_text(encoding="utf-8")), (0, "第一行\n第二行"))
+            self.assertEqual(cli("rollback", r["id"])[0], 0)
+            self.assertFalse((docs / "n.md").exists())
+            self.assertEqual(cli("deny", r["id"])[0], 2)                            # 已撤回不能再拒絕 / closed
+            rows = audit.read(root)
+            self.assertEqual([x.get("outcome") for x in rows if x.get("source") == "cli"], ["applied", "rolled_back"])
+
+
 if __name__ == "__main__":
     unittest.main()
