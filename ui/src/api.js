@@ -27,6 +27,13 @@ export async function getJSON(path) {
   return r.json();
 }
 
+export async function postJSON(path, body) {
+  const r = await fetch(BASE + path, { method: "POST", headers: headers(), body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30000) });
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  return r.json();
+}
+
 // 上傳文件給 gateway 讀成文字（PDF、Word、網頁、純文字）；檔案讀完就刪，不留在 gateway。
 // Upload a document for the gateway to read; the file is deleted once read.
 export async function readDocument(file) {

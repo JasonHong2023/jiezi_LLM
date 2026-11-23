@@ -1,7 +1,7 @@
 // 芥子桌面 App 雛形：對話、稽核紀錄、狀態（唯讀；不操控作業系統）。
 // Jiezi desktop prototype: chat, audit log, status (read-only; no OS control).
 import { useEffect, useRef, useState } from "react";
-import { BASE, THEME_LABEL, firstPhase, processSummary, refParts, splitAppendix, getJSON, getKey, loadInputs, loadTheme, nextTheme, phaseAfter, phaseLabel, readDocument, recallInput, rememberInput, setKey, stepText, streamChat, withDocuments } from "./api.js";
+import { BASE, THEME_LABEL, firstPhase, processSummary, refParts, splitAppendix, getJSON, postJSON, getKey, loadInputs, loadTheme, nextTheme, phaseAfter, phaseLabel, readDocument, recallInput, rememberInput, setKey, stepText, streamChat, withDocuments } from "./api.js";
 
 const MAX_DOC_CHARS = 1500000;  // 附著文件的總字數上限（和 jiezi chat 相同）/ same cap as jiezi chat
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;  // 和 jiezi chat 的 /image 相同 / same cap as /image in chat
@@ -358,6 +358,45 @@ function reasonText(k) {
   return `${who === "claude" ? "Claude" : "雲端"}・${REASONS[why] || why}`;
 }
 
+// add-agent-approval：寫入請求要看過完整內容才能核准；核准時把畫面上這份內容的 sha256 一起送出
+function Approvals() {
+  const [list, setList] = useState([]);
+  const [open, setOpen] = useState(null);
+  const [msg, setMsg] = useState("");
+  const load = () => getJSON("/v1/agent/approvals").then((d) => setList(d.approvals)).catch((e) => setMsg(String(e.message)));
+  useEffect(() => { load(); }, []);
+  const show = (id) => getJSON(`/v1/agent/approvals/${id}`).then(setOpen).catch((e) => setMsg(String(e.message)));
+  const decide = (action) => {
+    const reason = action === "allow" ? "桌面網頁核准" : action === "deny" ? "桌面網頁拒絕" : "桌面網頁撤回";
+    postJSON(`/v1/agent/approvals/${open.id}`, { action, sha256: open.sha256, reason })
+      .then((r) => { setMsg(`${r.status}：${r.path}`); setOpen(null); load(); })
+      .catch((e) => setMsg(String(e.message)));
+  };
+  if (!list.length && !msg) return null;
+  return (
+    <div className="esc">
+      <h3>寫入請求（代理要建立的新檔，看過內容才核准）</h3>
+      {msg && <p className="muted">{msg}</p>}
+      <table>
+        <thead><tr><th>狀態</th><th>路徑</th><th>大小</th><th></th></tr></thead>
+        <tbody>{list.map((r) => (
+          <tr key={r.id}><td>{r.status}</td><td className="q">{r.path}</td><td>{r.bytes} B</td>
+            <td><button onClick={() => show(r.id)}>看內容</button></td></tr>
+        ))}</tbody>
+      </table>
+      {open && (
+        <div>
+          <p className="muted">{open.path}・sha256 {open.sha256}・{open.status}</p>
+          <pre className="q">{open.content}</pre>
+          {open.status === "proposed" && <><button onClick={() => decide("allow")}>核准寫入</button> <button onClick={() => decide("deny")}>拒絕</button></>}
+          {open.status === "applied" && <button onClick={() => decide("rollback")}>撤回（刪掉這個新檔）</button>}
+          {" "}<button onClick={() => setOpen(null)}>關閉</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Status() {
   const [health, setHealth] = useState(null);
   const [doctor, setDoctor] = useState(null);
@@ -387,6 +426,7 @@ function Status() {
           </table>
         </div>
       )}
+      <Approvals />
       {mem && (
         <div className="esc">
           <h3>記憶 wiki（{mem.topics.length} 個主題）</h3>
