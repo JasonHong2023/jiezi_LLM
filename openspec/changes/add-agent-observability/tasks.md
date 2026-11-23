@@ -9,6 +9,8 @@
 - [x] **T0.5** 撰寫 `design.md`（統一欄位表、遮罩規則、狀態機、預算對齊、模組對應、規格 Delta、驗證矩陣、優先序）
 - [ ] **T0.6** 撰寫 `tasks.md`（本檔案）
 
+> **主控實作註記（2026-11-23）**：Phase 1 改為單一模組 `src/jiezi/observability.py`（常數、`normalize(record, kind)`、`scrub_text`／`scrub`）＋ `tests/test_observability.py`。值域取自實際軌跡（2,534 筆全數轉換無例外）。W9 的草稿（observability 套件＋limits 改動）未採用：POLICIES 編造（direct／cloud_only／test）、tool_filter 把計數當清單、遮罩規則誤遮 40 字元雜湊與 `os.environ`、limits 重寫了契約已有的預算收斂並編造 VRAM／CPU 門檻。狀態機（T1.6／T1.7）與 limits（T1.8）留到 Phase 3 接上代理迴圈時再做。下方 Phase 1 勾選以此為準：T1.1–T1.5 完成（單一模組形式）、T1.6–T1.8 未做。
+
 ## Phase 1: 核心模組建立 / Core Observability Module
 
 ### 1.1 統一欄位常數 / Unified Field Constants
