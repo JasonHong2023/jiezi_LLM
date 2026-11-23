@@ -1,0 +1,100 @@
+# Agent Capability Registry
+# 每個能力一筆 [[capabilities]] 記錄
+# 「新功能先判定 SKILL／MCP、查現成方案、做資安掃描」規則（2026-11-19）生效前就有的 change，不要求三段證據
+legacy_changes = [
+  "add-open-teacher",
+  "add-translation",
+  "add-desktop-documents",
+  "add-desktop-prototype",
+  "add-vision-tools",
+  "local-first-solving",
+  "add-strong-tool-calling",
+  "add-web-read",
+  "add-portable-foundation",
+  "add-sft-round2",
+  "add-progress-events",
+  "add-image-paths",
+  "tune-knowledge-relevance",
+  "add-e0-benchmark",
+  "add-answer-process",
+  "reduce-claude-escalation",
+  "add-cli",
+  "add-holiday-tool",
+  "add-skills-v0",
+]
+
+# kind: "skill" | "mcp" | "core"
+# status: "enabled" | "disabled" | "deprecated"
+# security_scan 格式建議： "YYYY-MM-DD ok (details...)" 或 "YYYY-MM-DD issues (details...)"
+# existing_solutions 若為空需包含 "無，理由：" 或 "none, reason:"
+
+[[capabilities]]
+id = "agent-contract"
+name = "Agent Contract"
+kind = "core"
+change = "add-agent-contract"
+existing_solutions = "MCP spec, Anthropic Skills, OWASP LLM Top 10 2025, OWASP Agent Security Cheat Sheet (dev-plan §15.3); reuse bounded loop and least privilege, no new dependency"
+security_scan = "2026-11-19 ok (no new dependency, port, permission, secret handling; residual risk: contract text treated as trusted instruction, mitigated by metadata-only and injection guard)"
+version = "1.0.0"
+owner = "JasonHong"
+removal_condition = "If core loop migrates to non-contract architecture, remove contract.py and related tests"
+status = "enabled"
+
+[[capabilities]]
+id = "agent-hardening"
+name = "Agent Hardening"
+kind = "core"
+change = "add-agent-hardening"
+existing_solutions = "MCP spec, Anthropic Skills, OWASP LLM Top 10 2025, OWASP Agent Security Cheat Sheet (dev-plan §15.3); no new dependency"
+security_scan = "2026-11-20 ok (no new dependency, port, permission, model; residual risk: corpus misplaces real secrets or overfits, mitigated by synthetic data, scan checks, normal baseline)"
+version = "1.0.0"
+owner = "JasonHong"
+removal_condition = "If agent loop architecture rewritten and no longer needs regression gates, remove limits.py, red-team corpus and tests"
+status = "enabled"
+
+[[capabilities]]
+id = "scrapling-web-read"
+name = "Scrapling Web Read"
+kind = "mcp"
+change = "add-scrapling-web-read"
+existing_solutions = "Scrapling official MCP server and Agent Skill (PyPI 0.5.1, BSD-3-Clause); OSV query scrapling itself empty, deps lxml/orjson/curl_cffi/protego/markdownify no hits; anyio 4.14.0 High (fixed 4.14.2), mcp 2.0.0 High (fixed 2.2.0) -> minimum versions pinned"
+security_scan = "2026-11-19 ok (pinned fixed versions, pip-audit 0 findings, OSV 74 packages 0 hits, CISA KEV 0 hits; 3rd party audits 17 items not all verified, thus backend remains opt-in disabled, not recommended for production)"
+version = "0.5.1"
+owner = "JasonHong"
+removal_condition = "Disable flag, remove adapter, optional dep group and docs section; no data migration, port or model state to clean"
+status = "disabled"
+
+[[capabilities]]
+id = "client-tool-filter"
+name = "Client Tool Filter"
+kind = "core"
+change = "add-client-tool-filter"
+existing_solutions = "RAG-MCP (arXiv 2505.03275), Semantic Tool Discovery (arXiv 2603.20313), ScaleMCP (arXiv 2505.06416), Dynamic ReAct (arXiv 2509.20386); common pattern 'tool name+description index -> top-k -> inject only selected'; no authz-ready package found; Jiezi already has embedding engine, so core built-in, no new dependency"
+security_scan = "2026-11-23 ok (tool description injection risk mitigated by injection.clean(); filtering out required tools mitigated by contract tools never filtered, core tools whitelisted never filtered; fallback keeps parameters and only shortens descriptions; descriptions matching injection patterns score nothing; no new dependency, port, permission, model)"
+version = "1.0.0"
+owner = "JasonHong"
+removal_condition = "Remove tool_filter.py and related tests, revert gateway integration point"
+status = "enabled"
+
+[[capabilities]]
+id = "holiday-tool"
+name = "Holiday Tool"
+kind = "core"
+change = "add-holiday-tool"
+existing_solutions = "lunar-python (installed, BSD-3-Clause); local regulation database 'Memorial Days and Festival Implementation Regulations' Articles 4, 6, 8; no other external packages"
+security_scan = "2026-11-19 ok (no new dependency, port, permission, model; lunar-python existing dependency, OSV no hits)"
+version = "1.0.0"
+owner = "JasonHong"
+removal_condition = "Remove holidays functions and tests, revert tools grounding"
+status = "enabled"
+[[capabilities]]
+id = "agent-capability-registry"
+name = "Agent Capability Registry"
+kind = "core"
+change = "add-agent-capability-registry"
+existing_solutions = "無，理由：只是專案內的決策證據表與檢查程式；標準函式庫 tomllib 即可，無需外部套件"
+security_scan = "2026-11-23 ok (no new dependency, port, permission or model; reads repo files only)"
+version = "1.0.0"
+owner = "JasonHong"
+removal_condition = "If OpenSpec gains a built-in evidence check that covers classification, existing solutions and security scan"
+status = "enabled"

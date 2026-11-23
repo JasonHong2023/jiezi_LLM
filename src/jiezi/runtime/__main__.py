@@ -304,6 +304,10 @@ def main(argv: list[str] | None = None) -> int:
     for flag, p in (("--local", "jiezi-local"), ("--cloud", "jiezi-cloud"), ("--claude", "jiezi-ask-claude")):
         c.add_argument(flag, dest="policy", action="store_const", const=p)
     sub.add_parser("check-clients", help="read-only check; prints suggested Hermes / OpenCode settings")
+    cap = sub.add_parser("capabilities", help="capabilities registry validation (add-agent-capability-registry)")
+    cap.add_argument("action", choices=["check"], help="check registry and proposals")
+    cap.add_argument("--toml", help="預設 <專案>/docs/capabilities.toml / default under the project root")
+    cap.add_argument("--changes-root", help="預設 <專案>/openspec/changes / default under the project root")
     dp = sub.add_parser("dict", help="local dictionary (add-dictionary)")
     dp.add_argument("action", choices=["build", "lookup"])
     dp.add_argument("word", nargs="?")
@@ -700,6 +704,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "check-clients":
             from ..cli import check
             return check.main()
+        if args.cmd == "capabilities":
+            from ..cli.capabilities import main as capabilities_main
+            return capabilities_main([args.action, "--toml", args.toml or str(root / "docs" / "capabilities.toml"),
+                                      "--changes-root", args.changes_root or str(root / "openspec" / "changes")])
         created = ensure_gateway_key(root)
         print("generated JIEZI_GATEWAY_KEY in .env" if created else "JIEZI_GATEWAY_KEY already set (or no .env)")
         return 0
