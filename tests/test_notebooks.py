@@ -118,6 +118,12 @@ class CiteTests(unittest.TestCase):
         self.assertIn("屋主住在台中市" + cite.UNSOURCED, r["answer"])           # 否則標示 / flagged
         self.assertEqual(r["auto_cited"], 1)
 
+    def test_marker_after_full_stop(self):
+        ps = self.passages("押金")
+        n = next(p["n"] for p in ps if p["sid"] == self.lease["id"])
+        r = cite.check(f"押金為兩個月租金。[{n}]", ps)
+        self.assertEqual(r["answer"], f"押金為兩個月租金[{n}]。")
+
     def test_not_found_and_prompt(self):
         r = cite.check(cite.NOT_FOUND, [])
         self.assertTrue(r["not_found"])
@@ -352,5 +358,11 @@ class NotesTests(unittest.TestCase):
             self.assertEqual(out2["label"], "常見問答")
             with self.assertRaises(ValueError):
                 anyio.run(notes.generate, None, nb, "poem", complete)
-            self.assertEqual(notes.pick(list(range(100)), 10), ([0, 10, 20, 30, 40, 50, 60, 70, 80, 90], True))
+            one = [{"sid": "a", "i": i} for i in range(100)]
+            self.assertEqual([c["i"] for c in notes.pick(one, 10)[0]], [0, 10, 20, 30, 40, 50, 60, 70, 80, 90])
+            mixed = [{"sid": "pdf", "i": 0}, {"sid": "pdf", "i": 1}, {"sid": "mp3", "i": 0}] + one
+            got, sampled = notes.pick(mixed, 10)                      # 每份來源都有 / every source is covered
+            self.assertTrue(sampled)
+            self.assertEqual(len(got), 10)
+            self.assertEqual({c["sid"] for c in got}, {"pdf", "mp3", "a"})
             store.close()

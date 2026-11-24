@@ -14,11 +14,13 @@ MAX_PASSAGES = 6
 MIN_LEXICAL = 0.18             # 問題的雙字詞在段落裡的 IDF 覆蓋率下限 / minimum lexical coverage
 MIN_COSINE = 0.55              # 向量相似度下限 / minimum cosine similarity
 SUPPORT = 0.35                 # 一句話的雙字詞在被引段落裡出現的比例下限 / sentence support threshold
-AUTO_SUPPORT = 0.5             # 模型沒標出處時，自動補引用的支持度下限（較嚴）/ stricter bar for adding a missing citation
+AUTO_SUPPORT = 0.4             # 模型沒標出處時，自動補引用的支持度下限（較嚴；0.5 會漏掉「現任院長是蕭宗煌」0.44）
+                               # stricter bar for adding a missing citation
 UNSOURCED = "（未找到出處）"
 NOT_FOUND = "這本筆記本的來源裡找不到相關內容。"
 _MARK = re.compile(r"\s?[\[［【]\s*(\d{1,2}(?:\s*[,，、]\s*\d{1,2})*)\s*[\]］】]")
 _SENT = re.compile(r"[^。！？!?\n]+[。！？!?]*\n?|\n")
+_AFTER_STOP = re.compile(r"([。！？!?])((?:\s?[\[［【]\s*\d{1,2}(?:\s*[,，、]\s*\d{1,2})*\s*[\]］】])+)")
 _FACT = re.compile(r"\d|[年月日元％%]|是|為|有|在|於")
 _META_SENT = re.compile(r"^(根據|依據|以下|總結|簡單來說|綜合)")
 
@@ -106,7 +108,10 @@ def check(answer: str, passages: list[dict], general: bool = False) -> dict:
     if not passages or stripped.startswith(NOT_FOUND[:10]):
         return {"answer": stripped or NOT_FOUND, "citations": [], "removed": [], "unsourced": [],
                 "not_found": True}
-    for m in _SENT.finditer(answer or ""):
+    # 模型有時把編號寫在句號後面（「…太保市[2]。[5]」），先移到句號前，免得被當成另一句
+    # Markers written after the full stop belong to the sentence before it
+    answer = _AFTER_STOP.sub(lambda m: m.group(2).replace(" ", "") + m.group(1), answer or "")
+    for m in _SENT.finditer(answer):
         sent = m.group(0)
         if not sent.strip():
             out.append(sent)

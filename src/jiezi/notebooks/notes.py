@@ -25,11 +25,30 @@ _LOCK = anyio.Lock()         # 一次只做一份筆記 / one notes job at a tim
 
 
 def pick(chunks: list[dict], limit: int = MAX_MAP) -> tuple[list[dict], bool]:
-    """段落太多就平均取樣（保留原順序）。 / Evenly sample when there are too many chunks."""
+    """段落太多就取樣：每份來源至少一段，其餘依各來源段數比例分配，來源內平均取樣（保留原順序）。
+    2026-11-24 實測：對全部段落平均取樣時，只有 1 段的會議錄音被跳過，摘要完全沒提到它。
+    Sample when there are too many chunks: every source gets at least one, the rest is shared in proportion to each
+    source's size, evenly inside a source (order kept). Plain even sampling skipped a one-chunk recording."""
     if len(chunks) <= limit:
         return chunks, False
-    step = len(chunks) / limit
-    return [chunks[int(i * step)] for i in range(limit)], True
+    groups: dict[str, list[dict]] = {}
+    for c in chunks:
+        groups.setdefault(c["sid"], []).append(c)
+    quota = {sid: 1 for sid in groups}
+    rest = limit - len(quota)
+    if rest > 0:
+        extra = {sid: (len(g) - 1) * rest / (len(chunks) - len(groups) or 1) for sid, g in groups.items()}
+        for sid in groups:
+            quota[sid] += int(extra[sid])
+        left = limit - sum(quota.values())
+        for sid in sorted(groups, key=lambda k: extra[k] - int(extra[k]), reverse=True)[:max(left, 0)]:
+            quota[sid] += 1
+    chosen = set()
+    for sid, g in groups.items():
+        q = min(quota[sid], len(g))
+        step = len(g) / q
+        chosen.update(id(g[int(i * step)]) for i in range(q))
+    return [c for c in chunks if id(c) in chosen][:max(limit, len(groups))], True
 
 
 async def generate(gw, nb, kind: str, complete, progress=None) -> dict:
