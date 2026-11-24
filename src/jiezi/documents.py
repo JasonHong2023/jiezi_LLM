@@ -303,34 +303,71 @@ def read_xlsx(data: bytes) -> dict:
 
 
 class _Html(HTMLParser):
-    SKIP = {"script", "style", "noscript", "template", "svg", "head"}
+    """HTML 轉純文字。2026-11-24 實測維基條目：選單、目次、50 種語言清單都被收進筆記本來源，所以
+    不收 nav／footer／aside／form 等區塊、role="navigation" 的導覽框與跨語言連結（a[hreflang]）；頁面有 <main> 且夠長時只取 <main>。
+    HTML to text. Navigation, footers, asides, forms and interlanguage links (a[hreflang]) are dropped, and only
+    <main> is kept when the page has a substantial one (the Wikipedia menus and language list leaked into sources)."""
+    SKIP = {"script", "style", "noscript", "template", "svg", "head", "nav", "footer", "aside", "form", "button",
+            "menu", "dialog", "select"}
     BLOCK = {"p", "div", "br", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "section", "article", "table", "pre"}
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.parts, self.skip = [], 0
+        self.parts, self.main, self.skip, self.in_main, self.skip_a = [], [], 0, 0, False
+        self.role_tag, self.role_depth = None, 0     # role="navigation" 的區塊（維基導覽框）/ navboxes
 
     def handle_starttag(self, tag, attrs):
-        if tag in self.SKIP:
+        if self.role_tag:
+            if tag == self.role_tag:
+                self.role_depth += 1
+            return
+        if tag not in ("br", "img", "input", "meta", "link", "hr") and \
+                any(k == "role" and v in ("navigation", "search") for k, v in attrs):
+            self.role_tag, self.role_depth = tag, 1
+            return
+        if tag == "main":
+            self.in_main += 1
+        if tag == "a" and any(k == "hreflang" for k, _ in attrs):
+            self.skip_a = True
+        elif tag in self.SKIP:
             self.skip += 1
         elif tag in self.BLOCK:
-            self.parts.append("\n")
+            self._add("\n")
 
     def handle_endtag(self, tag):
-        if tag in self.SKIP and self.skip:
+        if self.role_tag:
+            if tag == self.role_tag:
+                self.role_depth -= 1
+                if not self.role_depth:
+                    self.role_tag = None
+            return
+        if tag == "main" and self.in_main:
+            self.in_main -= 1
+        if tag == "a":
+            self.skip_a = False
+        elif tag in self.SKIP and self.skip:
             self.skip -= 1
         elif tag in self.BLOCK:
-            self.parts.append("\n")
+            self._add("\n")
+
+    def _add(self, text):
+        self.parts.append(text)
+        if self.in_main:
+            self.main.append(text)
 
     def handle_data(self, data):
-        if not self.skip:
-            self.parts.append(data)
+        if not self.skip and not self.skip_a and not self.role_tag:
+            self._add(data)
+
+    def text(self) -> str:
+        whole, main = "".join(self.parts), "".join(self.main)
+        return main if len(main.strip()) >= 0.3 * len(whole.strip()) and main.strip() else whole
 
 
 def read_html(data: bytes) -> dict:
     p = _Html()
     p.feed(_decode(data))
-    text = re.sub(r"[ \t\r\f\v]+", " ", "".join(p.parts))
+    text = re.sub(r"[ \t\r\f\v]+", " ", p.text())
     text = re.sub(r"\n\s*\n+", "\n\n", text).strip()
     return {"text": text, "pages": None, "ocr_pages": [], "warnings": []}
 

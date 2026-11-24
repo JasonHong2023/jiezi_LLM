@@ -64,6 +64,25 @@ class TestWebRead(unittest.TestCase):
         self.assertFalse(W.MEMO.search("摘要 https://a.example/"))
 
 
+class TestHtmlText(unittest.TestCase):
+    def test_drops_navigation_and_language_links(self):
+        from jiezi.documents import read_html
+        body = "<p>" + "故宮在 1965 年復院。" * 20 + "</p>"
+        html = ("<html><body><nav>首頁 分類索引</nav><header>站名</header><main><div><a href='/en' hreflang='en'>English"
+                "</a></div>" + body + "<form><button>搜尋</button></form></main><footer>條款</footer></body></html>")
+        t = read_html(html.encode())["text"]
+        self.assertIn("1965 年復院", t)
+        for junk in ("首頁", "English", "搜尋", "條款", "站名"):
+            self.assertNotIn(junk, t)
+        nav = "<main>" + body + "<div role='navigation'><div>台灣八景</div><table><tr><td>安平晚渡</td></tr></table></div><p>結尾</p></main>"
+        t = read_html(nav.encode())["text"]
+        self.assertNotIn("台灣八景", t)
+        self.assertNotIn("安平晚渡", t)
+        self.assertIn("結尾", t)                                     # 導覽框之後的內文還在 / text after it is kept
+        # 沒有 <main> 時取整頁 / without <main> the whole body is used
+        self.assertIn("內文", read_html("<html><body><nav>選單</nav><p>內文</p></body></html>".encode())["text"])
+
+
 class TestWebMemo(unittest.TestCase):
     def test_site_keys_and_recall(self):
         import tempfile
