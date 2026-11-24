@@ -2,17 +2,17 @@
 
 ## 1. 儲存與來源 / Storage and sources
 
-- [ ] 1.1 `src/jiezi/notebooks/store.py`：筆記本、來源、段落（字元位置、重疊）、SQLite 索引（雙字詞＋向量）；sha256 去重；刪除來源同步刪段落
-- [ ] 1.2 加入來源：檔案（documents）、網址（webread）、文字、音檔／影片（add-asr，時間碼）；提示注入掃描＋信任等級
-- [ ] 1.3 測試：去重、刪除、字元位置對得回原文、注入來源標記
+- [x] 1.1 `src/jiezi/notebooks/store.py`：筆記本、來源、段落（字元位置、重疊）、SQLite 索引（雙字詞＋向量）；sha256 去重；刪除來源同步刪段落
+- [x] 1.2（上傳檔走既有沙盒 documents.read；音檔走 add-asr；網址 webread.fetch） 加入來源：檔案（documents）、網址（webread）、文字、音檔／影片（add-asr，時間碼）；提示注入掃描＋信任等級
+- [x] 1.3 測試：去重、刪除、字元位置對得回原文、注入來源標記
 
 ## 2. 引用問答 / Cited answers
 
-- [ ] 2.1 檢索：雙字詞＋向量＋RRF，依上下文預算取段落、編號
-- [ ] 2.2 聊天擴充欄位 `jiezi_notebook`（＋`jiezi_notebook_general`）接進現有管線；提示詞要求逐句 [n]
-- [ ] 2.3 引用檢查器：編號存在、句段重疊門檻、移除不實引用並標示；找不到相關段落時明說
-- [ ] 2.4 meta.citations；軌跡與 observability 記引用統計
-- [ ] 2.5 測試：正確引用保留、編造引用被移除、找不到時不亂答、轉交時引用格式不變
+- [x] 2.1 檢索：雙字詞＋向量＋RRF，依上下文預算取段落、編號
+- [x] 2.2（筆記本模式不走即時串流，先檢查再送） 聊天擴充欄位 `jiezi_notebook`（＋`jiezi_notebook_general`）接進現有管線；提示詞要求逐句 [n]
+- [x] 2.3 引用檢查器：編號存在、句段重疊門檻、移除不實引用並標示；找不到相關段落時明說
+- [x] 2.4（meta.notebook；軌跡 notebook_check） meta.citations；軌跡與 observability 記引用統計
+- [x] 2.5 測試：正確引用保留、編造引用被移除、找不到時不亂答、轉交時引用格式不變
 
 ## 3. 一鍵筆記 / Generated notes
 
@@ -21,18 +21,18 @@
 
 ## 4. 長期記憶 / Long-term memory
 
-- [ ] 4.1 筆記本問答附「使用者要我記住的事」與相關更正（不附舊請教答案）
-- [ ] 4.2 記憶 wiki `notebooks/<名稱>.md` 摘要頁（來源清單、各來源摘要），來源變動時更新
-- [ ] 4.3 一般對話的筆記本召回（`JIEZI_NOTEBOOK_RECALL`，預設開）：命中摘要頁 → 取段落回答並引用
-- [ ] 4.4 每題自動查證後存進記憶（a 出處完整、b 來源互不矛盾、c 不與記憶衝突、d 來源未被標記、e 無不確定語句與含糊問題）；通過才寫入（kind=notebook、provenance、training_use=false）；沒過列出「查證發現」，`remember` 端點供「仍要存」
-- [ ] 4.4a 測試：每個查證項目各一個不通過案例、通過案例自動寫入、「仍要存」寫入並註明
-- [ ] 4.5 筆記本裡的更正存成使用者更正並記筆記本；測試 4.1–4.5
+- [x] 4.1 筆記本問答附「使用者要我記住的事」與相關更正（不附舊請教答案）
+- [x] 4.2（摘要用前幾句，不呼叫模型） 記憶 wiki `notebooks/<名稱>.md` 摘要頁（來源清單、各來源摘要），來源變動時更新
+- [x] 4.3 一般對話的筆記本召回（`JIEZI_NOTEBOOK_RECALL`，預設開）：命中摘要頁 → 取段落回答並引用
+- [x] 4.4 每題自動查證後存進記憶（a 出處完整、b 來源互不矛盾、c 不與記憶衝突、d 來源未被標記、e 無不確定語句與含糊問題）；通過才寫入（kind=notebook、provenance、training_use=false）；沒過列出「查證發現」，`remember` 端點供「仍要存」
+- [x] 4.4a（另修：數字比對誤把引用編號 [1] 當數字） 測試：每個查證項目各一個不通過案例、通過案例自動寫入、「仍要存」寫入並註明
+- [x] 4.5 筆記本裡的更正存成使用者更正並記筆記本；測試 4.1–4.5
 
 ## 5. 介面 / Interfaces
 
-- [ ] 5.1 API 端點（見提案 6）＋金鑰＋大小上限；測試
-- [ ] 5.2 桌面「筆記本」分頁：來源管理、問答、可點引用、原文檢視標亮、一鍵筆記、存到記憶
-- [ ] 5.3 CLI `scripts/jiezi notebook new|list|add|ask|note|rm`
+- [x] 5.1 API 端點（見提案 6）＋金鑰＋大小上限；測試
+- [x] 5.2（ui/src/Notebooks.jsx） 桌面「筆記本」分頁：來源管理、問答、可點引用、原文檢視標亮、一鍵筆記、存到記憶
+- [x] 5.3（另加 show、remember） CLI `scripts/jiezi notebook new|list|add|ask|note|rm`
 
 ## 6. 實測與文件 / Live test and docs
 

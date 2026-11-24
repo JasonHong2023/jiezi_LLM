@@ -1,6 +1,7 @@
 // 芥子桌面 App 雛形：對話、稽核紀錄、狀態（唯讀；不操控作業系統）。
 // Jiezi desktop prototype: chat, audit log, status (read-only; no OS control).
 import { useEffect, useRef, useState } from "react";
+import Notebooks from "./Notebooks.jsx";
 import { BASE, THEME_LABEL, firstPhase, processSummary, refParts, splitAppendix, getJSON, postJSON, getKey, loadInputs, loadTheme, nextTheme, phaseAfter, phaseLabel, readDocument, recallInput, rememberInput, setKey, speak, stepText, streamChat, transcribe, asrEnabled, ttsEnabled, withDocuments } from "./api.js";
 
 const MAX_DOC_CHARS = 1500000;  // 附著文件的總字數上限（和 jiezi chat 相同）/ same cap as jiezi chat
@@ -558,7 +559,7 @@ export default function App() {
       <header>
         <h1>芥子 Jiezi</h1>
         <nav>
-          {[["chat", "對話"], ["audit", "稽核紀錄"], ["status", "狀態"]].map(([k, t]) => (
+          {[["chat", "對話"], ["notebooks", "筆記本"], ["audit", "稽核紀錄"], ["status", "狀態"]].map(([k, t]) => (
             <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{t}</button>
           ))}
           {ready && <button onClick={() => { setKey(""); setReady(false); }}>登出</button>}
@@ -567,7 +568,7 @@ export default function App() {
           onClick={() => setTheme((t) => nextTheme(t))}>{THEME_LABEL[theme]}</button>
       </header>
       <main>
-        {!ready ? <KeyGate onDone={() => setReady(true)} /> : tab === "chat" ? <Chat /> : tab === "audit" ? <Audit /> : <Status />}
+        {!ready ? <KeyGate onDone={() => setReady(true)} /> : tab === "chat" ? <Chat /> : tab === "notebooks" ? <Notebooks /> : tab === "audit" ? <Audit /> : <Status />}
       </main>
       <footer className="muted">不會操控你的電腦：「讀我的檔案」只能讀你授權的資料夾，不能修改。所有對話只經過本機 gateway（127.0.0.1）。</footer>
     </div>

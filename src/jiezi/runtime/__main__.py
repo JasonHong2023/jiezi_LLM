@@ -295,6 +295,8 @@ def main(argv: list[str] | None = None) -> int:
     _tts_parser(sub)
     from ..asr.cli import add_parser as _asr_parser
     _asr_parser(sub)
+    from ..notebooks.cli import add_parser as _nb_parser
+    _nb_parser(sub)
     tr = sub.add_parser("translate", help="translate a whole document chunk by chunk (add-translation)")
     tr.add_argument("file")
     tr.add_argument("--to", choices=["zh-TW", "en"], help="target language (default: Chinese → en, otherwise zh-TW)")
@@ -414,6 +416,9 @@ def main(argv: list[str] | None = None) -> int:
             from ..cli import ask
             return ask.main(args.question, args.policy or "jiezi", args.json, args.file, args.schema, args.json_object,
                             speak=args.speak)
+        if args.cmd == "notebook":
+            from ..notebooks import cli as nb_cli
+            return nb_cli.main(args)
         if args.cmd == "asr":
             from ..asr import cli as asr_cli
             from .settings import load_settings

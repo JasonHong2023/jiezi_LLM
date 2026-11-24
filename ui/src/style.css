@@ -85,3 +85,20 @@ details.draft > div { white-space: pre-wrap; border-left: 3px solid var(--line);
 .voice { display: flex; flex-direction: column; gap: .3rem; font-size: .8rem; }
 .mic { white-space: nowrap; touch-action: none; user-select: none; }
 .mic.rec { color: #c62828; font-weight: 600; }
+/* 筆記本（add-notebooks）/ notebooks */
+.notebooks { display: grid; grid-template-columns: 15rem 1fr 22rem; gap: 1rem; min-height: 70vh; }
+.notebooks aside { overflow: auto; font-size: .9rem; }
+.notebooks ul { list-style: none; padding: 0; margin: .3rem 0; }
+.notebooks li button.on { font-weight: 700; }
+.nb-new { display: flex; gap: .3rem; margin: .3rem 0; }
+.nb-new input { flex: 1; min-width: 0; }
+.notebooks textarea { width: 100%; box-sizing: border-box; }
+.sources li { display: flex; gap: .3rem; align-items: baseline; }
+.sources li > span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cite { font-size: .7rem; padding: 0 .3rem; margin: 0 .1rem; vertical-align: super; line-height: 1.2; border-radius: .6rem; }
+.mem { margin-top: .4rem; font-size: .85rem; }
+.mem.ok { color: #2e7d32; }
+.source-text { white-space: pre-wrap; font-size: .85rem; line-height: 1.6; max-height: 75vh; overflow: auto; }
+.source-text mark { padding: .1rem 0; }
+.danger { color: #c62828; }
+@media (max-width: 1000px) { .notebooks { grid-template-columns: 1fr; } }
