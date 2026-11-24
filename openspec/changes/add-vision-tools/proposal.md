@@ -1,4 +1,7 @@
 > **狀態 / Status**：2026-11-18 使用者審閱：OQ1 寬鬆授權工具（RAM++、OWLv2、Florence-2／D-FINE），OQ2 不用 YOLO，OQ3 核對不過的**保留但標「不確定」**。/ Approved: permissive tools, no YOLO, unconfirmed objects kept and marked uncertain.
+>
+> **2026-11-25 待決定 OQ4：OCR 改用哪一個**（主控查證，尚未實作）：Florence-2 的 OCR 以英文為主、繁體中文很弱，照原計畫做出來用處不大。建議改用 **RapidOCR＋PP-OCRv5 中文辨識模型**——PP-OCRv5 官方支援簡體、繁體、拼音、英文、日文（PaddleOCR 3.0 技術報告 arXiv 2507.05595）；RapidOCR 用 onnxruntime 在 CPU 執行，不需要 PaddlePaddle 框架；模型為 Apache-2.0。需要新增 `rapidocr`、`onnxruntime` 兩個套件與約 10–90 MB 的模型檔（mobile／server 版），並照慣例做資安掃描與授權登記。另一選項是維持 Florence-2（只對英文有用），或不做 OCR、繼續靠核心模型看圖讀字。
+> OQ4 (open): Florence-2 OCR is weak on Traditional Chinese; proposed RapidOCR with the PP-OCRv5 Chinese recognizer (covers Traditional Chinese, CPU via onnxruntime, Apache-2.0). Needs two new packages; awaiting the user's choice.
 
 ## Why
 
