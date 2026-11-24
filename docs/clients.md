@@ -289,6 +289,31 @@ scripts/jiezi agent audit --days 7               # 稽核紀錄：每個動作�
 - 一個問題最多 6 步工具呼叫（`JIEZI_AGENT_STEPS`）；按 Esc／中止（chat 是 Ctrl+C）會立刻停止並結束進行中的讀檔。
 - 其他 MCP 客戶端（Hermes、OpenCode）也可以接同一組唯讀工具：MCP stdio 指令 `scripts/jiezi agent server`，授權與稽核規則相同。
 
+## 5.6 筆記本 / Notebooks（add-notebooks，2026-11-24）
+
+類似 NotebookLM：把一批資料收進一本筆記本，回答只根據這些來源，每句附出處。預設開啟（`JIEZI_NOTEBOOKS=on`）。
+NotebookLM-style notebooks: answers come only from the notebook's sources, with a checked citation on every sentence.
+
+- **桌面網頁**：「筆記本」分頁。左邊建立筆記本、加入來源（檔案、音檔／影片、網址、貼上的文字）；中間提問，回答裡的 [1][2] 可以點；右邊顯示原文並標出那一段。上方可一鍵產生「摘要」「常見問答」「學習指南」，產生的筆記會加進來源。
+- **CLI**：
+
+```bash
+scripts/jiezi notebook new 租屋
+scripts/jiezi notebook add 租屋 lease.pdf https://example.org/rules 會議錄音.m4a
+scripts/jiezi notebook ask 租屋 "押金什麼時候退還？"
+scripts/jiezi notebook note 租屋 summary        # summary | faq | study_guide
+scripts/jiezi notebook show 租屋               # 列出來源
+```
+
+- **API**：聊天請求加 `"jiezi_notebook": "<筆記本 id>"` 就在該筆記本內回答（`jiezi_notebook_general: true` 允許補充一般知識，會標「（一般知識）」）；筆記本與來源管理在 `/v1/notebooks`。
+- **出處檢查**：標了不存在的編號、或那一段根本沒講這件事，引用會被拿掉並標「（未找到出處）」；整則回答沒有任何可信出處時，改回答「這本筆記本的來源裡找不到相關內容」。
+- **長期記憶**：
+  - 筆記本問答**每題自動查證後存進記憶**。查證項目：每句都有出處、來源之間不矛盾、不與你的更正或已存答案衝突、來源沒被標記為可疑、沒有「可能」之類的不確定說法或含糊的問題。沒通過就不存，並在回答下列出原因，可以選「仍要存」或「我來更正」（CLI：`scripts/jiezi notebook remember <筆記本> <trajectory_id>`）。
+  - 一般對話問到筆記本有的主題時會自動查筆記本並附出處（`JIEZI_NOTEBOOK_RECALL=off` 可關）。
+  - 每本筆記本在記憶 wiki 有一頁摘要（`var/memory/wiki/notebooks/`），可以用 Obsidian 瀏覽。
+  - 筆記本內容與由它產生的回答預設不用於訓練。
+- 來源存在本機 `var/notebooks/`，不進版控；每份來源都會掃描提示注入，可疑的標 ⚠。
+
 ## 6. Hermes Agent 與 OpenCode / Hermes Agent and OpenCode
 
 ```bash

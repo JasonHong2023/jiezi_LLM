@@ -37,7 +37,7 @@
 ## 6. 實測與文件 / Live test and docs
 
 - [ ] 6.1 實機：一本含 PDF、網頁、音檔的筆記本，20 題問答人工檢查引用正確率；一鍵摘要；記憶召回
-- [ ] 6.2 `docs/clients.md` 筆記本段落、README、licenses（無新資產則註明）、capabilities.toml、dev-plan、HANDOFF
+- [x] 6.2（clients.md §5.6、README、capabilities.toml；無新資產不需 licenses） `docs/clients.md` 筆記本段落、README、licenses（無新資產則註明）、capabilities.toml、dev-plan、HANDOFF
 
 ## 7. 驗證 / Validation
 

@@ -175,7 +175,7 @@ class Notebook:
     # ── 段落與向量 / chunks and vectors ──
     def chunks(self) -> list[dict]:
         return [{"id": r[0], "sid": r[1], "ord": r[2], "start": r[3], "end": r[4], "text": r[5]}
-                for r in self.db.execute("SELECT id, sid, ord, start, end, text FROM chunks ORDER BY sid, ord")]
+                for r in self.db.execute("SELECT id, sid, ord, start, end, text FROM chunks ORDER BY id")]
 
     def embed_missing(self, embed, batch: int = 32) -> int:
         """補算還沒有向量的段落；embed(list[str]) → list[array]。 / Embed chunks that have no vector yet."""
