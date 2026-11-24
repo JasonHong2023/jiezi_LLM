@@ -186,3 +186,118 @@ class RecallTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ── gateway 整合 / gateway integration ──
+import json  # noqa: E402
+
+import httpx  # noqa: E402
+from starlette.testclient import TestClient  # noqa: E402
+
+from jiezi.runtime.gateway import Gateway, create_app  # noqa: E402
+from jiezi.runtime.trajectory import TrajectoryWriter  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import test_runtime_gateway as RG  # noqa: E402
+
+H = {"Authorization": f"Bearer {RG.KEY}"}
+
+
+class GatewayNotebookTests(unittest.TestCase):
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.addCleanup(self._t.cleanup)
+        self.tmp = Path(self._t.name)
+
+    def client(self, answers):
+        sup, _, patch = RG.make_supervisor(self.tmp)
+        patch.start()
+        self.addCleanup(patch.stop)
+        lh, self.seen = RG.local_handler(answers)
+        self.gw = Gateway(sup.s, sup, TrajectoryWriter(self.tmp / "traj", log=lambda *_: None),
+                          local_http=httpx.AsyncClient(transport=httpx.MockTransport(lh)),
+                          cloud_http=httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(500))),
+                          log=lambda *_: None)
+        return TestClient(create_app(self.gw))
+
+    def notebook(self, c):
+        nb = c.post("/v1/notebooks", headers=H, json={"name": "租屋"}).json()
+        r = c.post(f"/v1/notebooks/{nb['id']}/sources", headers=H, json={"title": "租約", "text": LEASE})
+        self.assertEqual(r.status_code, 201, r.text)
+        again = c.post(f"/v1/notebooks/{nb['id']}/sources", headers=H, json={"title": "租約", "text": LEASE}).json()
+        self.assertFalse(again["created"])
+        return nb, r.json()["source"]
+
+    def ask(self, c, nid, q, stream=False):
+        return c.post("/v1/chat/completions", headers=H, json={
+            "model": "jiezi-local", "stream": stream, "jiezi_notebook": nid,
+            "messages": [{"role": "user", "content": q}]})
+
+    def test_cited_answer_is_checked_and_saved_to_memory(self):
+        with self.client([{"role": "assistant", "content": "每月租金新台幣 25000 元 [1]。"}]) as c:
+            nb, src = self.notebook(c)
+            r = self.ask(c, nb["id"], "每月租金是多少？").json()
+            meta = r["jiezi"]["notebook"]
+            self.assertEqual(meta["citations"][0]["source_id"], src["id"])
+            self.assertTrue(meta["memory"]["saved"], meta["memory"])
+            content = r["choices"][0]["message"]["content"]
+            self.assertIn("25000 元[1]。", content)
+            self.assertIn("【筆記本來源】", content)
+            sent = json.dumps(self.seen[0], ensure_ascii=False)
+            self.assertIn("[1]《租約》", sent)                              # 段落有送給模型 / passages reached the model
+            e, _ = self.gw.memory.find_answer("每月租金是多少？")
+            self.assertIn("筆記本《租屋》", e.provider)
+            wiki = self.tmp / "var" / "memory" / "wiki"
+            self.assertTrue(any((wiki / "notebooks").glob("*.md")))          # 摘要頁 / digest page
+            full = c.get(f"/v1/notebooks/{nb['id']}/sources/{src['id']}", headers=H).json()
+            cit = meta["citations"][0]
+            self.assertIn("25000", full["text"][cit["start"]:cit["end"]])
+
+    def test_findings_block_saving_until_user_confirms(self):
+        with self.client([{"role": "assistant", "content": "押金可能是兩個月租金 [1]。社區有游泳池 [1]。"}]) as c:
+            nb, _ = self.notebook(c)
+            r = self.ask(c, nb["id"], "押金是幾個月？").json()
+            mem = r["jiezi"]["notebook"]["memory"]
+            self.assertFalse(mem["saved"])
+            checks = {f["check"] for f in mem["findings"]}
+            self.assertTrue({"uncertain", "citation_removed"} <= checks, checks)
+            self.assertIn("（未找到出處）", r["choices"][0]["message"]["content"])
+            self.assertIsNone(self.gw.memory.find_answer("押金是幾個月？"))
+            ok = c.post(f"/v1/notebooks/{nb['id']}/remember", headers=H,
+                        json={"trajectory_id": r["jiezi"]["trajectory_id"]}).json()
+            self.assertTrue(ok["saved"])
+            e, _ = self.gw.memory.find_answer("押金是幾個月？")
+            self.assertIn("仍存", e.text)
+
+    def test_not_found_stream_and_unknown_notebook(self):
+        with self.client([{"role": "assistant", "content": "量子電腦用量子位元 [1]。"}]) as c:
+            nb, _ = self.notebook(c)
+            r = self.ask(c, nb["id"], "量子電腦的原理是什麼？").json()
+            self.assertEqual(r["choices"][0]["message"]["content"], cite_NOT_FOUND)
+            self.assertEqual(r["jiezi"]["notebook"]["memory"].get("skipped"), "not_found")
+            s = self.ask(c, nb["id"], "量子電腦的原理是什麼？", stream=True)
+            self.assertIn(cite_NOT_FOUND, s.text)                              # 串流也是檢查後的答案 / stream too
+            self.assertEqual(self.ask(c, "zzzzzzzz", "hi").status_code, 404)
+
+    def test_normal_chat_recalls_notebook(self):
+        with self.client([{"role": "assistant", "content": "押金為兩個月租金，共 50000 元 [1]。"}]) as c:
+            self.notebook(c)
+            r = c.post("/v1/chat/completions", headers=H, json={
+                "model": "jiezi-local", "messages": [{"role": "user", "content": "我的租約押金是多少？"}]}).json()
+            self.assertTrue(r["jiezi"]["notebook"]["recall"])
+            self.assertIn("【筆記本來源】", r["choices"][0]["message"]["content"])
+            self.assertNotIn("memory", r["jiezi"]["notebook"])                 # 召回不自動存 / recall does not save
+            t = [json.loads(x) for f in (self.tmp / "traj").glob("*.jsonl") for x in f.read_text().splitlines()]
+            self.assertFalse(t[-1]["training_use"])
+
+    def test_api_auth_and_delete(self):
+        with self.client([{"role": "assistant", "content": "x"}]) as c:
+            self.assertEqual(c.get("/v1/notebooks").status_code, 401)
+            nb, src = self.notebook(c)
+            self.assertEqual(len(c.get(f"/v1/notebooks/{nb['id']}", headers=H).json()["sources"]), 1)
+            self.assertTrue(c.delete(f"/v1/notebooks/{nb['id']}/sources/{src['id']}", headers=H).json()["deleted"])
+            self.assertTrue(c.delete(f"/v1/notebooks/{nb['id']}", headers=H).json()["deleted"])
+            self.assertEqual(c.get("/v1/notebooks", headers=H).json()["data"], [])
+
+
+cite_NOT_FOUND = cite.NOT_FOUND

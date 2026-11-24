@@ -116,5 +116,5 @@ def recall_block(store, question: str, embed_query=None, wiki: Path | None = Non
                    + "\n\n".join(f"[{p['n']}]《{p['title']}》\n{p['text'].strip()}" for p in passages))
         sources = [{"source": "notebook", "notebook": nb.id, "name": nb.meta["name"], "source_id": p["sid"],
                     "title": p["title"], "n": p["n"]} for p in passages]
-        return content, sources, False, "", {"notebook": nb, "passages": passages}
+        return content, sources, False, "", {"nid": nb.id, "passages": passages}
     return None

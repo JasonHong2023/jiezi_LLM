@@ -318,6 +318,10 @@ class Gateway:
         if settings.tts:
             from ..tts.manager import TTSManager
             self.tts = TTSManager(settings, supervisor, log=log)
+        self.notebooks = None           # 筆記本（add-notebooks）/ notebooks of sources
+        if settings.notebooks:
+            from ..notebooks.store import NotebookStore
+            self.notebooks = NotebookStore(settings.var / "notebooks")
         self.asr = None                 # 語音辨識（add-asr，JIEZI_ASR=on）/ speech recognition
         if settings.asr:
             from ..asr.manager import ASRManager
@@ -511,6 +515,11 @@ class Gateway:
             # Questions about Jiezi itself use the system prompt only (a live test pulled in Taiwan.md's self-introduction)
             rec["grounding_skipped"] = "about_jiezi"
             return
+        if rec.get("notebook") and self.notebooks is not None:
+            # 筆記本模式：只用這本筆記本的段落＋使用者更正（不附知識庫、辭典與舊答案）
+            # Notebook mode: only this notebook's passages plus the user's corrections
+            self._notebook_ground(body, rec, last, data)
+            return
         tool_grounded = None
         if self.s.tools:
             from ..tools import grounding as tool_grounding
@@ -557,6 +566,20 @@ class Gateway:
                 found.append((f"以下是你先前讀過並記住的網頁重點（{h['url']}），可能已過時：\n{h['summary']}",
                               [{"source": "memory", "page": h.get("page") or h["url"], "kind": "web"}], False,
                               f"\n\n---\n【記憶】先前讀過的網頁：{h.get('title') or h['url']}（{h['url']}）"))
+        if self.notebooks is not None and self.s.notebook_recall and not doc and not last.get("_img"):
+            # 一般對話也查筆記本（使用者 2026-11-24 選自動查）/ normal chat recalls notebooks too
+            try:
+                from ..memory import wiki_path
+                from ..notebooks.memory_link import recall_block as nb_recall
+                got = nb_recall(self.notebooks, last["content"] or "",
+                                self.embedder.embed_query if getattr(self, "embedder", None) else None,
+                                wiki_path(self.s.root))
+            except Exception as exc:  # noqa: BLE001 - 召回失敗照常回答 / recall failure never blocks
+                self.log(f"notebook recall: {type(exc).__name__}: {exc}")
+                got = None
+            if got:
+                rec["notebook_ctx"] = {**got[4], "recall": True, "general": True, "question": last["content"]}
+                found.append(got[:4])
         if tool_grounded is not None:  # 程式算好的數字 / numbers computed by code
             found.append(tool_grounded)
         if self.dictionary is not None:
@@ -885,7 +908,8 @@ class Gateway:
             answered = any(x.get("role") == "assistant" for x in msgs)
             if m and len(users) >= 2 and answered:
                 prev = users[-2]["content"]
-                page = self.memory.save_correction(prev, m.group(1))
+                where = f"（於筆記本《{rec['notebook']['name']}》）" if rec.get("notebook") else ""
+                page = self.memory.save_correction(prev, m.group(1).strip() + where)
                 rec["sources"] = [{"source": "memory", "page": page, "kind": "correction"}]
                 rec.pop("dict_appendix", None)
                 return self._memory_reply(rec, t0, stream, f"好，已記下更正。之後問到「{prev.strip()[:60]}」會照這個說法回答："
@@ -893,14 +917,14 @@ class Gateway:
             corrections = self.memory.corrections_for(q)
             best = max(corrections, key=lambda c: similarity(q, c.question), default=None)
             if policy in ("jiezi", "jiezi-local") and best and similarity(q, best.question) >= CORRECTION_DIRECT \
-                    and len(users) == 1:
+                    and len(users) == 1 and not rec.get("notebook"):
                 # 使用者自己更正過的答案：直接照更正回答，不讓小模型再說錯 / answer with the user's own correction
                 rec["sources"] = [{"source": "memory", "page": best.title, "kind": "correction"}]
                 rec.pop("dict_appendix", None)
                 return self._memory_reply(rec, t0, stream, f"根據你 {best.at[:10]} 的更正：{best.text}\n\n---\n"
                                           f"【記憶】[[{best.title}]]（問題：{best.question}）")
             if policy in ("jiezi", "jiezi-local") and storable(q, len(users) - 1) is None and not corrections \
-                    and not rec.get("grounded_by_tools"):
+                    and not rec.get("grounded_by_tools") and not rec.get("notebook"):
                 found = self.memory.find_answer(q)
                 if found and found[1] >= EXACT:
                     e = found[0]
@@ -1314,6 +1338,16 @@ class Gateway:
             rec["eval"] = True
         if json_mode:
             rec["json_mode"] = True
+        nb_id, nb_general = body.pop("jiezi_notebook", None), body.pop("jiezi_notebook_general", False)
+        if nb_id:  # 在筆記本裡回答（add-notebooks）/ answer inside a notebook
+            from ..notebooks.store import NotebookError
+            if self.notebooks is None:
+                return _err(404, "notebooks are off (JIEZI_NOTEBOOKS=on)", "not_found")
+            try:
+                nb = self.notebooks.get(str(nb_id))
+            except NotebookError as exc:
+                return _err(exc.status, str(exc), "notebook_not_found")
+            rec["notebook"] = {"id": nb.id, "name": nb.meta["name"], "general": bool(nb_general)}
         if body.pop("jiezi_agent", None):  # 唯讀代理（add-agent-readonly）/ read-only agent
             if self.s.agent:
                 return await self._agent(body, rec, policy, stream, json_mode, agent_contract)
@@ -1415,7 +1449,7 @@ class Gateway:
 
         seen = await self._vision_look(base, body, rec) if self.vision is not None and has_images(body) else None
         if stream and not body.get("tools") and not json_mode and not body.get("jiezi_translate") \
-                and not self._sample_kind(body) and seen is None:
+                and not self._sample_kind(body) and seen is None and not rec.get("notebook_ctx"):
             _stage("thinking")        # 第一個字前還要處理提示（附圖時可能幾十秒）/ prompt processing before the first token
             return StreamingResponse(self._relay_stream(base, body, rec, t0, policy), media_type="text/event-stream")
         try:
@@ -2424,7 +2458,23 @@ class Gateway:
                 "confidence": rec.get("confidence"),
                 **({"vision_check": rec["vision_check"]} if rec.get("vision_check") else {}),
                 **({"image_paths": rec["image_paths"]} if rec.get("image_paths") else {}),
-                "process": self._process(rec), **self._experience_meta(rec, tier, escalation)}
+                "process": self._process(rec), **self._experience_meta(rec, tier, escalation),
+                **self._notebook_meta(rec, resp)}
+
+    def _notebook_ground(self, body: dict, rec: dict, last: dict, data: list | None) -> None:
+        from ..notebooks.chat import ground
+        ground(self, body, rec, last, data)
+
+    def _notebook_meta(self, rec: dict, resp: dict) -> dict:
+        """筆記本：引用檢查、查證、自動存記憶（add-notebooks）；失敗不影響回答。 / Never blocks the answer."""
+        if not rec.get("notebook_ctx"):
+            return {}
+        try:
+            from ..notebooks.chat import after
+            return after(self, rec, resp)
+        except Exception as exc:  # noqa: BLE001
+            self.log(f"notebook: {type(exc).__name__}: {exc}")
+            return {}
 
     def _experience_meta(self, rec: dict, tier, escalation_reason: str | None) -> dict:
         """經驗的結算（附上的經驗記有效／無效、寫新經驗）；回傳要放進 meta 的欄位。 / Settle lessons for this answer."""
@@ -2462,10 +2512,11 @@ class Gateway:
                 msg = ch.get("message") or {}
                 if not msg.get("tool_calls"):
                     normalize(msg)
-        elif rec.get("dict_appendix"):
+        elif rec.get("dict_appendix") or rec.get("notebook_answer"):
             for ch in resp.get("choices") or []:
                 msg = ch.get("message") or {}
-                msg["content"] = strip_appendix(msg.get("content") or "").rstrip() + rec["dict_appendix"]
+                base = rec.get("notebook_answer") or strip_appendix(msg.get("content") or "")
+                msg["content"] = base.rstrip() + (rec.get("dict_appendix") or "")
         rec.update(final_tier=meta["tier"], jiezi=meta)
         self.traj.write(rec)
         if not stream:
@@ -2687,6 +2738,8 @@ def create_app(gw: Gateway) -> Starlette:
                     gw.tts.shutdown()
                 if gw.asr is not None:
                     gw.asr.shutdown()
+                if gw.notebooks is not None:
+                    gw.notebooks.close()
                 gw.sup.shutdown()
                 if gw.embedder is not None:
                     gw.embedder.stop()
@@ -2703,6 +2756,7 @@ def create_app(gw: Gateway) -> Starlette:
         Route("/v1/audio/speech", gw.audio_speech, methods=["POST"]),
         Route("/v1/audio/voices", gw.audio_voices, methods=["GET"]),
         Route("/v1/audio/transcriptions", gw.audio_transcriptions, methods=["POST"]),
+        *_notebook_routes(gw),
         Route("/v1/documents", gw.documents, methods=["POST"]),
         Route("/v1/documents/warm", gw.documents_warm, methods=["POST"]),
         Route("/v1/agent/audit", gw.agent_audit, methods=["GET"]),
@@ -2717,6 +2771,11 @@ def create_app(gw: Gateway) -> Starlette:
         Route("/admin/observability", gw.admin_observability, methods=["GET"]),
         *ui_routes(gw.s.root),
     ], lifespan=lifespan, middleware=[_cors()])
+
+
+def _notebook_routes(gw):
+    from ..notebooks.api import routes
+    return routes(gw)
 
 
 def _cors():
