@@ -98,7 +98,6 @@ scripts/jiezi asr meeting.m4a --srt -o meeting.srt
 |---|---|
 | `jiezi` | 本機優先，必要時轉交（預設） |
 | `jiezi-local` | 只用本機，絕不轉交 |
-| `jiezi-cloud` | 直接用雲端模型（需在 `.env` 開啟） |
 | `jiezi-ask-claude` | 直接請教 Claude（本機 Claude Code CLI） |
 
 客戶端設定（Hermes、OpenCode）見 [`docs/clients.md`](docs/clients.md)。
