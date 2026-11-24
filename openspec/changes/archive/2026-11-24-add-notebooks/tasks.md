@@ -41,4 +41,4 @@
 
 ## 7. 驗證 / Validation
 
-- [ ] 7.1 `openspec validate add-notebooks --strict`、`--all --strict`、全量 unittest、`git diff --check`
+- [x] 7.1（2026-11-24 全部通過：942 測試、53 規格、重啟後實機「可以養狗嗎？」正確引用）`openspec validate add-notebooks --strict`、`--all --strict`、全量 unittest、`git diff --check`
