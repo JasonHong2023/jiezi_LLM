@@ -3,7 +3,7 @@ TTS manager: worker lifecycle, GPU turn-taking with the core, and post-processin
 
 GPU 輪流（使用者 2026-11-24 Q2）：同一時間只有核心或 TTS 一方在 GPU。
 - 合成：拿 TTS 鎖 → 等核心沒有進行中的請求 → 卸載核心、標記 GPU 屬於 TTS → 啟動（或沿用）合成行程。
-- 聊天：supervisor 載入核心前呼叫 `release_gpu()`（在拿 supervisor 鎖之前，避免互等）→ 等合成結束、停掉行程。
+- 聊天：supervisor 載入核心前經 `jiezi.media.release_for_core`（在拿 supervisor 鎖之前，避免互等）→ 等合成結束、停掉行程。
 - 合成行程閒置 120 秒自己結束；這裡發現它結束了就把 GPU 標記清掉。
 Only one of the core and TTS holds the GPU; each takes it over only when the other is idle."""
 
@@ -29,7 +29,6 @@ FORMATS = {"wav": ("audio/wav", []), "flac": ("audio/flac", []),
            "opus": ("audio/ogg", ["-c:a", "libopus", "-b:a", "64k"])}
 SPEED_RANGE, PITCH_RANGE = (0.5, 2.0), (-6.0, 6.0)
 READY_TIMEOUT_S = 300           # 第一次載入約 70 秒；磁碟冷時更久 / first load ~70 s
-WAIT_CORE_S = 120               # 等核心手上的請求做完 / wait for the core to go idle
 OUT_RETENTION_DAYS = 7
 
 
@@ -89,14 +88,13 @@ def postprocess(src: Path, dst: Path, fmt: str, speed: float = 1.0, pitch: float
 class TTSManager:
     def __init__(self, settings, sup, log=print, spawn=None):
         self.s, self.sup, self.log = settings, sup, log
-        self.lock = anyio.Lock()
         self.proc: subprocess.Popen | None = None
         self.voices_ready: list[str] = []
         self._spawn = spawn or self._spawn_worker
         self.out_dir = settings.var / "tts" / "out"
         self.log_path = settings.var / "tts" / "log.jsonl"
         self.last: dict | None = None
-        sup.release_gpu = self.release_gpu      # 讓 supervisor 載入核心前先叫我讓出 GPU / core load asks first
+        sup.gpu_stoppers["tts"] = self._kill   # 核心或 ASR 要 GPU 時停掉我 / evicted by the core or ASR
 
     # ── 行程 / process ──
     def _spawn_worker(self) -> subprocess.Popen:
@@ -164,12 +162,6 @@ class TTSManager:
                     pass
             self.sup.gpu_owner = None if self.sup.gpu_owner == "tts" else self.sup.gpu_owner
 
-    async def release_gpu(self) -> None:
-        """核心要載入：等合成做完，停掉合成行程。 / The core wants the GPU: finish, then stop the worker."""
-        async with self.lock:
-            await anyio.to_thread.run_sync(self._kill)
-            self.sup.gpu_owner = None
-
     def shutdown(self) -> None:
         self._kill()
 
@@ -181,26 +173,6 @@ class TTSManager:
         return {"enabled": bool(self.s.tts), "installed": installed(self.s) is None,
                 "worker": "running" if self.alive() else "stopped", "gpu_owner": self.sup.gpu_owner or "none",
                 "last": self.last}
-
-    # ── GPU / GPU ──
-    async def _take_gpu(self) -> None:
-        if self.sup.gpu_owner == "tts" and self.alive():
-            return
-        deadline = time.monotonic() + WAIT_CORE_S
-        while True:
-            if self.sup.status == "held":
-                raise TTSError(503, "the GPU is reserved for a night evaluation; try again later", "gpu_held")
-            async with self.sup._lock:
-                if self.sup.in_flight == 0:
-                    if self.sup.status == "loaded":
-                        self.log("tts: unloading the core to take the GPU")
-                        self.sup._stop("unloaded")
-                        self.sup.write_state()
-                    self.sup.gpu_owner = "tts"
-                    return
-            if time.monotonic() > deadline:
-                raise TTSError(503, "the local model is busy answering; try again shortly", "gpu_busy")
-            await anyio.sleep(0.5)
 
     # ── 合成 / synthesis ──
     def _cleanup(self) -> None:
@@ -247,8 +219,12 @@ class TTSManager:
         stamp = f"{_dt.datetime.now():%Y%m%d-%H%M%S}-{secrets.token_hex(3)}"
         raw, final = self.out_dir / f"{stamp}.raw.wav", self.out_dir / f"{stamp}.{fmt}"
         t0 = time.monotonic()
-        async with self.lock:
-            await self._take_gpu()
+        from ..media import GpuBusy, take_gpu
+        async with self.sup.media_lock:
+            try:
+                await take_gpu(self.sup, "tts", self.log)
+            except GpuBusy as exc:
+                raise TTSError(503, str(exc), exc.code) from exc
             res = await anyio.to_thread.run_sync(self._synth_blocking, chunks, wv, raw)
         await anyio.to_thread.run_sync(postprocess, raw, final, fmt, speed, pitch)
         raw.unlink(missing_ok=True)

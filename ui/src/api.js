@@ -43,6 +43,23 @@ export function ttsEnabled() {
   return ttsState;
 }
 
+// 語音辨識（add-asr）/ speech recognition
+let asrState = null;
+export function asrEnabled() {
+  asrState = asrState || fetch(BASE + "/health").then((r) => r.json())
+    .then((h) => !!(h.asr && h.asr.enabled && h.asr.installed)).catch(() => false);
+  return asrState;
+}
+
+export async function transcribe(blob) {
+  const ext = (blob.type.split("/")[1] || "webm").split(";")[0];
+  const r = await fetch(`${BASE}/v1/audio/transcriptions?name=voice.${ext}`, {
+    method: "POST", headers: { Authorization: headers().Authorization, "Content-Type": blob.type || "audio/webm" },
+    body: blob, signal: AbortSignal.timeout(10 * 60 * 1000) });
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  return (await r.json()).text || "";
+}
+
 export async function speak(text, { voice, speed = 1.0 } = {}) {
   const body = { model: "bluemagpie", input: text, response_format: "mp3", speed };
   if (voice) body.voice = voice;

@@ -97,6 +97,8 @@ class Settings:
     vision_tools: bool = False      # 本機看圖工具：偵測、提示、核對（add-vision-tools；量測過才預設開）/ off until measured
     tts: bool = False               # BlueMagpie-TTS 語音合成（add-tts，預設關）/ speech synthesis, off by default
     tts_idle_s: int = 120           # 合成行程閒置多久自動結束、歸還 GPU / idle seconds before the worker exits
+    asr: bool = False               # Breeze-ASR-25 語音辨識（add-asr，預設關）/ speech recognition, off by default
+    asr_idle_s: int = 120
     image_paths: bool = True        # 使用者訊息裡的本機圖片／文件路徑由 gateway 讀檔附上（add-image-paths）/ read typed file paths
     tool_filter: bool = True        # 代理客戶端工具太多時篩選（add-client-tool-filter）/ trim agent clients' tool lists
     tool_filter_top_k: int = 12     # 篩選後最多幾個工具（受保護的工具不算名額外）/ tools kept after filtering
@@ -167,6 +169,8 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         vision_tools=_onoff(env, "JIEZI_VISION_TOOLS", False),
         tts=_onoff(env, "JIEZI_TTS", False),
         tts_idle_s=max(30, min(3600, _int(env, "JIEZI_TTS_IDLE_S", 120))),
+        asr=_onoff(env, "JIEZI_ASR", False),
+        asr_idle_s=max(30, min(3600, _int(env, "JIEZI_ASR_IDLE_S", 120))),
         samples=max(1, min(8, _int(env, "JIEZI_SAMPLES", 4))),
         rag=_onoff(env, "JIEZI_RAG", True),
         laws=_onoff(env, "JIEZI_LAWS", True),

@@ -318,6 +318,10 @@ class Gateway:
         if settings.tts:
             from ..tts.manager import TTSManager
             self.tts = TTSManager(settings, supervisor, log=log)
+        self.asr = None                 # 語音辨識（add-asr，JIEZI_ASR=on）/ speech recognition
+        if settings.asr:
+            from ..asr.manager import ASRManager
+            self.asr = ASRManager(settings, supervisor, log=log)
 
     # ── 共用 / Common ──
     def _authorized(self, request: Request) -> bool:
@@ -947,7 +951,8 @@ class Gateway:
                              "cloud_escalation": self.s.cloud_ready, "cloud_used_today": self.cap.used(),
                              "cloud_daily_max": self.s.cloud_daily_max,
                              "trajectory": {"enabled": self.traj.enabled, "error": self.traj.last_error},
-                             "tts": self.tts.describe() if self.tts else "off"})
+                             "tts": self.tts.describe() if self.tts else "off",
+                             "asr": self.asr.describe() if self.asr else "off"})
 
     # ── 語音合成（add-tts）/ speech synthesis ──
     # 這些欄位代表參考音檔或語者向量：聲音只能在本機 CLI 登錄，API 一律拒絕（不提供遠端聲音複製）
@@ -984,6 +989,49 @@ class Gateway:
         return Response(data, media_type=mime, headers={"X-Jiezi-Audio-Seconds": str(meta.get("audio_s")),
                                                         "X-Jiezi-Voice": meta["voice"],
                                                         "X-Jiezi-File": str(self.tts.out_dir / meta["file"])})
+
+    async def audio_transcriptions(self, request: Request) -> Response:
+        """OpenAI 相容的 /v1/audio/transcriptions（multipart 的 file 欄位；也接受直接上傳音檔）。
+        OpenAI-compatible transcription: multipart `file`, or a raw audio body."""
+        if not self._authorized(request):
+            return _err(401, "invalid or missing gateway key", "unauthorized")
+        if self.asr is None:
+            return _err(404, "speech recognition is off (set JIEZI_ASR=on)", "not_found")
+        from ..asr.manager import FORMATS, MAX_BYTES, ASRError, render
+        n = request.headers.get("content-length")
+        if n and n.isdigit() and int(n) > MAX_BYTES + 1_000_000:
+            return _err(413, f"the upload is larger than {MAX_BYTES >> 20} MB", "request_too_large")
+        body = b""
+        async for chunk in request.stream():
+            body += chunk
+            if len(body) > MAX_BYTES + 1_000_000:
+                return _err(413, f"the upload is larger than {MAX_BYTES >> 20} MB", "request_too_large")
+        ctype = request.headers.get("content-type", "")
+        fields, data, filename = {}, b"", request.query_params.get("name", "audio")
+        if ctype.startswith("multipart/form-data"):
+            from email.parser import BytesParser
+            from email.policy import HTTP
+            msg = BytesParser(policy=HTTP).parsebytes(b"Content-Type: " + ctype.encode("latin-1") + b"\r\n\r\n" + body)
+            for part in msg.iter_parts() if msg.is_multipart() else []:
+                name = part.get_param("name", header="content-disposition")
+                payload = part.get_payload(decode=True) or b""
+                if name == "file":
+                    data, filename = payload, part.get_filename() or filename
+                elif name:
+                    fields[name] = payload.decode("utf-8", errors="replace")[:2000]
+        else:
+            data = body
+            fields = {k: v for k, v in request.query_params.items()}
+        fmt = fields.get("response_format", "json")
+        if fmt not in FORMATS:
+            return _err(400, f"response_format must be one of {', '.join(FORMATS)}", "invalid_request")
+        try:
+            res = await self.asr.transcribe(data, filename, fields.get("prompt"))
+        except ASRError as exc:
+            return _err(exc.status, str(exc), exc.code)
+        self.log(f"asr: {res['audio_s']} s audio in {res['total_s']} s, {len(res['text'])} chars")
+        text, mime = render(res, fmt)
+        return Response(text, media_type=mime, headers={"X-Jiezi-Audio-Seconds": str(res["audio_s"])})
 
     async def audio_voices(self, request: Request) -> Response:
         if not self._authorized(request):
@@ -2637,6 +2685,8 @@ def create_app(gw: Gateway) -> Starlette:
                 tg.cancel_scope.cancel()
                 if gw.tts is not None:
                     gw.tts.shutdown()
+                if gw.asr is not None:
+                    gw.asr.shutdown()
                 gw.sup.shutdown()
                 if gw.embedder is not None:
                     gw.embedder.stop()
@@ -2652,6 +2702,7 @@ def create_app(gw: Gateway) -> Starlette:
         Route("/v1/embeddings", gw.embeddings, methods=["POST"]),
         Route("/v1/audio/speech", gw.audio_speech, methods=["POST"]),
         Route("/v1/audio/voices", gw.audio_voices, methods=["GET"]),
+        Route("/v1/audio/transcriptions", gw.audio_transcriptions, methods=["POST"]),
         Route("/v1/documents", gw.documents, methods=["POST"]),
         Route("/v1/documents/warm", gw.documents_warm, methods=["POST"]),
         Route("/v1/agent/audit", gw.agent_audit, methods=["GET"]),

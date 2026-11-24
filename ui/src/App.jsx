@@ -1,7 +1,7 @@
 // 芥子桌面 App 雛形：對話、稽核紀錄、狀態（唯讀；不操控作業系統）。
 // Jiezi desktop prototype: chat, audit log, status (read-only; no OS control).
 import { useEffect, useRef, useState } from "react";
-import { BASE, THEME_LABEL, firstPhase, processSummary, refParts, splitAppendix, getJSON, postJSON, getKey, loadInputs, loadTheme, nextTheme, phaseAfter, phaseLabel, readDocument, recallInput, rememberInput, setKey, speak, stepText, streamChat, ttsEnabled, withDocuments } from "./api.js";
+import { BASE, THEME_LABEL, firstPhase, processSummary, refParts, splitAppendix, getJSON, postJSON, getKey, loadInputs, loadTheme, nextTheme, phaseAfter, phaseLabel, readDocument, recallInput, rememberInput, setKey, speak, stepText, streamChat, transcribe, asrEnabled, ttsEnabled, withDocuments } from "./api.js";
 
 const MAX_DOC_CHARS = 1500000;  // 附著文件的總字數上限（和 jiezi chat 相同）/ same cap as jiezi chat
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;  // 和 jiezi chat 的 /image 相同 / same cap as /image in chat
@@ -70,6 +70,41 @@ function Progress({ phase, t0, events }) {
   const s = (now - t0) / 1000;
   return <div className="progress"><span className="spin">{SPINNER[Math.floor(s * 10) % SPINNER.length]}</span>
     {phaseLabel(phase, s, events)}… {Math.floor(s)} 秒</div>;
+}
+
+// 按住說話（add-asr）：按下開始錄音、放開送去辨識 / push to talk: record while held, then transcribe
+function MicButton({ disabled, onText, onError }) {
+  const [on, setOn] = useState(false);
+  const [state, setState] = useState("idle");
+  const rec = useRef(null);
+  useEffect(() => { asrEnabled().then(setOn); }, []);
+  if (!on) return null;
+  const start = async () => {
+    if (state !== "idle" || disabled) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      const parts = [];
+      mr.ondataavailable = (e) => { if (e.data.size) parts.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(parts, { type: mr.mimeType || "audio/webm" });
+        if (blob.size < 2000) { setState("idle"); return; }    // 太短，當成誤按 / too short: ignore
+        setState("busy");
+        try { const t = (await transcribe(blob)).trim(); if (t) onText(t); }
+        catch (e) { onError("語音辨識失敗：" + e.message); }
+        finally { setState("idle"); }
+      };
+      mr.start();
+      rec.current = mr;
+      setState("rec");
+    } catch (e) { onError("無法使用麥克風：" + e.message); }
+  };
+  const stop = () => { if (rec.current && rec.current.state === "recording") rec.current.stop(); rec.current = null; };
+  return <button className={`mic ${state}`} disabled={disabled || state === "busy"}
+    onPointerDown={start} onPointerUp={stop} onPointerLeave={stop}
+    title="按住說話，放開後轉成文字（Breeze-ASR-25；第一次要載入模型）">
+    {state === "rec" ? "● 錄音中，放開結束" : state === "busy" ? "辨識中…" : "🎤 按住說話"}</button>;
 }
 
 // 朗讀按鈕（add-tts）：只唸回答本文，gateway 會再去掉程式碼與附註 / reads the answer body only
@@ -149,6 +184,7 @@ function Chat() {
   const [policy, setPolicy] = useState("jiezi");
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
+  const [voiceChat, setVoiceChat] = useState(false);   // 語音對話：說完自動送出、回答自動朗讀（add-asr）
   const inputs = useRef(loadInputs());   // ↑／↓ 輸入紀錄 / input history
   const recall = useRef({ pos: null, draft: "" });
   const [busy, setBusy] = useState(false);
@@ -200,8 +236,8 @@ function Chat() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  async function send() {
-    const text = input.trim();
+  async function send(spoken) {
+    const text = (typeof spoken === "string" ? spoken : input).trim();
     if (!text || busy) return;
     inputs.current = rememberInput(inputs.current, text);
     recall.current = { pos: null, draft: "" };
@@ -223,6 +259,7 @@ function Chat() {
     abort.current = new AbortController();
     const t0 = performance.now();
     setProgress({ phase: image ? "看圖中" : firstPhase(policy, { docs: docs.length > 0, agent }), t0, events: 0 });
+    let answer = "";
     const bump = (kind, value) => setProgress((p) => p && { ...p, phase: phaseAfter(kind, value, p.phase), events: p.events + 1 });
     try {
       await streamChat(outgoing, policy, {
@@ -236,7 +273,7 @@ function Chat() {
           const steps = (last.steps || []).filter((s) => !(s.step === ev.step && s.status === "running" && ev.status !== "running"));
           c[c.length - 1] = { ...last, steps: [...steps, ev] }; return c;
         }),
-        onDelta: (t) => bump("delta", t) || setMsgs((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + t }; return c; }),
+        onDelta: (t) => { answer += t; bump("delta", t); setMsgs((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + t }; return c; }); },
         onMeta: (meta) => setMsgs((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], meta }; return c; }),
       });
     } catch (e) {
@@ -249,6 +286,11 @@ function Chat() {
       setProgress(null);
       setBusy(false);
       abort.current = null;
+    }
+    if (voiceChat && answer.trim()) {        // 語音對話：回答完自動朗讀 / voice chat: read the answer aloud
+      const { body } = splitAppendix(answer);
+      speak(body).then((url) => { const a = new Audio(url); a.onended = () => URL.revokeObjectURL(url); a.play(); })
+        .catch((e) => setError("朗讀失敗：" + e.message));
     }
   }
 
@@ -307,6 +349,13 @@ function Chat() {
             }
           }}
           placeholder="問芥子…（Enter 送出、Shift+Enter 換行、↑↓ 叫回輸入過的句子、Esc 中止；圖片可以直接貼上）" />
+        <div className="voice">
+          <MicButton disabled={busy} onError={setError}
+            onText={(t) => (voiceChat ? send(t) : setInput((cur) => (cur.trim() ? cur.trimEnd() + " " : "") + t))} />
+          <label title="說完自動送出，回答完自動朗讀；每輪要在語音辨識、芥子、語音合成之間切換顯示卡，會比較慢">
+            <input type="checkbox" checked={voiceChat} onChange={(e) => setVoiceChat(e.target.checked)} /> 語音對話
+          </label>
+        </div>
         {busy ? <button className="stop" onClick={() => abort.current?.abort()}>中止</button>
           : <button onClick={send} disabled={!input.trim()}>送出</button>}
       </div>

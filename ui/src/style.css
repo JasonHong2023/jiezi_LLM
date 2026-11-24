@@ -82,3 +82,6 @@ details.draft > div { white-space: pre-wrap; border-left: 3px solid var(--line);
 .esc h3 { margin: .2rem 0; font-size: 1rem; }
 .speak { margin-top: .4rem; font-size: .85rem; }
 .speak audio { height: 2rem; max-width: 100%; }
+.voice { display: flex; flex-direction: column; gap: .3rem; font-size: .8rem; }
+.mic { white-space: nowrap; touch-action: none; user-select: none; }
+.mic.rec { color: #c62828; font-weight: 600; }

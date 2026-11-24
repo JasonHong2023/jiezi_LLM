@@ -156,7 +156,7 @@ class GpuTurnTests(unittest.TestCase):
     def test_busy_core_and_held_gpu_refuse(self):
         async def run():
             await self.sup.acquire()                                # 一個請求還在跑 / one request in flight
-            with mock.patch.object(M, "WAIT_CORE_S", 0.6):
+            with mock.patch("jiezi.media.WAIT_CORE_S", 0.6):
                 with self.assertRaises(M.TTSError) as cm:
                     await self.tts.speak("忙碌中。")
             self.assertEqual(cm.exception.code, "gpu_busy")

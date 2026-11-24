@@ -77,10 +77,11 @@ class Supervisor:
         self.loads = 0
         self._lock = anyio.Lock()
         self.state_path = settings.var / "runtime" / "state.json"
-        # add-tts：GPU 由誰使用（None＝核心或閒置，"tts"＝語音合成）；release_gpu 由 TTS 管理者掛上
-        # add-tts: who holds the GPU (None = core or idle, "tts"); release_gpu is installed by the TTS manager
+        # add-tts／add-asr：GPU 由誰使用（None＝核心或閒置，"tts"、"asr"）；見 jiezi.media
+        # who holds the GPU (None = core or idle, "tts", "asr"); see jiezi.media
         self.gpu_owner: str | None = None
-        self.release_gpu = None
+        self.gpu_stoppers: dict = {}
+        self.media_lock = anyio.Lock()
 
     # ── 對外 / Public ──
     @property
@@ -90,9 +91,10 @@ class Supervisor:
     async def acquire(self) -> str:
         """確保引擎已載入並回傳 base_url；呼叫者用完必須 release()。
         Ensure the engine is loaded and return its base_url; callers must release() afterwards."""
-        while self.gpu_owner == "tts" and self.release_gpu is not None:
-            # 先請語音合成讓出 GPU（在拿鎖之前，避免與 TTS 互等）/ ask TTS to give the GPU back, outside our lock
-            await self.release_gpu()
+        if self.gpu_owner:
+            # 先請語音行程讓出 GPU（在拿鎖之前，避免互等）/ evict the media worker first, outside our lock
+            from ..media import release_for_core
+            await release_for_core(self)
         async with self._lock:
             self._expire_hold()
             if self.status == "held":

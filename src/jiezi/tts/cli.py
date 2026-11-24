@@ -43,16 +43,17 @@ def _sha(path: Path) -> str:
     return h.hexdigest()
 
 
-def fetch_weights(model_dir: Path, log=print) -> None:
+def fetch_weights(model_dir: Path, log=print, repo: str = HF_REPO, revision: str = HF_REVISION,
+                  files: dict | None = None) -> None:
     """下載並逐檔核對；不符就刪掉並停止。 / Download and verify each file; delete and stop on a mismatch."""
-    for name, (size, sha) in WEIGHTS.items():
+    for name, (size, sha) in (files or WEIGHTS).items():
         dst = model_dir / name
         if dst.is_file() and dst.stat().st_size == size and _sha(dst) == sha:
             log(f"  ok  {name}")
             continue
         dst.parent.mkdir(parents=True, exist_ok=True)
         part = dst.with_name(dst.name + ".part")
-        url = f"https://huggingface.co/{HF_REPO}/resolve/{HF_REVISION}/{name}"
+        url = f"https://huggingface.co/{repo}/resolve/{revision}/{name}"
         log(f"  downloading {name} ({size >> 20} MiB)")
         req = urllib.request.Request(url, headers={"User-Agent": "jiezi-setup"})
         with urllib.request.urlopen(req, timeout=120) as r, part.open("wb") as f:
