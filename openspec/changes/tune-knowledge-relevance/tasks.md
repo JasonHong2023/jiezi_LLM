@@ -9,4 +9,4 @@
 - [x] 2.1（向量 11-18；重排序 11-19 06:41 GPU：`var/eval/relevance/relevance-20261119-064107.json`。門檻 0.6 下重排序把「該附有附到」71.7% → 77.4%、「附錯」17.0% → 11.3%，「不該附卻附了」同為 3.9%；但重排序在 CPU 每題 +62 秒〔rerank-measure-cpu.json〕，GPU 每題 +0.6 秒卻要和核心搶顯示記憶體〔核心佔約 5.5/6.1 GB〕→ 這台機器維持重排序關閉；換更大顯示卡或核心縮小後再開）`scripts/jiezi rag relevance`：門檻掃描 × 重排序開關，輸出表格與 JSON
 - [x] 2.2（2026-11-23：knowledge 與 laws 的向量檢索命中在 sources 加 `score`〔餘弦相似度，4 位小數；重排序時仍為向量分數〕；全文與點名命中沒有 score）`sources` 帶向量分數
 - [x] 2.3（2026-11-18 使用者選 0.6：該附有附到 80.2% → 71.7%，不該附卻附了 34.3% → 3.9%；法規分出 JIEZI_LAWS_RAG_MIN 維持 0.5，尚未量測）選門檻、回報；使用者同意後改預設
-- [ ] 2.4（已排進夜間：scripts/night/relevance-e2e.sh，標記 var/eval/relevance-e2e/todo；61 題真實問題 jiezi-local，比第一次就通過、最後通過、平均秒數；11-20 早上讀結果）夜間端到端：新舊門檻比轉交率、unsupported_claims、延遲
+- [x] 2.4（2026-11-25 讀結果 var/eval/relevance-e2e/t0.5.json、t0.6.json：58 題、0 錯誤；門檻 0.6 對 0.5——第一次就通過 49 對 47、最後通過 56 對 54、平均 8.5 秒對 11.7 秒，0.6 全面較好，維持 0.6 預設。已排進夜間：scripts/night/relevance-e2e.sh，標記 var/eval/relevance-e2e/todo；61 題真實問題 jiezi-local，比第一次就通過、最後通過、平均秒數；11-20 早上讀結果）夜間端到端：新舊門檻比轉交率、unsupported_claims、延遲
