@@ -14,6 +14,7 @@ MAX_PASSAGES = 6
 MIN_LEXICAL = 0.18             # 問題的雙字詞在段落裡的 IDF 覆蓋率下限 / minimum lexical coverage
 MIN_COSINE = 0.55              # 向量相似度下限 / minimum cosine similarity
 SUPPORT = 0.35                 # 一句話的雙字詞在被引段落裡出現的比例下限 / sentence support threshold
+AUTO_SUPPORT = 0.5             # 模型沒標出處時，自動補引用的支持度下限（較嚴）/ stricter bar for adding a missing citation
 UNSOURCED = "（未找到出處）"
 NOT_FOUND = "這本筆記本的來源裡找不到相關內容。"
 _MARK = re.compile(r"\s?[\[［【]\s*(\d{1,2}(?:\s*[,，、]\s*\d{1,2})*)\s*[\]］】]")
@@ -100,7 +101,7 @@ def check(answer: str, passages: list[dict], general: bool = False) -> dict:
     Check citations: the number must exist and the passage must support the sentence; bad ones are removed.
     回傳 {"answer", "citations", "removed", "unsourced", "not_found"}。"""
     by_n = {p["n"]: p for p in passages}
-    out, used, removed, unsourced = [], {}, [], []
+    out, used, removed, unsourced, auto = [], {}, [], [], []
     stripped = (answer or "").strip()
     if not passages or stripped.startswith(NOT_FOUND[:10]):
         return {"answer": stripped or NOT_FOUND, "citations": [], "removed": [], "unsourced": [],
@@ -116,10 +117,16 @@ def check(answer: str, passages: list[dict], general: bool = False) -> dict:
             plain = bare.strip()
             factual = len(plain) >= 8 and _FACT.search(plain) and not _META_SENT.match(plain) \
                 and not plain.startswith("（一般知識）")
-            if factual:
-                unsourced.append(plain[:120])
-            out.append(sent)
-            continue
+            if not factual:
+                out.append(sent)
+                continue
+            # 2026-11-24 實測：一鍵摘要的總覽句沒標編號，畫面上看不出沒有出處。段落明確支持就補上編號，否則標示。
+            # Live test: overview sentences had no markers. Add the citation when a passage clearly supports the
+            # sentence, otherwise mark it as unsourced.
+            best = max(passages, key=lambda p: _support(bare, p["text"]))
+            marks = [best["n"]] if _support(bare, best["text"]) >= AUTO_SUPPORT else []
+            if marks:
+                auto.append(best["n"])
         keep = []
         for n in dict.fromkeys(marks):
             p = by_n.get(n)
@@ -146,7 +153,7 @@ def check(answer: str, passages: list[dict], general: bool = False) -> dict:
         return {"answer": NOT_FOUND, "citations": [], "removed": removed, "unsourced": unsourced,
                 "not_found": True, "dropped_answer": "".join(out).strip()[:500]}
     return {"answer": "".join(out).strip(), "citations": cites, "removed": removed, "unsourced": unsourced,
-            "not_found": False}
+            "not_found": False, "auto_cited": len(auto)}
 
 
 def appendix(citations: list[dict]) -> str:

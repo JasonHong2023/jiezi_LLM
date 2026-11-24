@@ -110,6 +110,14 @@ class CiteTests(unittest.TestCase):
         self.assertEqual(r["citations"][0]["source_id"], self.lease["id"])
         self.assertIn("租約", cite.appendix(r["citations"]))
 
+    def test_unmarked_sentences_get_cited_or_flagged(self):
+        ps = self.passages("押金")
+        lease_n = next(p["n"] for p in ps if p["sid"] == self.lease["id"])
+        r = cite.check("押金為兩個月租金。屋主住在台中市。", ps)
+        self.assertIn(f"押金為兩個月租金[{lease_n}]。", r["answer"])             # 段落支持就補編號 / cited
+        self.assertIn("屋主住在台中市" + cite.UNSOURCED, r["answer"])           # 否則標示 / flagged
+        self.assertEqual(r["auto_cited"], 1)
+
     def test_not_found_and_prompt(self):
         r = cite.check(cite.NOT_FOUND, [])
         self.assertTrue(r["not_found"])
@@ -165,7 +173,7 @@ class VerifyTests(unittest.TestCase):
         self.assertIn("ambiguous_question", {x["check"] for x in f})                    # e
         _, f, _ = self.run_check("押金是幾個月", "押金為兩個月租金 [%d]。屋主住在台中市。" % n, ps)
         self.assertIn("unsourced", {x["check"] for x in f})                             # a
-        _, f, _ = self.run_check("押金是幾個月", "押金為兩個月。屋主住在台中市。", ps)
+        _, f, _ = self.run_check("押金是幾個月", "屋主住在台中市。房東姓王。", ps)
         self.assertEqual({x["check"] for x in f}, {"not_found"})                        # 全無出處 / nothing sourced
         self.memory.save_correction("押金是幾個月", "押金其實是 1 個月")
         _, f, _ = self.run_check("押金是幾個月", "押金為兩個月租金，共 50000 元 [%d]。" % n, ps)

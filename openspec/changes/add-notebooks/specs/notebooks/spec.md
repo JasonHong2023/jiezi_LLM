@@ -19,7 +19,7 @@ Users SHALL keep notebooks of sources locally, deduplicated, with chunk offsets 
   It is transcribed with timestamps and stored as the source text
 
 ### Requirement: Answers With Verified Citations / 附經檢查引用的回答
-在筆記本內的提問 SHALL 只用該筆記本的來源段落回答，每句事實 SHALL 標註引用編號，編號 SHALL 對應提供給模型的段落。引用檢查器 SHALL 移除不存在或與該句內容不符的引用並標示「（未找到出處）」。來源中找不到相關段落時 SHALL 明說找不到，除非請求允許補充一般知識且明確標示非出自來源的部分。回答 SHALL 附上引用清單（來源、段落、字元位置、原文摘句），讓介面能跳到原文。
+在筆記本內的提問 SHALL 只用該筆記本的來源段落回答，每句事實 SHALL 標註引用編號，編號 SHALL 對應提供給模型的段落。引用檢查器 SHALL 移除不存在或與該句內容不符的引用並標示「（未找到出處）」；沒標編號的事實句，段落明確支持時 SHALL 自動補上編號，否則同樣標示。來源中找不到相關段落時 SHALL 明說找不到，除非請求允許補充一般知識且明確標示非出自來源的部分。回答 SHALL 附上引用清單（來源、段落、字元位置、原文摘句），讓介面能跳到原文。
 Notebook answers SHALL use only that notebook's passages with checked sentence-level citations, and SHALL say so when nothing relevant exists.
 
 #### Scenario: 編造的引用 / Fabricated citation
@@ -28,6 +28,13 @@ Notebook answers SHALL use only that notebook's passages with checked sentence-l
   The model cites [3] after a sentence unrelated to passage 3
 - **THEN** 移除該引用並標示「（未找到出處）」
   The citation is removed and the sentence is marked as unsourced
+
+#### Scenario: 沒標出處的句子 / Sentence without a citation
+
+- **WHEN** 回答裡有一句事實沒有標編號
+  A factual sentence carries no citation
+- **THEN** 段落明確支持時自動補上編號，否則標示「（未找到出處）」
+  A citation is added when a passage clearly supports it; otherwise the sentence is marked as unsourced
 
 #### Scenario: 來源沒有答案 / No answer in the sources
 
