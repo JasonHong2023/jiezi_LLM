@@ -106,6 +106,12 @@ export default function Notebooks() {
     const s = await call(`/v1/notebooks/${nb.id}/sources/${c.source_id}`);
     setView({ source: s, start: c.start, end: c.end });
   });
+  const makeNote = (kind, label) => run(`產生${label}中（每段先整理重點再彙整，段落多時要幾分鐘）`, async () => {
+    const r = await call(`/v1/notebooks/${nb.id}/notes`, { method: "POST", json: { kind }, timeout: 60 * 60000 });
+    setQa((cur) => [...cur, { q: `【${r.label}】${r.sampled ? `（依 ${r.chunks} 段中的 ${r.used} 段取樣）` : ""}`, a: r.answer,
+      meta: { citations: r.citations } }]);
+    await refresh();
+  });
   const ask = () => run("思考中", async () => {
     const q = input.trim();
     if (!q) return;
@@ -143,6 +149,11 @@ export default function Notebooks() {
     <section className="nb-chat">
       {!nb ? <p className="muted">建立或選一本筆記本，加入來源後就能提問。回答只根據來源，每句都附出處；查證沒問題的問答會自動存進記憶。</p> : <>
         <h2>{nb.name}</h2>
+        <div className="toolbar">
+          {[["summary", "摘要"], ["faq", "常見問答"], ["study_guide", "學習指南"]].map(([k, t]) =>
+            <button key={k} disabled={!!busy || !nb.sources.length} onClick={() => makeNote(k, t)}>產生{t}</button>)}
+          <span className="muted">產生的筆記會加進來源，之後也能被引用</span>
+        </div>
         <div className="log">{qa.map((x, i) => <div key={i}>
           <div className="msg user"><div className="body">{x.q}</div></div>
           <div className="msg assistant">

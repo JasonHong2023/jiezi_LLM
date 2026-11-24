@@ -88,6 +88,13 @@ def main(args) -> int:
             sys.stderr.write("jiezi: 查證發現（沒有存進記憶）：\n" + "".join(f"  - {f['message']}\n" for f in mem["findings"])
                              + f"  仍要存：scripts/jiezi notebook remember {nb['name']} {r['jiezi']['trajectory_id']}\n")
         return 0
+    if cmd == "note":
+        r = _call("POST", f"/v1/notebooks/{nb['id']}/notes", timeout=7200, json={"kind": args.kind})
+        print(f"【{r['label']}】" + (f"（依 {r['chunks']} 段中的 {r['used']} 段取樣）" if r["sampled"] else ""))
+        print(r["answer"])
+        for c in r["citations"]:
+            print(f"  [{c['n']}]《{c['title']}》{c['quote'][:60]}")
+        return 0
     if cmd == "remember":
         print(_call("POST", f"/v1/notebooks/{nb['id']}/remember", json={"trajectory_id": args.trajectory_id}))
         return 0
@@ -114,6 +121,9 @@ def add_parser(sub) -> None:
     r = s.add_parser("rm", help="delete a notebook, or one source with --source")
     r.add_argument("notebook")
     r.add_argument("--source")
+    nt = s.add_parser("note", help="one-click notes: summary, FAQ or study guide (saved as a note source)")
+    nt.add_argument("notebook")
+    nt.add_argument("kind", choices=["summary", "faq", "study_guide"])
     m = s.add_parser("remember", help="save an answer whose checks failed, after reading the findings")
     m.add_argument("notebook")
     m.add_argument("trajectory_id")

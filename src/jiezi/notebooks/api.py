@@ -8,7 +8,8 @@ DELETE /v1/notebooks/{id}                  刪除（含記憶 wiki 的摘要頁�
 POST /v1/notebooks/{id}/sources            multipart file，或 JSON {"url"} / {"text", "title"}
 GET  /v1/notebooks/{id}/sources/{sid}      來源全文（引用跳轉用）
 DELETE /v1/notebooks/{id}/sources/{sid}
-POST /v1/notebooks/{id}/remember           {"trajectory_id"} 查證沒過時「仍要存」"""
+POST /v1/notebooks/{id}/remember           {"trajectory_id"} 查證沒過時「仍要存」
+POST /v1/notebooks/{id}/notes              {"kind": summary|faq|study_guide} 一鍵筆記"""
 
 from __future__ import annotations
 
@@ -161,6 +162,24 @@ async def handle(gw, request: Request) -> Response:
                 return JSONResponse({"deleted": ok}, status_code=200 if ok else 404)
             s = nb.source(sid)
             return JSONResponse(s) if s else _err(404, "no such source", "not_found")
+        if action == "notes":       # 一鍵筆記（add-notebooks 3.1）/ one-click notes
+            body = await gw._read_json_any(request)
+            if isinstance(body, Response):
+                return body
+            from .notes import generate
+            base = await gw.sup.acquire()
+            try:
+                async def complete(msgs, max_tokens):
+                    r = await gw._local_once(base, {"messages": msgs, "max_tokens": max_tokens, "temperature": 0.3}, msgs)
+                    return ((r.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+                try:
+                    out = await generate(gw, nb, str(body.get("kind") or "summary"), complete, gw.log)
+                except ValueError as exc:
+                    raise NotebookError(str(exc)) from exc
+            finally:
+                gw.sup.release()
+            _digest(gw, nb)
+            return JSONResponse(out, status_code=201)
         if action == "remember":
             body = await gw._read_json_any(request)
             if isinstance(body, Response):

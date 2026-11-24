@@ -314,3 +314,35 @@ class GatewayNotebookTests(unittest.TestCase):
 
 
 cite_NOT_FOUND = cite.NOT_FOUND
+
+
+class NotesTests(unittest.TestCase):
+    def test_map_reduce_checks_citations_and_saves_a_note(self):
+        import anyio
+        from jiezi.notebooks import notes
+        with tempfile.TemporaryDirectory() as d:
+            store = NotebookStore(Path(d))
+            nb = store.create("租屋")
+            nb.add_source("租約", "file", LEASE)
+            nb.add_source("管理規約", "text", RULES)
+            calls = []
+
+            async def complete(msgs, max_tokens):
+                calls.append(msgs[-1]["content"])
+                if "各段重點" in msgs[-1]["content"]:
+                    return "押金為兩個月租金，共 50000 元 [1]。垃圾於每週一、三、五晚上八點收取 [2]。社區有健身房 [1]。"
+                return "押金兩個月、共 50000 元。" if "押金" in msgs[-1]["content"] else "垃圾每週一、三、五晚上八點收取。"
+            out = anyio.run(notes.generate, None, nb, "summary", complete)
+            self.assertEqual(len(calls), 3)                                     # 2 段 map＋1 次 reduce
+            self.assertEqual({c["n"] for c in out["citations"]}, {1, 2})
+            self.assertIn("社區有健身房（未找到出處）", out["answer"])
+            note = nb.source(out["source"]["id"])
+            self.assertEqual(note["kind"], "note")
+            self.assertIn("出處：", note["text"])
+            out2 = anyio.run(notes.generate, None, nb, "faq", complete)          # 舊筆記不再被整理 / notes not re-mapped
+            self.assertEqual(len(calls), 6)
+            self.assertEqual(out2["label"], "常見問答")
+            with self.assertRaises(ValueError):
+                anyio.run(notes.generate, None, nb, "poem", complete)
+            self.assertEqual(notes.pick(list(range(100)), 10), ([0, 10, 20, 30, 40, 50, 60, 70, 80, 90], True))
+            store.close()
