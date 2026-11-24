@@ -31,8 +31,13 @@ def _cos(a, b) -> float:
 
 def retrieve(chunks: list[dict], question: str, query_vec=None, vectors: dict | None = None,
              budget: int = PASSAGE_BUDGET, limit: int = MAX_PASSAGES, strict: bool = False) -> list[dict]:
-    """回傳相關段落（已排序、未編號）；沒有夠相關的就回傳空清單。strict 用於一般對話的筆記本召回。
-    Relevant passages, best first; empty when nothing clears the bar. `strict` is for recall from normal chat."""
+    """回傳段落（已排序、未編號）。
+    - 筆記本模式（strict=False）：不設門檻，依排序放到預算滿為止，由模型與引用檢查判斷有沒有答案。
+      2026-11-24 實測：「可以養貓嗎？」與來源「不得飼養寵物」沒有共同字詞，向量相似度 0.376 和無關的
+      「附近有捷運站嗎？」0.371 分不開，門檻只會把答案擋掉。
+    - 一般對話召回（strict=True）：字面與語意都要過門檻，避免把不相干的私人資料帶進對話。
+    Passages, best first. Notebook mode has no threshold (the model and the citation check decide); recall from
+    normal chat (strict) needs both lexical and semantic evidence."""
     if not chunks or not question.strip():
         return []
     texts = [c["text"] for c in chunks]
@@ -45,10 +50,10 @@ def retrieve(chunks: list[dict], question: str, query_vec=None, vectors: dict | 
         sem_score = {i: s for s, i in sem}
         sem_order = [i for _, i in sem]
     order = fuse([i for _, i in lex], sem_order)
-    lo_lex, lo_cos = (MIN_LEXICAL * 1.6, MIN_COSINE + 0.1) if strict else (MIN_LEXICAL, MIN_COSINE)
+    lo_lex = MIN_LEXICAL * 1.6
     out, used = [], 0
     for i in order:
-        ok = lex_score.get(i, 0.0) >= lo_lex or sem_score.get(i, 0.0) >= lo_cos
+        ok = True
         if strict:      # 一般對話：字面與語意都要夠 / normal chat needs both
             ok = lex_score.get(i, 0.0) >= lo_lex and (not sem_score or sem_score.get(i, 0.0) >= MIN_COSINE)
         if not ok:
@@ -136,6 +141,10 @@ def check(answer: str, passages: list[dict], general: bool = False) -> dict:
         p = by_n[n]
         cites.append({"n": n, "source_id": p["sid"], "title": p["title"], "chunk": p["id"], "start": p["start"],
                       "end": p["end"], "quote": p["text"].strip()[:160]})
+    if not cites and not general:
+        # 沒有任何一句有可信的出處：不讓沒根據的回答過關 / nothing is sourced: do not pass an unsupported answer
+        return {"answer": NOT_FOUND, "citations": [], "removed": removed, "unsourced": unsourced,
+                "not_found": True, "dropped_answer": "".join(out).strip()[:500]}
     return {"answer": "".join(out).strip(), "citations": cites, "removed": removed, "unsourced": unsourced,
             "not_found": False}
 

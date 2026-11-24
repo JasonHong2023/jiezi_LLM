@@ -31,6 +31,13 @@ def fake_embed(texts):
     return out
 
 
+class CliTests(unittest.TestCase):
+    def test_long_pasted_text_is_not_a_path(self):
+        from jiezi.notebooks.cli import _is_file
+        self.assertFalse(_is_file(LEASE * 3))          # 原本丟 OSError: File name too long
+        self.assertTrue(_is_file(__file__))
+
+
 class StoreTests(unittest.TestCase):
     def setUp(self):
         self._t = tempfile.TemporaryDirectory()
@@ -88,7 +95,8 @@ class CiteTests(unittest.TestCase):
         ps = self.passages("押金是多少錢？")
         self.assertTrue(ps)
         self.assertEqual(ps[0]["sid"], self.lease["id"])
-        self.assertEqual(self.passages("量子電腦的原理是什麼"), [])
+        self.assertTrue(self.passages("可以養貓嗎？"))                   # 沒有共同字詞也給段落 / no threshold
+        self.assertEqual(cite.retrieve(self.nb.chunks(), "量子電腦的原理是什麼", strict=True), [])
 
     def test_check_keeps_supported_and_removes_fabricated(self):
         ps = self.passages("押金和垃圾收取時間")
@@ -105,6 +113,9 @@ class CiteTests(unittest.TestCase):
     def test_not_found_and_prompt(self):
         r = cite.check(cite.NOT_FOUND, [])
         self.assertTrue(r["not_found"])
+        r = cite.check("量子電腦用量子位元 [1]。", self.passages("量子電腦"))    # 沒有任何有效出處 / nothing sourced
+        self.assertTrue(r["not_found"])
+        self.assertEqual(r["answer"], cite.NOT_FOUND)
         p = cite.prompt(self.passages("押金"), "租屋")
         self.assertIn("[1]《租約》", p)
         self.assertIn(cite.NOT_FOUND, p)
@@ -152,8 +163,10 @@ class VerifyTests(unittest.TestCase):
         self.assertIn("uncertain", {x["check"] for x in f})                             # e
         _, f, _ = self.run_check("那份的押金是幾個月", "押金為兩個月租金 [%d]。" % n, ps)
         self.assertIn("ambiguous_question", {x["check"] for x in f})                    # e
-        _, f, _ = self.run_check("押金是幾個月", "押金為兩個月。屋主人很好。", ps)
+        _, f, _ = self.run_check("押金是幾個月", "押金為兩個月租金 [%d]。屋主住在台中市。" % n, ps)
         self.assertIn("unsourced", {x["check"] for x in f})                             # a
+        _, f, _ = self.run_check("押金是幾個月", "押金為兩個月。屋主住在台中市。", ps)
+        self.assertEqual({x["check"] for x in f}, {"not_found"})                        # 全無出處 / nothing sourced
         self.memory.save_correction("押金是幾個月", "押金其實是 1 個月")
         _, f, _ = self.run_check("押金是幾個月", "押金為兩個月租金，共 50000 元 [%d]。" % n, ps)
         self.assertIn("memory_conflict", {x["check"] for x in f})                       # c

@@ -29,6 +29,14 @@ def _find(name: str) -> dict:
     raise SystemExit(f"jiezi: no notebook named {name!r} (scripts/jiezi notebook list)")
 
 
+def _is_file(item: str) -> bool:
+    """長的貼上文字當路徑檢查會丟 OSError（檔名太長），視為不是檔案。 / Long pasted text is not a path."""
+    try:
+        return len(item) < 4096 and Path(item).expanduser().is_file()
+    except (OSError, ValueError):
+        return False
+
+
 def main(args) -> int:
     cmd = args.nb_cmd
     if cmd == "list":
@@ -50,7 +58,7 @@ def main(args) -> int:
         for item in args.items:
             if item.startswith(("http://", "https://")):
                 r = _call("POST", f"/v1/notebooks/{nb['id']}/sources", json={"url": item})
-            elif Path(item).expanduser().is_file():
+            elif _is_file(item):
                 p = Path(item).expanduser()
                 with p.open("rb") as f:
                     r = _call("POST", f"/v1/notebooks/{nb['id']}/sources", timeout=3600, files={"file": (p.name, f)})
