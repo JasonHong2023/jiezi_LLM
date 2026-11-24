@@ -22,3 +22,4 @@ models/*.safetensors
 models/*.part
 models/vision/
 models/bluemagpie-tts/
+models/breeze-asr-25/
