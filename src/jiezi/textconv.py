@@ -29,9 +29,14 @@ def _in_big5(ch: str) -> bool:
         return False
 
 
+# Big5 也收、但在台灣文字裡幾乎都是簡體混入的字（2026-11-24：模型寫出「体验」只換成「体驗」）
+# Characters that are in Big5 but in Taiwan writing are almost always Simplified leaking in
+_CHAR_EXTRA = {"体": "體"}
+
+
 @lru_cache(maxsize=1)
 def _map() -> dict[int, str]:
-    out = {}
+    out = {ord(k): v for k, v in _CHAR_EXTRA.items()}
     for line in _TABLE.read_text(encoding="utf-8").splitlines():
         if line.startswith("#") or "\t" not in line:
             continue
@@ -53,6 +58,12 @@ def to_traditional(text: str | None) -> str | None:
 # the Taiwan phrase is more than twice as common there.
 _TW_TABLE = Path(__file__).resolve().parent / "eval" / "data" / "TWPhrases-jiezi.txt"
 _FENCE = "```"
+# 2026-11-24 參考 prompts.tw「繁中潤稿（去簡體化）」對照表後的人工調整 / manual adjustments after reviewing that list：
+# - 補：「聯系」在台灣寫「聯繫」（OpenCC 單字表不換「系」）/ add: 聯系 is written 聯繫 in Taiwan
+# - 不換：「文件」在台灣也指 document（官方文件、技術文件），一律換成「檔案」會改錯 / skip: 文件 also means document
+# 依文意才能決定的（實現、優化、關注、質量、非常）不收，交給模型潤稿 / context-dependent pairs are left to the model
+_TW_EXTRA = {"聯系": "聯繫"}
+_TW_SKIP = {"文件"}
 
 
 @lru_cache(maxsize=1)
@@ -62,7 +73,9 @@ def _tw() -> tuple[dict[str, str], int]:
         for line in _TW_TABLE.read_text(encoding="utf-8").splitlines():
             if line and not line.startswith("#") and "\t" in line:
                 k, v = line.split("\t", 1)
-                table[k] = v
+                if k not in _TW_SKIP:
+                    table[k] = v
+    table.update(_TW_EXTRA)
     return table, max((len(k) for k in table), default=1)
 
 

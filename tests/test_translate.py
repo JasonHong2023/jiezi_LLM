@@ -100,6 +100,8 @@ class TestConversion(unittest.TestCase):
     def test_model_output_conversion_is_unchanged(self):
         from jiezi.textconv import to_taiwan
         self.assertEqual(to_taiwan("皇后在後台，群峰之間有床。"), "皇后在後台，群峰之間有床。")   # 原本的行為不變
+        from jiezi.textconv import simplified_to_taiwan
+        self.assertEqual(simplified_to_taiwan("下载技术文件"), "下載技術文件")   # 「文件」不換成「檔案」
 
 
 class TestChunked(unittest.TestCase):

@@ -118,6 +118,8 @@ class TestTaiwanPhrasing(unittest.TestCase):
     def test_phrases(self):
         self.assertEqual(to_taiwan("这个视频的默认设置在软件里"), "這個影片的預設設置在軟體里")
         self.assertEqual(to_taiwan("保存參數"), "保存參數")       # 台灣也常用，不換 / common in Taiwan too
+        # 2026-11-24 人工調整：「文件」不換、「聯系」→「聯繫」、「体」→「體」/ manual adjustments
+        self.assertEqual(to_taiwan("請看官方文件並聯系客服，体验更好"), "請看官方文件並聯繫客服，體驗更好")
         self.assertEqual(to_taiwan("```\n# 默認\n```\n默認"), "```\n# 默認\n```\n預設")  # 程式碼不換 / code kept
 
     def test_stream_matches_whole(self):
