@@ -197,6 +197,22 @@ license_checked = "2026-11-15"  # 條款與標準 Apache-2.0 全文逐字相同 
 source = "unsloth 轉檔（Qwen 官方未提供此大小的 GGUF）；授權依 Qwen 官方基底 / unsloth conversion (no official GGUF at this size); license per the official Qwen base (unsloth/Qwen3.5-4B-GGUF)"
 
 [[model]]
+name = "qwen3.5-4b-r3"
+mmproj = "qwen3.5-4b-mmproj-f16"  # 只微調語言部分，視覺模組沿用基底 / LoRA on the language model only; base vision projector
+file = "qwen3.5-4b-r3-Q4_K_M.gguf"
+# 本機第 3 輪 SFT 產物（add-strong-tool-calling 3.2），沒有公開下載點；不在預設核心，其他機器需自行訓練或複製檔案
+# Local round-3 SFT output; not downloadable and not the default core
+url = "local://var/train/qwen3.5-4b-r3/qwen3.5-4b-r3-Q4_K_M.gguf"
+sha256 = "badfcc3491d8fa9b678572461550b01a8bbf65095c83db922d8b9223691b5a49"
+size = 2708804128
+license = "Apache-2.0"
+license_url = "https://huggingface.co/Qwen/Qwen3.5-4B/blob/851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a/LICENSE"
+commercial_use = true
+training_use = true
+license_checked = "2026-11-24"  # 基底 Apache-2.0；訓練資料授權見 docs/licenses.md / base Apache-2.0; data licenses in docs/licenses.md
+source = "芥子第 3 輪 SFT（Qwen3.5-4B＋LoRA，合併後轉 Q4_K_M；R20 對 qwen3.5-4b-q4_k_m 通過，2026-11-24）/ Jiezi round-3 SFT (Qwen3.5-4B + LoRA, merged, Q4_K_M; passed R20 against qwen3.5-4b-q4_k_m)"
+
+[[model]]
 name = "qwen3.5-4b-iq2_m"
 mmproj = "qwen3.5-4b-mmproj-f16"  # 視覺模組（add-vision）/ vision projector
 file = "Qwen3.5-4B-UD-IQ2_M.gguf"
