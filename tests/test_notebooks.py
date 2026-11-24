@@ -118,6 +118,24 @@ class CiteTests(unittest.TestCase):
         self.assertIn("屋主住在台中市" + cite.UNSOURCED, r["answer"])           # 否則標示 / flagged
         self.assertEqual(r["auto_cited"], 1)
 
+    def test_numbers_must_match_the_passage(self):
+        ps = self.passages("押金")
+        n = next(p["n"] for p in ps if p["sid"] == self.lease["id"])
+        r = cite.check(f"押金為兩個月租金 [{n}]。押金為九個月租金 [{n}]。", ps)
+        self.assertIn(f"押金為兩個月租金[{n}]。", r["answer"])
+        self.assertIn("押金為九個月租金" + cite.UNSOURCED, r["answer"])
+        self.assertTrue(any(x["why"].startswith("number not in the passage: 9") for x in r["removed"]))
+        r = cite.check(f"押金為 2 個月租金 [{n}]。", ps)                          # 2 == 兩
+        self.assertEqual(r["citations"][0]["n"], n)
+
+    def test_number_values(self):
+        from jiezi.notebooks.numbers import values
+        self.assertEqual(values("從五十萬元增加到八十萬元"), values("從 50 萬元增加到 80 萬元"))
+        self.assertEqual(values("二〇二六年一月一日"), {"2026", "1"})
+        self.assertEqual(values("1. 一般來說統一處理 [3]"), set())               # 清單編號、引用、非數字詞 / ignored
+        self.assertEqual(values("[00:12] 工程部要在 12 月 5 日前修好"), {"12", "5"})
+        self.assertEqual(values("下午兩點，第三條，1,900 餘件，7.4%"), {"2", "3", "1900", "7.4"})
+
     def test_marker_after_full_stop(self):
         ps = self.passages("押金")
         n = next(p["n"] for p in ps if p["sid"] == self.lease["id"])
@@ -184,7 +202,7 @@ class VerifyTests(unittest.TestCase):
         self.memory.save_correction("押金是幾個月", "押金其實是 1 個月")
         _, f, _ = self.run_check("押金是幾個月", "押金為兩個月租金，共 50000 元 [%d]。" % n, ps)
         self.assertIn("memory_conflict", {x["check"] for x in f})                       # c
-        self.assertEqual(verify._nums("押金兩個月 [1]、共 50000 元［2］"), {"兩", "50000"})   # 編號不算 / markers ignored
+        self.assertEqual(verify._nums("押金兩個月 [1]、共 50000 元［2］"), {"2", "50000"})   # 編號不算 / markers ignored
         self.sources[self.lease["id"]]["trust"] = {"level": "tainted"}
         _, f, _ = self.run_check("押金", "押金為兩個月租金 [%d]。" % n, ps)
         self.assertIn("flagged_source", {x["check"] for x in f})                        # d

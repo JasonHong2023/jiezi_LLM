@@ -23,7 +23,8 @@ _CITE = re.compile(r"[\[［【]\s*\d{1,2}(?:\s*[,，、]\s*\d{1,2})*\s*[\]］】
 def _nums(text: str) -> set[str]:
     """文字裡的數字；引用編號 [1] 不算（否則 [1] 會和「1 個月」相符而漏掉衝突）。
     Numbers in the text, ignoring citation markers."""
-    return {n.replace(",", "") for n in _NUM.findall(_CITE.sub("", text or ""))}
+    from .numbers import values
+    return values(_CITE.sub("", text or ""))         # 「兩個月」與「2 個月」算同一個數 / 兩 == 2
 
 
 def _strip_nums(text: str) -> set[str]:

@@ -7,6 +7,7 @@ import math
 import re
 
 from ..longdoc import _bigrams, fuse, rank
+from . import numbers
 from ..runtime.context import est_tokens
 
 PASSAGE_BUDGET = 1800          # 4096 的槽位：段落最多約 1800 token，其餘給對話與回答 / tokens for passages
@@ -140,6 +141,14 @@ def check(answer: str, passages: list[dict], general: bool = False) -> dict:
                                 "why": "no such passage" if p is None else "passage does not support the sentence"})
                 continue
             keep.append(n)
+        # 數字要對：句子裡的數值都要出現在被引用的段落裡（三十＝30、五十萬＝50 萬）
+        # Numbers must match: every value in the sentence has to appear in the cited passages
+        missing = numbers.values(bare) - set().union(*(numbers.values(by_n[n]["text"]) for n in keep)) if keep else set()
+        if missing:
+            removed += [{"n": n, "sentence": bare.strip()[:120],
+                         "why": "number not in the passage: " + ", ".join(sorted(missing))} for n in keep]
+            keep = []
+        for n in keep:
             used.setdefault(n, bare.strip())
         tail = re.match(r"^(.*?)([。！？!?]*)(\n?)$", bare.rstrip(" "), re.S)
         text, punct, nl = (tail.group(1), tail.group(2), tail.group(3)) if tail else (bare, "", "")
