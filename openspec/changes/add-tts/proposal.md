@@ -38,8 +38,8 @@ Jiezi has no speech output. BlueMagpie-TTS targets Taiwan Mandarin and code-swit
 3. **GPU 輪流使用**：supervisor 增加「GPU 使用者」概念（`core` 或 `tts`）。TTS 請求等核心手上的請求做完（`in_flight == 0`）→ 卸載核心 → 啟動 TTS；之後的聊天請求先結束閒置中的 TTS 再載入核心。同一時間只有一方在 GPU。
 4. **OpenAI 相容端點**：`POST /v1/audio/speech`（`model`、`input`、`voice`、`response_format` ∈ wav／mp3／flac／opus，`speed` 0.5–2.0），需 gateway 金鑰；`voice` 只能是內附語者或已登錄的聲音，預設 `female_voice`；`GET /v1/audio/voices` 列出可用聲音。長文依標點分段合成、段間加停頓後接起來，上限 20,000 字。mp3／opus 由系統 ffmpeg 轉檔。
 5. **聲音複製（只能在本機登錄）**：`scripts/jiezi tts voice add <名稱> <參考音檔> --consent "<誰、何時同意>"`；音檔需 3–60 秒，轉成 16 kHz 單聲道存 `var/tts/voices/`，登錄表記同意聲明、時間、音檔 sha256；`voice list`／`voice remove`。API 與代理工具**不能**登錄或上傳參考音檔；用複製聲音合成的檔案在軌跡標記 `cloned: true`。
-6. **安全與授權限制**：`JIEZI_TTS=on` 才啟用（預設關）；合成的音檔只存在本機 `var/tts/out/`（7 天清除）；軌跡記錄字數、語者、耗時，不記音檔與文字內容；權重、參考音檔與合成音檔都不得進版控或散布；不作訓練資料。
-7. **芥子自己唸回答**：桌面網頁每則回答加「朗讀」按鈕（呼叫 `/v1/audio/speech`，瀏覽器播放）；`jiezi chat --speak` 把回答合成後存檔並印出路徑。朗讀前先去掉 Markdown、程式碼區塊與【記憶】等附註。
+6. **安全與授權限制**：`JIEZI_TTS=on` 才啟用（預設關）；合成的音檔只存在本機 `var/tts/out/`（7 天清除）；合成紀錄 `var/tts/log.jsonl` 只記字數、語者、耗時，不記音檔與文字內容；權重、參考音檔與合成音檔都不得進版控或散布；不作訓練資料。
+7. **芥子自己唸回答**：桌面網頁每則回答加「朗讀」按鈕（呼叫 `/v1/audio/speech`，瀏覽器播放）；`jiezi ask --speak` 把回答合成後存檔並印出路徑（主控 2026-11-24 改：chat 是全螢幕介面，朗讀放在 ask）。朗讀前先去掉 Markdown、程式碼區塊與【記憶】等附註。
 8. **狀態頁**：`/health` 與狀態頁顯示 TTS 是否啟用、目前 GPU 由誰使用。
 9. **文件**：`docs/licenses.md` 登記 `bluemagpie-tts`；`docs/clients.md` 說明 Hermes 如何設定語音輸出。
 

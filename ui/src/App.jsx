@@ -1,7 +1,7 @@
 // 芥子桌面 App 雛形：對話、稽核紀錄、狀態（唯讀；不操控作業系統）。
 // Jiezi desktop prototype: chat, audit log, status (read-only; no OS control).
 import { useEffect, useRef, useState } from "react";
-import { BASE, THEME_LABEL, firstPhase, processSummary, refParts, splitAppendix, getJSON, postJSON, getKey, loadInputs, loadTheme, nextTheme, phaseAfter, phaseLabel, readDocument, recallInput, rememberInput, setKey, stepText, streamChat, withDocuments } from "./api.js";
+import { BASE, THEME_LABEL, firstPhase, processSummary, refParts, splitAppendix, getJSON, postJSON, getKey, loadInputs, loadTheme, nextTheme, phaseAfter, phaseLabel, readDocument, recallInput, rememberInput, setKey, speak, stepText, streamChat, ttsEnabled, withDocuments } from "./api.js";
 
 const MAX_DOC_CHARS = 1500000;  // 附著文件的總字數上限（和 jiezi chat 相同）/ same cap as jiezi chat
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;  // 和 jiezi chat 的 /image 相同 / same cap as /image in chat
@@ -72,6 +72,26 @@ function Progress({ phase, t0, events }) {
     {phaseLabel(phase, s, events)}… {Math.floor(s)} 秒</div>;
 }
 
+// 朗讀按鈕（add-tts）：只唸回答本文，gateway 會再去掉程式碼與附註 / reads the answer body only
+function SpeakButton({ text }) {
+  const [on, setOn] = useState(false);
+  const [state, setState] = useState("idle");
+  const [url, setUrl] = useState(null);
+  useEffect(() => { ttsEnabled().then(setOn); }, []);
+  useEffect(() => { return () => { if (url) URL.revokeObjectURL(url); }; }, [url]);
+  if (!on || !text?.trim()) return null;
+  const go = async () => {
+    setState("busy");
+    try { setUrl(await speak(text)); setState("ready"); } catch (e) { setState("error:" + e.message); }
+  };
+  return <div className="speak">
+    {state === "idle" && <button onClick={go} title="用 BlueMagpie-TTS 朗讀（第一次約需 1 分鐘載入）">朗讀</button>}
+    {state === "busy" && <span className="muted">產生語音中…（第一次要載入語音模型，約 1 分鐘）</span>}
+    {state === "ready" && <audio controls autoPlay src={url} />}
+    {state.startsWith("error:") && <span className="warn">朗讀失敗：{state.slice(6)} <button onClick={go}>重試</button></span>}
+  </div>;
+}
+
 // 一則訊息：回答本文、參考資料（一直顯示）、過程（預設收合）（add-answer-process，使用者 2026-11-18）
 // One message: the answer, its references (always shown) and the process (folded)
 function Message({ m, live }) {
@@ -101,6 +121,7 @@ function Message({ m, live }) {
       )}
       <div className="body">{body}</div>
       {live && <Progress {...live} />}
+      {!live && <SpeakButton text={body} />}
       {checks.map((c, j) => <div key={j} className="warn check">查核：{c}</div>)}
       {refs.length > 0 && (
         <div className="refs">

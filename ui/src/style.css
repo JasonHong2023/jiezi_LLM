@@ -80,3 +80,5 @@ details.draft > div { white-space: pre-wrap; border-left: 3px solid var(--line);
 .warn.check { font-size: .8rem; }
 .esc { margin-bottom: 1rem; }
 .esc h3 { margin: .2rem 0; font-size: 1rem; }
+.speak { margin-top: .4rem; font-size: .85rem; }
+.speak audio { height: 2rem; max-width: 100%; }

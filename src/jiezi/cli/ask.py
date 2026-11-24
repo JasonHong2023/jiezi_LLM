@@ -47,7 +47,7 @@ def _piped(stdin: TextIO) -> bool:
 
 async def run_ask(question: str, policy: str, conn: Connection, as_json: bool, stdin: TextIO, stdout: TextIO,
                   stderr: TextIO, client=None, files: list[str] | None = None, schema: str | None = None,
-                  json_object: bool = False) -> int:
+                  json_object: bool = False, speak: bool = False) -> int:
     from ..documents import DocumentError, read
     extra = None  # add-json-output：--schema 檔案 或 --json-object / structured output
     if schema:
@@ -81,14 +81,17 @@ async def run_ask(question: str, policy: str, conn: Connection, as_json: bool, s
         if as_json:
             stdout.write(json.dumps(await complete(conn, messages, policy, client=client, extra=extra), ensure_ascii=False, indent=2) + "\n")
             return 0
-        meta = None
+        meta, said = None, []
         async for kind, value in stream_chat(conn, messages, policy, client=client, extra=extra):
             if kind == "delta":
                 stdout.write(value)
                 stdout.flush()
+                said.append(value)
             else:
                 meta = value
         stdout.write("\n")
+        if speak and "".join(said).strip():
+            await _speak(conn, "".join(said), stderr, client)
         if extra and (meta or {}).get("verification") == "fail":
             # 格式沒過：答案照印，但用結束碼 5 讓腳本知道 / printed anyway; exit 5 tells scripts it failed the check
             stderr.write(f"jiezi: 回答沒有通過 JSON 格式檢查 / the answer failed the JSON check: "
@@ -112,12 +115,32 @@ async def run_ask(question: str, policy: str, conn: Connection, as_json: bool, s
         return 3
 
 
+async def _speak(conn: Connection, answer: str, stderr: TextIO, client=None) -> None:
+    """把回答送去朗讀（add-tts），音檔路徑寫到 stderr。 / Read the answer aloud; the audio path goes to stderr."""
+    import httpx
+    own = client is None
+    client = client or httpx.AsyncClient(timeout=1800)
+    try:
+        r = await client.post(conn.url + "/v1/audio/speech", headers=conn.headers,
+                              json={"model": "bluemagpie", "input": answer, "response_format": "wav"})
+        if r.status_code == 200:
+            stderr.write(f"jiezi: 朗讀 speech: {r.headers.get('x-jiezi-file')} "
+                         f"({r.headers.get('x-jiezi-audio-seconds')} s)\n")
+        else:
+            stderr.write(f"jiezi: 朗讀失敗 speech failed: {r.status_code} {r.text[:200]}\n")
+    except httpx.HTTPError as exc:
+        stderr.write(f"jiezi: 朗讀失敗 speech failed: {exc}\n")
+    finally:
+        if own:
+            await client.aclose()
+
+
 def main(question: str, policy: str = "jiezi", as_json: bool = False, files: list[str] | None = None,
-         schema: str | None = None, json_object: bool = False) -> int:
+         schema: str | None = None, json_object: bool = False, speak: bool = False) -> int:
     conn = Connection.from_env()
     if not conn.key:
         sys.stderr.write("jiezi: JIEZI_GATEWAY_KEY is not set; run scripts/jiezi init-key\n")
         return 3
     ensure_gateway(conn, log=lambda m: sys.stderr.write(m + "\n"))
     return anyio.run(lambda: run_ask(question, policy, conn, as_json, sys.stdin, sys.stdout, sys.stderr,
-                                     files=files, schema=schema, json_object=json_object))
+                                     files=files, schema=schema, json_object=json_object, speak=speak))

@@ -34,6 +34,25 @@ export async function postJSON(path, body) {
   return r.json();
 }
 
+// 朗讀（add-tts）：gateway 開了 JIEZI_TTS 才顯示按鈕；回傳可播放的 blob 網址
+// Read aloud (add-tts): shown only when the gateway has TTS on; returns a playable blob URL
+let ttsState = null;
+export function ttsEnabled() {
+  ttsState = ttsState || fetch(BASE + "/health").then((r) => r.json())
+    .then((h) => !!(h.tts && h.tts.enabled && h.tts.installed)).catch(() => false);
+  return ttsState;
+}
+
+export async function speak(text, { voice, speed = 1.0 } = {}) {
+  const body = { model: "bluemagpie", input: text, response_format: "mp3", speed };
+  if (voice) body.voice = voice;
+  // 第一次要載入語音模型（約 70 秒），長文更久 / the first call loads the speech model
+  const r = await fetch(BASE + "/v1/audio/speech", { method: "POST", headers: headers(), body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30 * 60 * 1000) });
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  return URL.createObjectURL(await r.blob());
+}
+
 // 上傳文件給 gateway 讀成文字（PDF、Word、網頁、純文字）；檔案讀完就刪，不留在 gateway。
 // Upload a document for the gateway to read; the file is deleted once read.
 export async function readDocument(file) {

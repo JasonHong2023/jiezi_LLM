@@ -290,6 +290,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="attach a document (PDF, .docx, .html, text); repeatable")
     for flag, p in (("--local", "jiezi-local"), ("--cloud", "jiezi-cloud"), ("--claude", "jiezi-ask-claude")):
         a.add_argument(flag, dest="policy", action="store_const", const=p)
+    a.add_argument("--speak", action="store_true", help="also read the answer aloud (JIEZI_TTS=on); prints the audio path")
+    from ..tts.cli import add_parser as _tts_parser
+    _tts_parser(sub)
     tr = sub.add_parser("translate", help="translate a whole document chunk by chunk (add-translation)")
     tr.add_argument("file")
     tr.add_argument("--to", choices=["zh-TW", "en"], help="target language (default: Chinese → en, otherwise zh-TW)")
@@ -407,7 +410,12 @@ def main(argv: list[str] | None = None) -> int:
             return 1 if res == "failed" else 0
         if args.cmd == "ask":
             from ..cli import ask
-            return ask.main(args.question, args.policy or "jiezi", args.json, args.file, args.schema, args.json_object)
+            return ask.main(args.question, args.policy or "jiezi", args.json, args.file, args.schema, args.json_object,
+                            speak=args.speak)
+        if args.cmd == "tts":
+            from ..tts import cli as tts_cli
+            from .settings import load_settings
+            return tts_cli.main(args, load_settings(root))
         if args.cmd == "translate":
             from ..cli import translate as translate_cli
             return translate_cli.main(args.file, args.to, args.out, args.glossary, args.plain, args.yes,

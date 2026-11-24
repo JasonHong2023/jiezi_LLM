@@ -26,7 +26,7 @@ The gateway SHALL offer OpenAI-compatible speech endpoints, off by default and k
   It is synthesized in punctuation-bounded chunks and returned as one file
 
 ### Requirement: Consented Local Voice Enrollment / 經同意且只能在本機登錄聲音
-新聲音 SHALL 只能由使用者在本機以 `scripts/jiezi tts voice add <名稱> <參考音檔> --consent "<說明>"` 登錄；`--consent` SHALL 必填；參考音檔 SHALL 為 3–60 秒，轉成 16 kHz 單聲道存於 `var/tts/voices/`；登錄表 SHALL 記錄名稱、同意聲明、登錄時間與音檔 sha256。API、代理工具與網頁 SHALL NOT 提供登錄或上傳參考音檔的方法。用登錄聲音合成時，軌跡 SHALL 標記 `cloned: true`。`voice remove` SHALL 刪除參考音檔與登錄。
+新聲音 SHALL 只能由使用者在本機以 `scripts/jiezi tts voice add <名稱> <參考音檔> --consent "<說明>"` 登錄；`--consent` SHALL 必填；參考音檔 SHALL 為 3–60 秒，轉成 16 kHz 單聲道存於 `var/tts/voices/`；登錄表 SHALL 記錄名稱、同意聲明、登錄時間與音檔 sha256。API、代理工具與網頁 SHALL NOT 提供登錄或上傳參考音檔的方法。用登錄聲音合成時，合成紀錄 SHALL 標記 `cloned: true`。`voice remove` SHALL 刪除參考音檔與登錄。
 Voices SHALL be enrolled only through the local CLI with a mandatory consent statement; no remote path can enroll; cloned output is marked.
 
 #### Scenario: 沒寫同意聲明 / No consent statement
@@ -44,7 +44,7 @@ Voices SHALL be enrolled only through the local CLI with a mandatory consent sta
   No such method exists; 400 or 404
 
 ### Requirement: Jiezi Reads Its Answers Aloud / 芥子朗讀回答
-桌面網頁 SHALL 在每則回答提供「朗讀」按鈕，`jiezi chat --speak` SHALL 把回答合成並印出音檔路徑；兩者 SHALL 經 `/v1/audio/speech`，朗讀前 SHALL 去掉 Markdown 符號、程式碼區塊與【記憶】等附註。TTS 未啟用時按鈕 SHALL 不顯示。
+桌面網頁 SHALL 在每則回答提供「朗讀」按鈕，`jiezi ask --speak` SHALL 把回答合成並印出音檔路徑；兩者 SHALL 經 `/v1/audio/speech`，朗讀前 SHALL 去掉 Markdown 符號、程式碼區塊與【記憶】等附註。TTS 未啟用時按鈕 SHALL 不顯示。
 The desktop page and CLI SHALL read answers aloud through the speech endpoint, stripping markup, code and notes first.
 
 #### Scenario: 回答含程式碼 / Answer with code
@@ -73,7 +73,7 @@ TTS and the core SHALL never share the GPU; each evicts the other only when it i
   The TTS process is stopped first, then the core is loaded
 
 ### Requirement: Restricted-Use Weights / 權重限個人研究評估
-BlueMagpie-TTS 權重 SHALL 登記於 `docs/licenses.md`（授權不明、僅個人研究評估、不商用、不散布、不作訓練資料），SHALL 以鎖定的 revision 下載並逐檔核對 sha256。權重、參考音檔與合成音檔 SHALL NOT 進版控；音檔 SHALL 只存在本機 `var/tts/out/` 並於 7 天後清除；軌跡 SHALL 只記字數、語者與耗時，不記音檔與文字內容。TTS 程式 SHALL 在獨立的 Python 環境執行，不改動芥子主環境。
+BlueMagpie-TTS 權重 SHALL 登記於 `docs/licenses.md`（授權不明、僅個人研究評估、不商用、不散布、不作訓練資料），SHALL 以鎖定的 revision 下載並逐檔核對 sha256。權重、參考音檔與合成音檔 SHALL NOT 進版控；音檔 SHALL 只存在本機 `var/tts/out/` 並於 7 天後清除；合成紀錄（`var/tts/log.jsonl`）SHALL 只記字數、語者與耗時，不記音檔與文字內容。TTS 程式 SHALL 在獨立的 Python 環境執行，不改動芥子主環境。
 The weights SHALL be registered as personal research use only, pinned and hash-checked; weights and audio SHALL stay local; TTS SHALL run in its own Python environment.
 
 #### Scenario: 權重被改 / Tampered weights

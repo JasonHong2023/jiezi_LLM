@@ -314,6 +314,10 @@ class Gateway:
         self.local = local_http or httpx.AsyncClient(timeout=timeout)
         self.cloud = cloud_http or httpx.AsyncClient(timeout=timeout)
         self.cap = cap or escalation.DailyCap(settings.var / "runtime", settings.cloud_daily_max)
+        self.tts = None                 # 語音合成（add-tts，JIEZI_TTS=on）/ speech synthesis
+        if settings.tts:
+            from ..tts.manager import TTSManager
+            self.tts = TTSManager(settings, supervisor, log=log)
 
     # ── 共用 / Common ──
     def _authorized(self, request: Request) -> bool:
@@ -942,7 +946,52 @@ class Gateway:
                              "tools": "on" if self.s.tools else "off",
                              "cloud_escalation": self.s.cloud_ready, "cloud_used_today": self.cap.used(),
                              "cloud_daily_max": self.s.cloud_daily_max,
-                             "trajectory": {"enabled": self.traj.enabled, "error": self.traj.last_error}})
+                             "trajectory": {"enabled": self.traj.enabled, "error": self.traj.last_error},
+                             "tts": self.tts.describe() if self.tts else "off"})
+
+    # ── 語音合成（add-tts）/ speech synthesis ──
+    # 這些欄位代表參考音檔或語者向量：聲音只能在本機 CLI 登錄，API 一律拒絕（不提供遠端聲音複製）
+    # Fields that would carry reference audio or a speaker vector: voices are enrolled only through the local CLI
+    TTS_FORBIDDEN = ("reference_audio", "reference_wav", "reference_wav_path", "ref_wav", "prompt_wav",
+                     "prompt_wav_path", "speaker_embedding", "speaker_centroid", "audio", "voice_file", "voice_url")
+
+    async def audio_speech(self, request: Request) -> Response:
+        """OpenAI 相容的 /v1/audio/speech。 / OpenAI-compatible speech synthesis."""
+        if not self._authorized(request):
+            return _err(401, "invalid or missing gateway key", "unauthorized")
+        if self.tts is None:
+            return _err(404, "speech synthesis is off (set JIEZI_TTS=on)", "not_found")
+        body = await self._read_json_any(request)
+        if isinstance(body, Response):
+            return body
+        bad = [k for k in self.TTS_FORBIDDEN if k in body]
+        voice = body.get("voice")
+        if bad or (voice is not None and not isinstance(voice, str)):
+            return _err(400, "voices can only be enrolled locally (scripts/jiezi tts voice add); requests cannot "
+                             "carry reference audio, paths or speaker vectors", "invalid_voice")
+        try:
+            speed = float(body.get("speed", 1.0))
+            pitch = float(body.get("pitch", 0.0))
+        except (TypeError, ValueError):
+            return _err(400, "speed and pitch must be numbers", "invalid_request")
+        from ..tts.manager import TTSError
+        try:
+            data, mime, meta = await self.tts.speak(body.get("input"), voice, str(body.get("response_format", "wav")),
+                                                    speed, pitch, clean=body.get("clean", True) is not False)
+        except TTSError as exc:
+            return _err(exc.status, str(exc), exc.code)
+        self.log(f"tts: {meta['chars']} chars, voice {meta['voice']}, {meta['audio_s']} s audio in {meta['total_s']} s")
+        return Response(data, media_type=mime, headers={"X-Jiezi-Audio-Seconds": str(meta.get("audio_s")),
+                                                        "X-Jiezi-Voice": meta["voice"],
+                                                        "X-Jiezi-File": str(self.tts.out_dir / meta["file"])})
+
+    async def audio_voices(self, request: Request) -> Response:
+        if not self._authorized(request):
+            return _err(401, "invalid or missing gateway key", "unauthorized")
+        if self.tts is None:
+            return _err(404, "speech synthesis is off (set JIEZI_TTS=on)", "not_found")
+        from ..tts import voices as V
+        return JSONResponse({"object": "list", "data": V.listing(self.s.var)})
 
     async def embeddings(self, request: Request) -> Response:
         """OpenAI 相容的 /v1/embeddings（add-embeddings-endpoint）：給客戶端做自己的檢索。
@@ -2586,6 +2635,8 @@ def create_app(gw: Gateway) -> Starlette:
                 yield
             finally:
                 tg.cancel_scope.cancel()
+                if gw.tts is not None:
+                    gw.tts.shutdown()
                 gw.sup.shutdown()
                 if gw.embedder is not None:
                     gw.embedder.stop()
@@ -2599,6 +2650,8 @@ def create_app(gw: Gateway) -> Starlette:
         Route("/v1/chat/completions", gw.chat, methods=["POST"]),
         Route("/v1/models", gw.models, methods=["GET"]),
         Route("/v1/embeddings", gw.embeddings, methods=["POST"]),
+        Route("/v1/audio/speech", gw.audio_speech, methods=["POST"]),
+        Route("/v1/audio/voices", gw.audio_voices, methods=["GET"]),
         Route("/v1/documents", gw.documents, methods=["POST"]),
         Route("/v1/documents/warm", gw.documents_warm, methods=["POST"]),
         Route("/v1/agent/audit", gw.agent_audit, methods=["GET"]),
@@ -2624,7 +2677,7 @@ def _cors():
 
 # 桌面 App 前端（Phase 8.4 雛形）：只提供本機建好的檔案，嚴格 CSP，不載入遠端內容（Phase 8.5）。
 # Desktop front end (Phase 8.4 prototype): local build only, strict CSP, no remote content (Phase 8.5).
-UI_CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; "
+UI_CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; "
           "connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; "
           "form-action 'none'")
 
