@@ -91,3 +91,42 @@ With tier 2 on, a request with a verifier error that still fails after the local
 - **THEN** 照原本的方式進入第 3 層
   The request proceeds to tier 3 as before
 
+### Requirement: Escalation Routing By Reason
+The gateway SHALL send escalations whose reason is that the request does not fit the local context or that the local engine is reserved to the cloud models first when cloud escalation is configured, SHALL NOT escalate an "unsure" local answer to a question about Jiezi itself, to user feedback, or to a bare file path, SHALL NOT treat a pasted conversation transcript as a web question, and SHALL report escalations per day and reason at `/admin/escalations`.
+
+#### Scenario: 代理程式的大請求 / A large agent request
+- **WHEN** Hermes 帶 55 個工具的請求超過本機上下文，雲端轉交已開
+  An agent request exceeds the local context and cloud escalation is on
+- **THEN** 轉給雲端模型，不請教 Claude；統計記為「雲端・請求太大」
+  It goes to the cloud model, not Claude, and is counted as such
+
+#### Scenario: 抱怨不是問題 / Feedback is not a question
+- **WHEN** 使用者說「又出現簡體中文字」，本機回答說不確定
+  The user complains and the local answer says it is unsure
+- **THEN** 回覆本機的回答，不轉交
+  The local answer is returned without escalation
+
+### Requirement: Local-First Escalation Ladder
+For policy `jiezi`, in both streaming and non-streaming answers, when the local answer fails its checks or says it is unsure, the gateway SHALL first retry locally with the error, then retry locally with think mode under a token budget, then ask a free cloud model for hints only and answer locally again, and SHALL consult Claude only after these steps fail; each step SHALL be recorded in the answer process.
+
+#### Scenario: 本機重想後答對 / Solved on a local retry
+- **WHEN** 本機第一次回答查核沒過，帶著錯誤訊息重答後通過
+  The first local answer fails and the retry with the error passes
+- **THEN** 回覆重答的結果，不請教 Claude；過程顯示「本機作答 → 檢查沒過 → 本機重答 → 通過」
+  The retry is returned without consulting Claude
+
+#### Scenario: 全部失敗才請教 / Claude only at the end
+- **WHEN** 重答、思考模式、雲端提示後都沒通過
+  Every local and hint step fails
+- **THEN** 才請教 Claude；過程列出所有步驟
+  Only then is Claude consulted
+
+### Requirement: Experience Records
+When the ladder goes past the first local answer, the gateway SHALL write an experience record to the memory wiki — the question type, what failed, which step solved it, the key points of the final answer whoever solved it, and a short lesson summarised by the local model — and SHALL attach relevant experience records as hints to similar later questions, counting uses and successes and disabling a record after three unsuccessful uses.
+
+#### Scenario: 經驗讓下次一次答對 / An experience helps next time
+- **WHEN** 「2027 國定假日」本機第一次答錯、重答後才對，之後又有人問「2028 年國定假日」
+  A question was solved only on retry and a similar question comes later
+- **THEN** 第二題作答前附上那筆經驗（例如「先查補假規則，不要自己推算」），過程顯示用了哪筆經驗
+  The lesson is attached before answering and the process shows which record was used
+
