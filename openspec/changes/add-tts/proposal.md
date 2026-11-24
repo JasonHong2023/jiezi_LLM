@@ -21,6 +21,16 @@ Jiezi has no speech output. BlueMagpie-TTS targets Taiwan Mandarin and code-swit
 | 資源 | 權重 fp32 7.8 GB＋AudioVAE 0.38 GB；CUDA 上以 bf16 執行約 4 GB；需 Python 3.10–3.12（芥子 venv 為 3.13） |
 | 硬體 | RTX 4050 6 GB 已被核心占 5.3 GB → 兩者不能同時在 GPU，依 Q2 輪流使用 |
 
+## 分類、現成方案搜尋、資安掃描 / Classification, existing-solution search, security scan
+
+- 分類 / Classification：**核心模組＋獨立工作行程**，不是 `SKILL`，也不是 `MCP`。理由：提供的是 gateway 的 OpenAI 相容端點（`/v1/audio/speech`），客戶端（Hermes、桌面網頁）照標準 API 呼叫，不需要新的工具協定；模型因 Python 版本與 GPU 輪流需求放在獨立行程。
+- 現成方案搜尋 / Existing-solution search（2026-11-24 主控上網查證）：
+  1. **BlueMagpie-TTS**（OpenFormosa，使用者指定）：台灣華語＋中英夾雜，CER 7.44%，48 kHz；權重授權不明。
+  2. **BreezyVoice**（MediaTek Research，HF `MediaTek-Research/BreezyVoice`，Apache-2.0，300M，CosyVoice 衍生，支援注音控制破音字）：授權清楚，但每次合成都要參考音檔（本身就是聲音複製系統），2025-02 後未更新。列為備案：BlueMagpie 授權有疑慮或品質不佳時改用。
+  3. Qwen3-TTS、NeuTTS、KittenTTS 等通用開源 TTS：查無台灣華語／繁體的支援資料。
+  4. 芥子現有：無任何 TTS。Hermes 的 `text_to_speech` 可設定 OpenAI 相容端點，所以做成 `/v1/audio/speech` 即可直接接。
+- 資安掃描 / Security scan：見上表（`torch.load` 皆 `weights_only=True`；`pickle.load` 只在 Apple MLX 路徑；除 HF 下載外無網路呼叫；無 `trust_remote_code`；不裝 speechbrain）。套件全部鎖 commit（BlueMagpie-TTS `210e8a8`、Barbet `e453176` 以 uv override 強制），權重鎖 HF revision `4c2c5bcb` 並核對 sha256；獨立 venv，與芥子主環境隔離。
+
 ## What Changes / 變更內容
 
 1. **獨立執行環境**：`scripts/jiezi tts setup` 用 uv 建 `var/tts/venv`（Python 3.11），安裝鎖定 commit 的 BlueMagpie-TTS 與 Barbet、CUDA 版 torch、soundfile；下載鎖定 revision 的權重到 `models/bluemagpie-tts/`，逐檔核對 sha256。芥子主 venv 不動。
