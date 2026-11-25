@@ -1,7 +1,7 @@
 ## 1. 準備 / Preparation
 
 - [ ] 1.1（授權已查證並登記 docs/licenses.md：OWLv2、D-FINE、RAM++ Apache-2.0，Florence-2 MIT，Open Images 標註 CC BY 4.0／圖片逐張依 metadata；OWLv2、D-FINE、Florence-2 用 transformers 內建類別，不執行下載的程式；RAM++ 要外部程式碼，先不用。manifest 等夜間下載時寫入）逐一查證候選模型與評測圖片的授權（官方授權檔），登記 `docs/licenses.md`、`models/manifest.toml`
-- [ ] 1.2 看圖評測：已標註圖片子集（≥100 張，含動物、日常物品、文字），量現況（只用核心）的物體精確率／召回率
+- [ ] 1.2（2026-11-25：`src/jiezi/eval/vision.py`＋`scripts/night/vision-eval.sh`；Open Images V7 驗證集 CC BY 2.0 子集 100 張已下載到 var/eval/vision〔官方 CVDF S3，最長邊 1024px〕；試跑 2 張每張 22–30 秒；排在 11-26 00:05 llama.cpp 升級之後跑工具關／開兩組）看圖評測：已標註圖片子集（≥100 張，含動物、日常物品、文字），量現況（只用核心）的物體精確率／召回率
 
 ## 2. 工具 / Tools
 
