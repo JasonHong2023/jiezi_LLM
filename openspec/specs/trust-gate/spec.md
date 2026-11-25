@@ -1,7 +1,8 @@
 # trust-gate Specification
 
 ## Purpose
-TBD - created by archiving change add-agent-trust-gate. Update Purpose after archive.
+為外部內容標信任等級與來源、維護污染索引，並由單一點標記不可訓練。
+Trust levels, provenance and a taint index for external content, with one place that marks data untrainable.
 ## Requirements
 ### Requirement: Trust Levels / 信任等級
 系統 SHALL 以四級 `TrustLevel` 決定外部內容能進入哪裡：`tainted`（都不行）、`unverified`（只能進記憶）、`verified`（記憶與技能）、`trusted`（記憶、技能、訓練）。雲端或 Claude 的內容 SHALL NOT 自成一級：它們是 `unverified`，來源記在 provenance 的 `source_channel="cloud"`。

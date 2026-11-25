@@ -1,7 +1,8 @@
 # trajectory Specification
 
 ## Purpose
-TBD - created by archiving change add-gateway. Update Purpose after archive.
+本機軌跡紀錄每個請求，並標記可否用於訓練。
+Local per-request trajectories with a training-use flag.
 ## Requirements
 ### Requirement: Local Trajectory Records
 

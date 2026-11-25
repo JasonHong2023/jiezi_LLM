@@ -1,7 +1,8 @@
 # verifiers Specification
 
 ## Purpose
-TBD - created by archiving change add-verifiers. Update Purpose after archive.
+沙盒執行程式驗證、工具呼叫驗證與摘要規則檢查。
+Sandboxed code verification, tool-call verification and summary rule checks.
 ## Requirements
 ### Requirement: Sandboxed Code Execution
 

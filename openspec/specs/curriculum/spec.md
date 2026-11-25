@@ -1,7 +1,8 @@
 # curriculum Specification
 
 ## Purpose
-TBD - created by archiving change add-curriculum. Update Purpose after archive.
+以授權的 108 課綱知識資料回答課業問題。
+Ground school-curriculum answers in licensed 108-curriculum data.
 ## Requirements
 ### Requirement: Licensed Curriculum Sources
 

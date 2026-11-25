@@ -1,7 +1,8 @@
 # agent Specification
 
 ## Purpose
-TBD - created by archiving change add-agent-readonly. Update Purpose after archive.
+代理只在授權資料夾內用唯讀工具，迴圈有稽核、有上限、可中止，依契約運作且軌跡可重建。
+A read-only agent confined to granted folders, with an audited, bounded, stoppable loop.
 ## Requirements
 ### Requirement: Read-Only Tools Within Granted Folders
 

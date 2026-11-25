@@ -1,7 +1,8 @@
 # skills Specification
 
 ## Purpose
-TBD - created by archiving change add-agent-trust-gate. Update Purpose after archive.
+技能依來源分信任等級，決定能否自動使用。
+Skills carry trust levels that decide whether they can be used automatically.
 ## Requirements
 ### Requirement: Skill Trust / 技能的信任等級
 技能庫 SHALL 只用 `verified` 以上的範例作答時參考；新學到的技能（schema 驗證成功的工具呼叫）SHALL 記錄 `trust_level` 與 provenance；本功能之前存下、缺欄位的技能 SHALL 視為 `verified`（它們都由 schema 驗證成功的呼叫產生），否則既有技能會全部失效。

@@ -1,7 +1,8 @@
 # gateway Specification
 
 ## Purpose
-TBD - created by archiving change add-gateway. Update Purpose after archive.
+只綁本機、相容 OpenAI 的入口：本機金鑰、依模型名稱選策略、斷線與上限處理。
+A local-only, OpenAI-compatible entry with a local key, model-name policies and limits.
 ## Requirements
 ### Requirement: Local-Only OpenAI-Compatible Entry
 

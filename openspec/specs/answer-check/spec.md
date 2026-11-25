@@ -1,7 +1,8 @@
 # answer-check Specification
 
 ## Purpose
-TBD - created by archiving change add-answer-check. Update Purpose after archive.
+檢查回答是否有依據，並改成台灣用語。
+Check that answers are grounded and use Taiwan phrasing.
 ## Requirements
 ### Requirement: Grounded Answer Check
 

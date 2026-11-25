@@ -1,7 +1,8 @@
 # dictionary Specification
 
 ## Purpose
-TBD - created by archiving change add-dictionary. Update Purpose after archive.
+以授權的教育部辭典（國語、台語、客語）支援回答，並依使用者的語言偏好用詞。
+Ground answers in licensed MOE dictionaries and follow the user's language preference.
 ## Requirements
 ### Requirement: Licensed Dictionary Sources
 

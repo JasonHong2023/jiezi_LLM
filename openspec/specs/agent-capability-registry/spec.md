@@ -1,7 +1,8 @@
 # agent-capability-registry Specification
 
 ## Purpose
-TBD - created by archiving change add-agent-capability-registry. Update Purpose after archive.
+以 TOML 能力登錄表記錄每項代理能力（類型、現成方案、資安掃描），並驗證登錄表與提案的「分類／現成方案／資安掃描」三段。
+A TOML registry of agent capabilities, validated together with the three required proposal sections.
 ## Requirements
 ### Requirement: Capability registry TOML file / 能力登錄表 TOML 檔案
 

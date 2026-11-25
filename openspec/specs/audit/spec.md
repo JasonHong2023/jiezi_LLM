@@ -1,7 +1,8 @@
 # audit Specification
 
 ## Purpose
-TBD - created by archiving change add-audit. Update Purpose after archive.
+可重複的相依套件與鎖定原始碼漏洞稽核（OSV 與 GitHub 公告）。
+A repeatable vulnerability audit of locked dependencies and pinned sources.
 ## Requirements
 ### Requirement: Repeatable Dependency Audit
 

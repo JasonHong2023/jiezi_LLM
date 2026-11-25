@@ -1,7 +1,8 @@
 # training Specification
 
 ## Purpose
-TBD - created by archiving change add-sft-training. Update Purpose after archive.
+有關卡的 LoRA 訓練：複習資料混合、顯示記憶體上限與回歸評測。
+Gated LoRA training with replay mixing, a VRAM ceiling and regression checks.
 ## Requirements
 ### Requirement: Gated LoRA Training
 

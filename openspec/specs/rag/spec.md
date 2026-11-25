@@ -1,7 +1,8 @@
 # rag Specification
 
 ## Purpose
-TBD - created by archiving change add-reranker. Update Purpose after archive.
+向量檢索的相關性門檻要有量測依據，重排序可選且失敗時安全退回。
+Measured relevance thresholds and optional reranking with a safe fallback.
 ## Requirements
 ### Requirement: Optional Reranking With a Safe Fallback
 

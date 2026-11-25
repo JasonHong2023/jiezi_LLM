@@ -1,7 +1,8 @@
 # escalation Specification
 
 ## Purpose
-TBD - created by archiving change add-gateway. Update Purpose after archive.
+分層作答：先本機、規則預先分流、無標準答案的執行期檢查，最後才請教雲端或 Claude。
+Tiered answering: local first, rule-based pre-routing, runtime checks, and consultation last.
 ## Requirements
 ### Requirement: Tiered Escalation v0
 

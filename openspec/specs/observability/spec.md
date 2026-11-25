@@ -1,7 +1,8 @@
 # observability Specification
 
 ## Purpose
-TBD - created by archiving change add-agent-observability. Update Purpose after archive.
+讀取端統一欄位、轉交原因碼、代理 fail-closed 與保守的秘密遮罩。
+Unified read-side fields, escalation reason codes, fail-closed agents and conservative secret scrubbing.
 ## Requirements
 ### Requirement: Read-Side Unified Fields / 讀取端的統一欄位
 系統 SHALL 提供 `observability.normalize(record, kind)`（kind：trajectory、audit、stats_reason），把既有紀錄轉成統一欄位（trace_id、timestamp、policy、tier、terminal_state、provider、model、latency_s、verification、escalation_reason、fail_closed、training_use、trust_level、tool_filter 含 dropped）。既有寫入 `var/` 的欄位名稱 SHALL NOT 改名；normalize SHALL 回傳新物件、不改原紀錄，缺欄位 SHALL 不丟例外。值域 SHALL 取自實際軌跡：status 的 ok→completed、cancelled／client_disconnected→aborted、其他錯誤→failed；tier 保留原值（含 memory、consult、convert）。欄位命名參考 OpenTelemetry GenAI 語意慣例，不引入其 SDK。

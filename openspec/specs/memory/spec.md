@@ -1,7 +1,8 @@
 # memory Specification
 
 ## Purpose
-TBD - created by archiving change add-memory. Update Purpose after archive.
+把請教得到的答案、使用者要記住的事與更正存成 wiki 記憶並用來回答，也保存對話紀錄。
+Keep answers, things to remember and corrections as a wiki memory, recall them, and keep chat history.
 ## Requirements
 ### Requirement: Memory Wiki
 芥子 SHALL 把請教 Claude 或雲端得到的答案、使用者要它記住的事與更正，存成 Hermes llm-wiki 格式的 Markdown 頁面（依主題合併），頁面 SHALL 是正本，使用者修改或刪除後 SHALL 立即反映在查詢結果；含 Claude／雲端輸出的頁面 SHALL 標 `training_use: false`。上網／即時、問芥子自己與依賴前文的問題 SHALL NOT 存。

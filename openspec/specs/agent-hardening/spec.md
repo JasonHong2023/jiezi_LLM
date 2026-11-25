@@ -1,7 +1,8 @@
 # agent-hardening Specification
 
 ## Purpose
-TBD - created by archiving change add-agent-hardening. Update Purpose after archive.
+以版本化的合成紅隊語料做代理的回歸關卡，並讓所有上限只有一個來源。
+A versioned synthetic red-team corpus gates agent changes; effective limits come from one source.
 ## Requirements
 ### Requirement: Versioned synthetic red-team corpus / 版本化合成紅隊語料
 

@@ -1,7 +1,8 @@
 # laws Specification
 
 ## Purpose
-TBD - created by archiving change add-laws. Update Purpose after archive.
+查詢全國法規資料庫的法條並附給回答。
+Look up statutes from the national law database for answers.
 ## Requirements
 ### Requirement: Statute Lookup
 

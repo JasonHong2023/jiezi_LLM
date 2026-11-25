@@ -1,7 +1,8 @@
 # scrapling-mcp Specification
 
 ## Purpose
-TBD - created by archiving change add-scrapling-web-read. Update Purpose after archive.
+選用的 Scrapling 網頁讀取 MCP：明確啟用才註冊、只用 stdio、最小工具白名單、只讀公開網址。
+An opt-in, stdio-only Scrapling MCP with a minimal tool allowlist for public URLs.
 ## Requirements
 ### Requirement: Opt-in MCP registration / 明確啟用才註冊 MCP
 

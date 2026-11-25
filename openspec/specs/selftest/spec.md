@@ -1,7 +1,8 @@
 # selftest Specification
 
 ## Purpose
-TBD - created by archiving change add-toolcheck. Update Purpose after archive.
+用可重現的題組（計算、單位、日期等）檢查工具呼叫整套系統是否正常。
+A reproducible question set that checks the tool-calling system end to end.
 ## Requirements
 ### Requirement: Tool-Call System Check
 

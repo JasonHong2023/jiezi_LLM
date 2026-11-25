@@ -1,7 +1,8 @@
 # json-output Specification
 
 ## Purpose
-TBD - created by archiving change add-json-output. Update Purpose after archive.
+要求 JSON 的回答要依 schema 檢查，內容只有 JSON 本身。
+JSON answers are schema-checked and contain only the JSON.
 ## Requirements
 ### Requirement: Checked JSON Answers
 

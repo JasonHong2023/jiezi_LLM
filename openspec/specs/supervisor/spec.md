@@ -1,7 +1,8 @@
 # supervisor Specification
 
 ## Purpose
-TBD - created by archiving change add-gateway. Update Purpose after archive.
+在資源預算內延遲載入本機引擎，限次重啟，與夜間評測協調 GPU，並依量測做部分卸載。
+Load the local engine lazily within budget, restart boundedly, share the GPU with night jobs and offload by measurement.
 ## Requirements
 ### Requirement: Budgeted Lazy Engine
 

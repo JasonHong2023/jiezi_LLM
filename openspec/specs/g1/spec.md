@@ -1,7 +1,8 @@
 # g1 Specification
 
 ## Purpose
-TBD - created by archiving change add-g1-report. Update Purpose after archive.
+整理 E0 評測結果，產出選擇核心模型的 G1 建議。
+Turn the E0 results into the G1 core-model recommendation.
 ## Requirements
 ### Requirement: G1 Recommendation
 

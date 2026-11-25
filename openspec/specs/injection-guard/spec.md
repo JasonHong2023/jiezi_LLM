@@ -1,7 +1,8 @@
 # injection-guard Specification
 
 ## Purpose
-TBD - created by archiving change add-injection-guard. Update Purpose after archive.
+外部內容（網頁、文件、工具結果）一律當資料，可疑的提示注入要標示並隔離；以固定語料驗證且不開啟副作用。
+External content is data; suspected injections are flagged and isolated, checked against a fixed corpus.
 ## Requirements
 ### Requirement: External Content Is Data
 

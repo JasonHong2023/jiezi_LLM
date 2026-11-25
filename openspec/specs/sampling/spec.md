@@ -1,7 +1,8 @@
 # sampling Specification
 
 ## Purpose
-TBD - created by archiving change add-sampling. Update Purpose after archive.
+多次取樣後以通過驗證的多數決選答案。
+Verified majority voting over several samples.
 ## Requirements
 ### Requirement: Verified Majority Sampling
 

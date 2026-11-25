@@ -1,7 +1,8 @@
 # knowledge Specification
 
 ## Purpose
-TBD - created by archiving change add-knowledge. Update Purpose after archive.
+以鎖定版本的 Taiwan.md 知識庫檢索台灣知識附給回答，可選重排序。
+Ground Taiwan questions in the pinned Taiwan.md knowledge base, with optional reranking.
 ## Requirements
 ### Requirement: Pinned Knowledge Source
 

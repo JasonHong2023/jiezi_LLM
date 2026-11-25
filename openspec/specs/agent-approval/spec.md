@@ -1,7 +1,8 @@
 # agent-approval Specification
 
 ## Purpose
-TBD - created by archiving change add-agent-approval. Update Purpose after archive.
+代理唯一的寫入工具只能建立新檔，寫入前要使用者核准，可安全寫入與撤回並留下稽核。
+The agent's only write tool creates new files after approval, with safe apply, rollback and audit.
 ## Requirements
 ### Requirement: Single Create-Only Write Tool / 唯一的寫入工具只建新檔
 代理唯一的寫入工具 `write_file` SHALL 只在使用者授權的資料夾內建立**新**檔案：目標（含解析後的實際路徑）已存在任何東西（檔案、資料夾、符號連結、壞掉的連結）SHALL 拒絕；父資料夾 SHALL 已存在且在授權內；機密位置與專案 `var/` SHALL 拒絕；內容上限 10 MB。SHALL NOT 覆寫、刪除、執行或連網。工具 SHALL 只在 `JIEZI_AGENT_WRITE=on` **且**任務契約的 `allowed_tools` 明確列出 `write_file` 時提供；沒有契約時代理只有唯讀工具。

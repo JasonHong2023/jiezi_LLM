@@ -1,7 +1,8 @@
 # tools Specification
 
 ## Purpose
-TBD - created by archiving change add-tools. Update Purpose after archive.
+計算事實的本機工具、schema 約束的工具呼叫與數值檢查，以及可選的外部 MCP 工具。
+Local tools for computed facts, schema-constrained calls with value checks, and optional external MCP tools.
 ## Requirements
 ### Requirement: Computed Facts
 

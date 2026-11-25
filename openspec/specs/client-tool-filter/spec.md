@@ -1,7 +1,8 @@
 # client-tool-filter Specification
 
 ## Purpose
-TBD - created by archiving change add-client-tool-filter. Update Purpose after archive.
+依契約與使用者訊息篩選客戶端送來的工具，回 413 前先走退讓階梯，並記錄篩選資訊。
+Filter client-supplied tools by contract and message, with a fallback ladder before 413.
 ## Requirements
 ### Requirement: Client tool filtering based on contract and user message / 依契約與使用者訊息過濾客戶端工具
 

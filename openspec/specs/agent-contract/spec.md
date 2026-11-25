@@ -1,7 +1,8 @@
 # agent-contract Specification
 
 ## Purpose
-TBD - created by archiving change add-agent-contract. Update Purpose after archive.
+代理任務的契約欄位（工具白名單、預算）只當中繼資料，並只能收斂、不能放寬。
+Task contracts are metadata that can only narrow tools and budgets.
 ## Requirements
 ### Requirement: Task contract schema / 任務契約欄位
 

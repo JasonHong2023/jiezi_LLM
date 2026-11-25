@@ -1,7 +1,8 @@
 # eval Specification
 
 ## Purpose
-TBD - created by archiving change add-eval-harness. Update Purpose after archive.
+鎖定來源與授權的評測題庫，可重現的組成與鎖定檔，用來比較核心模型。
+Licensed, pinned and reproducible evaluation banks for comparing core models.
 ## Requirements
 ### Requirement: Pinned Bank Sources
 

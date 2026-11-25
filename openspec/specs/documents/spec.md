@@ -1,7 +1,8 @@
 # documents Specification
 
 ## Purpose
-TBD - created by archiving change add-long-documents. Update Purpose after archive.
+在沙盒內讀取附件文件，長文件放得進本機上下文，可追問，段落摘要快取留在記憶體。
+Read attachments in a sandbox, fit long documents into the local context and support follow-up questions.
 ## Requirements
 ### Requirement: Contained Document Reading
 
