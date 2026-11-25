@@ -101,12 +101,25 @@ def _support(sentence: str, passage: str) -> float:
 
 _NUMERAL = set("0123456789零〇一二兩三四五六七八九十百千萬億")
 _CLAUSE_END_RE = re.compile(r"[；;。！？!?\n]")
-_PART_RE = re.compile(r"[，,；;、]")
+_SEG_RE = re.compile(r"[；;]")
+_PART_RE = re.compile(r"[，,、]")
+_HEAD_RE = re.compile(r"^\s*([^：:\n]{1,16})[：:]")
 _WEAK = {"可以", "以請", "一年", "多少", "幾天", "什麼", "如果", "的話", "就是", "這個", "那個", "還是", "也是"}
 
 
-def _clauses(passage: str) -> list[str]:
-    return [c for c in _CLAUSE_END_RE.split(passage) if c.strip()]
+def _clauses(passage: str) -> list[tuple[str, str, set[str]]]:
+    """段落的每一條：(這一條, 所屬項目的標題, 數值)。標題是一行開頭「：」之前的字（「五、特別休假：」），
+    同一行後面的每一條都適用。 / Clauses with the heading of their line (text before the first ：) and values."""
+    out = []
+    for line in passage.split("\n"):
+        head = ""
+        m = _HEAD_RE.match(line)
+        if m:
+            head = m.group(1)
+        for c in _CLAUSE_END_RE.split(line):
+            if c.strip():
+                out.append((c, head, numbers.values(c)))
+    return out
 
 
 def _words(text: str) -> set[str]:
@@ -127,31 +140,42 @@ def _near(words: set[str], clause: str, passage: str, strict: bool) -> bool:
     return inside > 0 and inside * 2 > hits
 
 
+def _fits(text: str, cl, passage: str, strict: bool, heading: bool) -> bool:
+    """text 的數值都在某一條裡，且那一條（heading=True 時連同項目標題）有 text 的詞；text 沒有詞就只看數值。"""
+    nums, words = numbers.values(text), _words(text)
+    for c, head, v in cl:
+        if nums <= v and (_near(words, (head + "：" + c) if heading else c, passage, strict) if words else not strict):
+            return True
+    return False
+
+
 def _numbers_ok(sentence: str, passage: str, strict: bool = False) -> bool | None:
     """句子裡的數字要在段落的「同一條」（以；。！？換行為界）裡對得上；句子沒有數字回傳 None。
-    - 整句的數字都在同一條裡，而且那一條有句子的詞 → 對；
-    - strict（只靠數字認定出處時）：句子在段落出現過的詞，超過一半要在那一條；
-    - 否則把句子依「，；、」拆開，每一小段的數字都要在某一條裡，且那一條有這一小段的詞（小段沒有詞就只看數字）。
+    1. 整句的數字都在同一條裡，且那一條或它的項目標題有句子的詞 → 對；
+    2. 否則依「；」拆開，每一段照 1 比；
+    3. 還不行就把那一段依「，、」拆開，每一小段的數字都要在某一條裡，且「那一條本身」有這一小段的詞
+       （小段沒有詞就只看數字）。這一步不看標題，否則「有十日特別休假」會借標題對上別條的十日。
+    strict（只靠數字認定出處時）：句子在段落出現過的詞，超過一半要在那一條。
     2026-11-25 實測：
     - 「結婚可以請八天假」對原文「員工結婚者給予婚假八日」雙字詞支持度只有 0.125，靠這裡認定有出處；
-    - 「滿一年以上未滿二年者，有十日特休」的 1、2、10 分散在不同條（正確是七日），只比整段的數字集合會放過。
-    Numbers must match within one clause of the passage that also shares a word with the sentence (or, failing
-    that, with each comma-separated part); comparing the set of numbers in the whole passage let a wrong day
-    count through."""
+    - 「滿一年以上未滿二年者，有十日特休」的 1、2、10 分散在不同條（正確是七日），只比整段的數字集合會放過；
+    - 「工作滿兩年半有十日特別休假」正確，但「特別休假」只寫在項目標題「五、特別休假：」。
+    限制：這是字面比對，不懂語意；數字恰好是另一條的子集、又共用標題的錯誤答案仍可能通過。
+    Numbers must match within one clause (or its line heading) that shares a word with the sentence; failing that,
+    per ；-segment, then per comma part against the clause alone. Literal matching, not semantics."""
     nums = numbers.values(sentence)
     if not nums:
         return None
-    cl = [(c, numbers.values(c)) for c in _clauses(passage)]
-    words = _words(sentence)
-    if any(nums <= v and words and _near(words, c, passage, strict) for c, v in cl):
+    cl = _clauses(passage)
+    sentence = _MARK.sub("", sentence)
+    if _fits(sentence, cl, passage, strict, True):
         return True
-    for part in _PART_RE.split(_MARK.sub("", sentence)):
-        pn = numbers.values(part)
-        if not pn:
+    for seg in _SEG_RE.split(sentence):
+        if not numbers.values(seg) or _fits(seg, cl, passage, strict, True):
             continue
-        pw = _words(part)
-        if not any(pn <= v and (_near(pw, c, passage, strict) if pw else True) for c, v in cl):
-            return False
+        for part in _PART_RE.split(seg):
+            if numbers.values(part) and not _fits(part, cl, passage, strict, False):
+                return False
     return True
 
 

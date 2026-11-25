@@ -144,6 +144,11 @@ class CiteTests(unittest.TestCase):
         self.assertEqual(r["removed"][0]["why"], "numbers not in the same clause of the passage")
         ok = "結婚給予婚假八日，祖父母喪亡給予喪假六日[1]。"                    # 跨兩條各自對得上 / two clauses
         self.assertEqual(cite.check(ok, ps)["answer"], ok)
+        for ok in ("工作滿兩年半有十日特別休假[1]。",                          # 「特別休假」只在項目標題 / heading
+                   "滿一年以上未滿二年者，特別休假七日；滿二年以上未滿三年者，特別休假十日[1]。"):
+            self.assertEqual(cite.check(ok, ps)["answer"], ok)
+        self.assertTrue(cite.check("滿一年以上未滿二年者，特別休假十日；滿二年以上未滿三年者，特別休假七日[1]。",
+                                   ps)["not_found"])                            # 對調 / swapped
 
     def test_unknown_marker_falls_back_to_auto_cite(self):
         t = "五、特別休假：服務滿一年以上未滿二年者，七日。"
