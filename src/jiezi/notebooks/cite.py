@@ -99,6 +99,48 @@ def _support(sentence: str, passage: str) -> float:
     return len(s & p) / len(s)
 
 
+ANCHOR_WINDOW = 24             # 數字前後幾個字內要有句子的詞 / chars around a number that must share a word with the sentence
+_NUMERAL = set("0123456789零〇一二兩三四五六七八九十百千萬億")
+_CLAUSE_END = set("；;。！？!?\n")
+_CLAUSE_END_RE = re.compile(r"[；;。！？!?\n]")
+_WEAK = {"可以", "以請", "一年", "多少", "幾天", "什麼", "如果", "的話", "就是", "這個", "那個", "還是", "也是"}
+
+
+def _anchored(sentence: str, passage: str) -> bool:
+    """句子用字和原文不同（「八天」對「八日」、「過世」對「喪亡」）時的另一種證據：句子裡的每個數字，
+    在段落裡都有同值的數字，而且同一句（以；。！？換行為界）、前後 ANCHOR_WINDOW 字內出現句子裡的詞。
+    2026-11-25 實測：「結婚可以請八天假」對原文「員工結婚者給予婚假八日」雙字詞支持度只有 0.125。
+    Paraphrased sentences: every number in the sentence must occur in the passage next to a word of the sentence."""
+    nums = numbers.spans(sentence)
+    if not nums:
+        return False
+    words = {b for b in _bigrams(_MARK.sub("", sentence))
+             if not (set(b) & _NUMERAL) and b not in _WEAK and all("\u4e00" <= c <= "\u9fff" for c in b)}
+    if not words:
+        return False
+    at = numbers.spans(passage)
+    for v, _, _ in nums:
+        ok = False
+        for w, a, b in at:
+            if w != v:
+                continue
+            lo, hi = max(0, a - ANCHOR_WINDOW), b + ANCHOR_WINDOW
+            stops = [i for i in range(lo, a) if passage[i] in _CLAUSE_END]
+            lo = stops[-1] + 1 if stops else lo
+            end = _CLAUSE_END_RE.search(passage, b, hi)
+            near = passage[lo:end.start() if end else hi]      # 同一句、同一條之內 / within the same clause
+            if any(x in near for x in words):
+                ok = True
+                break
+        if not ok:
+            return False
+    return True
+
+
+def _supported(sentence: str, passage: str, bar: float) -> bool:
+    return _support(sentence, passage) >= bar or _anchored(sentence, passage)
+
+
 def check(answer: str, passages: list[dict], general: bool = False) -> dict:
     """引用檢查：編號要存在、句子要被段落支持；不實的引用移除並標示。
     Check citations: the number must exist and the passage must support the sentence; bad ones are removed.
@@ -119,26 +161,32 @@ def check(answer: str, passages: list[dict], general: bool = False) -> dict:
             continue
         marks = [int(n) for g in _MARK.findall(sent) for n in re.split(r"\s*[,，、]\s*", g)]
         bare = _MARK.sub("", sent)
+        # 2026-11-25 實測：只有 1 段時模型寫了 [5]（原文第五條的條號）。不存在的編號記下後，當成沒標出處處理。
+        # Live test: the model wrote [5] (the clause number) with one passage. Unknown markers are dropped and the
+        # sentence is treated as unmarked, so a supporting passage can still be cited.
+        for n in dict.fromkeys(n for n in marks if n not in by_n):
+            removed.append({"n": n, "sentence": bare.strip()[:120], "why": "no such passage"})
+        bad = bool(marks) and not any(n in by_n for n in marks)
+        marks = [n for n in marks if n in by_n]
         if not marks:
             plain = bare.strip()
             factual = len(plain) >= 8 and _FACT.search(plain) and not _META_SENT.match(plain) \
                 and not plain.startswith("（一般知識）")
-            if not factual:
+            if not factual and not bad:
                 out.append(sent)
                 continue
             # 2026-11-24 實測：一鍵摘要的總覽句沒標編號，畫面上看不出沒有出處。段落明確支持就補上編號，否則標示。
             # Live test: overview sentences had no markers. Add the citation when a passage clearly supports the
             # sentence, otherwise mark it as unsourced.
-            best = max(passages, key=lambda p: _support(bare, p["text"]))
-            marks = [best["n"]] if _support(bare, best["text"]) >= AUTO_SUPPORT else []
+            best = max(passages, key=lambda p: (_anchored(bare, p["text"]), _support(bare, p["text"])))
+            marks = [best["n"]] if _supported(bare, best["text"], AUTO_SUPPORT) else []
             if marks:
                 auto.append(best["n"])
         keep = []
         for n in dict.fromkeys(marks):
-            p = by_n.get(n)
-            if p is None or _support(bare, p["text"]) < SUPPORT:
-                removed.append({"n": n, "sentence": bare.strip()[:120],
-                                "why": "no such passage" if p is None else "passage does not support the sentence"})
+            p = by_n[n]
+            if not _supported(bare, p["text"], SUPPORT):
+                removed.append({"n": n, "sentence": bare.strip()[:120], "why": "passage does not support the sentence"})
                 continue
             keep.append(n)
         # 數字要對：句子裡的數值都要出現在被引用的段落裡（三十＝30、五十萬＝50 萬）

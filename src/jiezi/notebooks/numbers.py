@@ -50,23 +50,31 @@ def _fmt(v: float) -> str:
     return str(int(v)) if float(v).is_integer() else f"{v:g}"
 
 
-def values(text: str, list_items: bool = False) -> set[str]:
-    """文字裡的數值（字串，例如 {"30", "500000", "7.4"}）；引用編號、逐字稿時間不算。
-    list_items=False 時，行首的清單編號（「1.」「2、」）也不算。
-    Numeric values in text; citation markers, transcript timestamps and (by default) list numbering are ignored."""
-    text = _TIME.sub(" ", _MARK.sub(" ", text or ""))
+def spans(text: str, list_items: bool = False) -> list[tuple[str, int, int]]:
+    """文字裡的數值與位置 [(值, 起, 迄)]；引用編號、逐字稿時間不算，list_items=False 時行首清單編號也不算。
+    被略過的部分以空白取代，位置仍對應原文。
+    Numeric values with their positions; ignored parts are blanked out so positions match the original text."""
+    blank = lambda m: " " * len(m.group(0))      # noqa: E731
+    text = _TIME.sub(blank, _MARK.sub(blank, text or ""))
     if not list_items:
-        text = _LIST.sub("", text)
-    out = set()
+        text = _LIST.sub(blank, text)
+    out = []
     for m in _AR_RE.finditer(text):
         v = float(m.group(1).replace(",", "") + ("." + m.group(2) if m.group(2) else ""))
         if m.group(3):
             v *= _BIG[m.group(3).strip()]
-        out.add(_fmt(v))
+        out.append((_fmt(v), m.start(), m.end()))
     for m in _CN_RE.finditer(text):
         if text[:m.start()].rstrip()[-1:].isdigit():     # 「50 萬元」的「萬」已算在阿拉伯數字裡 / part of 50 萬
             continue
         v = cn_to_int(m.group(0))
         if v is not None:
-            out.add(_fmt(v))
-    return out
+            out.append((_fmt(v), m.start(), m.end()))
+    return sorted(out, key=lambda x: x[1])
+
+
+def values(text: str, list_items: bool = False) -> set[str]:
+    """文字裡的數值（字串，例如 {"30", "500000", "7.4"}）；引用編號、逐字稿時間不算。
+    list_items=False 時，行首的清單編號（「1.」「2、」）也不算。
+    Numeric values in text; citation markers, transcript timestamps and (by default) list numbering are ignored."""
+    return {v for v, _, _ in spans(text, list_items)}

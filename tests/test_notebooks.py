@@ -128,6 +128,29 @@ class CiteTests(unittest.TestCase):
         r = cite.check(f"押金為 2 個月租金 [{n}]。", ps)                          # 2 == 兩
         self.assertEqual(r["citations"][0]["n"], n)
 
+    def test_paraphrase_anchored_by_numbers(self):
+        # 2026-11-25 實測：「八天」對「八日」、「過世」對「喪亡」，雙字詞支持度太低，正確答案被刪掉
+        t = ("三、婚假：員工結婚者給予婚假八日，工資照給。\n"
+             "四、喪假：父母、配偶喪亡者，給予喪假八日；祖父母、子女喪亡者，給予喪假六日。\n"
+             "五、特別休假：滿一年以上未滿二年者，七日。")
+        ps = [{"n": 1, "text": t, "sid": "s", "title": "規則", "id": "c", "start": 0, "end": len(t)}]
+        r = cite.check("結婚可以請八天假[1]。祖父過世可以請六天假[1]。", ps)
+        self.assertEqual(r["answer"], "結婚可以請八天假[1]。祖父過世可以請六天假[1]。")
+        for wrong in ("結婚可以請六天假[1]。", "祖父過世可以請八天假[1]。"):    # 數字在別的條文 / other clause
+            self.assertTrue(cite.check(wrong, ps)["not_found"], wrong)
+
+    def test_unknown_marker_falls_back_to_auto_cite(self):
+        t = "五、特別休假：服務滿一年以上未滿二年者，七日。"
+        ps = [{"n": 1, "text": t, "sid": "s", "title": "規則", "id": "c", "start": 0, "end": len(t)}]
+        r = cite.check("工作滿一年半（滿一年以上未滿二年）有七日特別休假[5]。", ps)   # [5] 是條號 / clause number
+        self.assertIn("七日特別休假[1]。", r["answer"])
+        self.assertEqual([x["why"] for x in r["removed"]], ["no such passage"])
+
+    def test_number_spans(self):
+        from jiezi.notebooks.numbers import spans
+        t = "[1] 婚假八日，喪假 6 日"
+        self.assertEqual([(v, t[a:b]) for v, a, b in spans(t)], [("8", "八"), ("6", "6")])
+
     def test_number_values(self):
         from jiezi.notebooks.numbers import values
         self.assertEqual(values("從五十萬元增加到八十萬元"), values("從 50 萬元增加到 80 萬元"))
