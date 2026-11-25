@@ -1,6 +1,6 @@
 # 已評估的漏洞（規則 R23）：每一則都要寫理由；清單以外的漏洞讓 `scripts/jiezi audit` 失敗。
 # Assessed vulnerabilities (rule R23): each needs a reason; anything not listed fails `scripts/jiezi audit`.
-# 依據 / Basis：openspec/specs/stack.md 的資安表（鎖定 llama.cpp commit 93cf736a，2026-11-12，b11556 之後 767 個 commit）。
+# 依據 / Basis：openspec/specs/stack.md 的資安表（原鎖定 llama.cpp commit 93cf736a，2026-11-12；2026-11-26 升級到 b12556 `50518b6`，以下理由仍成立：修正都早於新鎖定，RPC 仍關閉）。
 
 [[accepted]]
 id = "GHSA-j8rj-fmpv-wcxw"

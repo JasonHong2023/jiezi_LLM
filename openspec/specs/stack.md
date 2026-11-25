@@ -14,7 +14,7 @@
 
 | 層次 / Layer | 技術 / Technology | 版本 / Version | 來源 / Source |
 |---|---|---|---|
-| 推論引擎 / Inference engine | llama.cpp（vendored ggml 0.29.0） | commit `93cf736a8d1d46aa922e27eb64aa712bcd5ebc30`（2026-11-12） | `https://github.com/ggml-org/llama.cpp` |
+| 推論引擎 / Inference engine | llama.cpp（vendored ggml 1.0.0） | commit `50518b64c6f2191a116d2760042f106c4b3387d7`（2026-11-19，b12556） | `https://github.com/ggml-org/llama.cpp` |
 | Python | CPython | 3.13（`.python-version`；`requires-python >=3.13,<3.14`） | uv 管理 / managed by uv |
 | 套件管理 / Package manager | uv | ≥ 0.11（開發機 0.11.21） | 官方安裝方式 / official installer |
 | 建置 / Build | cmake（PyPI） | 4.4.4（`uv.lock`） | `pyproject.toml` dev 群組 |
@@ -63,6 +63,7 @@ Building or running `rpc-server`; binding any llama.cpp service to anything othe
 | cmake 4.4.4（PyPI） | OSV API | 0 個已知漏洞 [實測查詢] |
 | ninja 1.13.2（PyPI） | OSV API | 0 個已知漏洞 [實測查詢] |
 | llama.cpp | GitHub Security Advisories（`ggml-org/llama.cpp`） | 13 則公告；除下列一則外，受影響範圍都早於鎖定的 commit（2026-11-12） |
+| llama.cpp 升級（2026-11-26，R19.4 補記） | CVE-2026-133710（hrm 模型載入越界寫入，修正 `50518b6`）、CVE-2026-134540（llama-server 取樣參數驗證 DoS，修正 `9f26fe1`） | 原鎖定 `93cf736a`（2026-11-12）受影響；使用者 2026-11-25 同意升級到 b12556 `50518b6`（同時含兩個修正的最小版本）。夜間升級後實測：自我測試 88→87/90（差 1 題，在容許 3 題內）、E0 同條件 r3 162→163/250、`scripts/jiezi audit` 無未接受漏洞；舊原始碼與建置備份於 `var/builds/backup-93cf736a8d1d` [實測 2026-11-26] |
 | **llama.cpp RPC 後端** | **GHSA-j8rj-fmpv-wcxw / CVE-2026-34159（Critical）** | 未授權遠端執行程式碼（RPC `deserialize_tensor()` 在 `buffer == 0` 時跳過邊界檢查）。公告範圍 `<= b7991`、未列修正版本。**[本機查證]** 鎖定 commit 的 `ggml/src/ggml-rpc/ggml-rpc.cpp` 中，`buffer == 0` 時仍直接採用遠端傳入的 `data`，此函式內未見修正；是否在其他位置修正無法確認。**緩解：`GGML_RPC=OFF` 且不執行 `rpc-server`（§3）** |
 | bubblewrap 0.13.1 | GitHub Security Advisories（`containers/bubblewrap`），2026-11-16 由 `scripts/jiezi audit` 發現並補記（R19.4） | 3 則：GHSA-pxhw-h44j-8pfx / CVE-2026-87766（< 0.12.0）、GHSA-xq78-7hw4-5jvp / CVE-2026-41163（setuid 模式 0.11.0）、GHSA-j2qp-rvxj-43vj / CVE-2020-5291（setuid 模式 0.4.0）；鎖定 0.13.1 且以非 setuid 方式使用 → 都不受影響（`security/accepted.toml`） |
 | OpenSSL 3.0.13（Ubuntu 24.04 `3.0.13-0ubuntu3.16`） | OSV API（`Ubuntu:24.04:LTS`） | 5 則未修補：CVE-2026-107496（`CMS_encrypt` 無限迴圈）、CVE-2026-88822、CVE-2026-95691（QUIC）、CVE-2026-88823、CVE-2026-95692（AES-GCM-SIV）。**[本機查證]** 本機 3.0.13 的 `libssl` 沒有 QUIC 符號，`openssl list -cipher-algorithms` 沒有 AES-GCM-SIV；llama.cpp 使用的 cpp-httplib 原始碼不含 CMS、QUIC、GCM-SIV 呼叫 → 判定 HTTPS 用途不會觸及這 5 則。OpenSSL 本身已是系統元件（`libssl3t64` 已安裝），`libssl-dev` 只增加標頭。每個決策關卡複查（R23.5） |
