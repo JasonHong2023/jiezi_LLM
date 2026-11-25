@@ -1,8 +1,8 @@
 ## ADDED Requirements
 
 ### Requirement: Built-In Agency Glossary / 內建機關英文名詞表
-中翻英時系統 SHALL 自動套用隨程式發佈的台灣機關英文名詞表，只套用原文中出現的詞，並沿用既有的詞彙表檢查；使用者提供的詞彙表同詞時 SHALL 以使用者為準。詞表每一筆 SHALL 附來源網址。使用者 SHALL 能以 CLI `--no-default-glossary` 或 HTTP 選項 `jiezi_glossary_default: false` 關閉。翻譯結果的資訊 SHALL 列出這次套用的內建詞。
-Chinese → English translation SHALL apply a shipped glossary of Taiwan agency names (only terms present in the source, each row with its source URL); the user's glossary SHALL win, and the built-in list SHALL be switchable off.
+整份文件中翻英時系統 SHALL 自動套用隨程式發佈的台灣機關英文名詞表，只套用原文中出現的詞，並沿用既有的詞彙表檢查；使用者提供的詞彙表同詞時 SHALL 以使用者為準。詞表每一筆 SHALL 附來源網址。使用者 SHALL 能以 CLI `--no-default-glossary` 或 HTTP 選項 `jiezi_translate.default_glossary: false` 關閉。翻譯結果的資訊 SHALL 列出這次套用的內建詞。
+Whole-document Chinese → English translation SHALL apply a shipped glossary of Taiwan agency names (only terms present in the source, each row with its source URL); the user's glossary SHALL win, and the built-in list SHALL be switchable off.
 
 #### Scenario: 機關名照正式英文名 / Agency name uses the official English name
 

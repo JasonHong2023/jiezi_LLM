@@ -23,7 +23,7 @@ MIN_TIMEOUT_S = 900
 
 async def run_translate(path: str, to: str | None, conn: Connection, stdin: TextIO, stdout: TextIO, stderr: TextIO,
                         out: str | None = None, glossary: str | None = None, plain: bool = False, yes: bool = False,
-                        policy: str = "jiezi", client=None) -> int:
+                        policy: str = "jiezi", client=None, default_glossary: bool = True) -> int:
     from .. import translate as T
     from ..documents import DocumentError, attach, read
     try:
@@ -44,7 +44,8 @@ async def run_translate(path: str, to: str | None, conn: Connection, stdin: Text
         return 4
     question = f"請翻譯成{T.LANGS[to]}" if to else "請翻譯"
     messages = [{"role": "user", "content": attach(doc, question)}]
-    opts = {"bilingual": not plain, "glossary": rows, "confirmed": yes, **({"to": to} if to else {})}
+    opts = {"bilingual": not plain, "glossary": rows, "confirmed": yes, **({"to": to} if to else {}),
+            **({} if default_glossary else {"default_glossary": False})}
 
     async def call(timeout: float) -> dict:
         return await complete(conn, messages, policy, timeout=timeout, client=client, extra={"jiezi_translate": opts})
@@ -94,6 +95,10 @@ async def run_translate(path: str, to: str | None, conn: Connection, stdin: Text
     failed = info.get("failed") or 0
     stderr.write(f"jiezi: 完成 done: {info.get('chunks')} 段，{failed} 段未能翻譯，{info.get('seconds')} 秒"
                  f"（{info.get('source')} → {info.get('to')}）\n")
+    builtin = info.get("default_glossary") or []
+    if builtin:
+        stderr.write("jiezi: 套用內建機關英文名 built-in agency names: "
+                     + "、".join(f"{g['term']} → {g['translation']}" for g in builtin) + "\n")
     if failed:
         nums = [str(f["chunk"]) for d in info.get("documents") or [] for f in d.get("failed") or []]
         stderr.write(f"jiezi: 未能翻譯的段（保留原文並已標記）/ untranslated chunks kept as source: {', '.join(nums)}\n")
@@ -102,11 +107,11 @@ async def run_translate(path: str, to: str | None, conn: Connection, stdin: Text
 
 
 def main(path: str, to: str | None = None, out: str | None = None, glossary: str | None = None, plain: bool = False,
-         yes: bool = False, policy: str = "jiezi") -> int:
+         yes: bool = False, policy: str = "jiezi", default_glossary: bool = True) -> int:
     conn = Connection.from_env()
     if not conn.key:
         sys.stderr.write("jiezi: JIEZI_GATEWAY_KEY is not set; run scripts/jiezi init-key\n")
         return 3
     ensure_gateway(conn, log=lambda m: sys.stderr.write(m + "\n"))
     return anyio.run(lambda: run_translate(path, to, conn, sys.stdin, sys.stdout, sys.stderr, out, glossary, plain, yes,
-                                           policy))
+                                           policy, default_glossary=default_glossary))

@@ -1689,7 +1689,11 @@ class Gateway:
             return None  # 已經是目標語言 / already in the target language
         if policy not in ("jiezi", "jiezi-local"):
             return None  # 指定雲端或 Claude：照原本的文件流程 / explicit cloud or Claude keeps the normal document path
+        # add-default-glossary：中翻英併入原文出現的內建機關英文名 / built-in agency names for Chinese → English
+        glossary, builtin = T.with_default(glossary, "\n".join(t for _, t in docs), target,
+                                           (opts or {}).get("default_glossary", True) is not False)
         return {"mode": "chunked", "docs": docs, "to": target, "source": source, "glossary": glossary,
+                "default_glossary": builtin,
                 "bilingual": (opts or {}).get("bilingual", True) is not False,
                 "confirmed": bool((opts or {}).get("confirmed"))}
 
@@ -1753,6 +1757,7 @@ class Gateway:
         failed = sum(len(i["failed"]) for i in infos)
         total = sum(i["chunks"] for i in infos)
         info = {**base_info, "bilingual": plan["bilingual"], "documents": infos, "chunks": total, "failed": failed,
+                "default_glossary": plan.get("default_glossary") or [],
                 "estimate_s": est, "seconds": round(time.monotonic() - t, 1)}
         ver = {"status": "fail" if failed else "pass", "checks": [{"check": "translation", "status": "fail" if failed else "pass"}],
                "error": f"{failed} of {total} chunks could not be translated" if failed else None}

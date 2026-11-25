@@ -113,6 +113,45 @@ def parse_glossary(rows) -> list[tuple[str, str]]:
     return out
 
 
+DEFAULT_GLOSSARY = Path(__file__).parent / "data" / "tw-agencies.tsv"
+
+
+def default_glossary() -> list[tuple[str, str, str]]:
+    """內建的台灣機關英文名（中文, 英文, 來源網址）；add-default-glossary。
+    Built-in English names of Taiwan agencies: (Chinese, English, source URL)."""
+    rows = []
+    try:
+        lines = DEFAULT_GLOSSARY.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    for line in lines:
+        if not line.strip() or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) == 3 and parts[0].strip() and parts[1].strip():
+            rows.append((parts[0].strip(), parts[1].strip(), parts[2].strip()))
+    return rows
+
+
+def with_default(glossary: list[tuple[str, str]], text: str, target: str, use_default: bool = True
+                 ) -> tuple[list[tuple[str, str]], list[dict]]:
+    """中翻英時把原文出現的內建機關名併進詞彙表；使用者詞彙表同詞時以使用者為準。
+    長詞先比、比到的地方遮掉再比短詞（「國立故宮博物院」不會再多要求「故宮博物院」）。
+    回傳 (合併後的詞彙表, 套用的內建詞 [{"term","translation","source"}])。
+    For Chinese → English, add the built-in agency names found in the text; the user's glossary wins; longer terms
+    are matched first and masked so a shorter name inside them is not required again."""
+    if target != "en" or not use_default or not text:
+        return list(glossary), []
+    mine = {a for a, _ in glossary}
+    rest, used = text, []
+    for zh, en, src in sorted(default_glossary(), key=lambda r: -len(r[0])):
+        if zh in rest:
+            rest = rest.replace(zh, "\u3000" * len(zh))
+            if zh not in mine:
+                used.append({"term": zh, "translation": en, "source": src})
+    return list(glossary) + [(u["term"], u["translation"]) for u in used], used
+
+
 def read_glossary(path: str | Path) -> list[list[str]]:
     """TSV 或「原文=譯法」；# 開頭是註解。 / TSV or `source=translation`; lines starting with # are comments."""
     rows = []

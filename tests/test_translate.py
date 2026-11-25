@@ -246,6 +246,20 @@ class TestGateway(unittest.TestCase):
         self.assertNotIn("〔原文", text)
         self.assertIn("營收 → revenue", seen[0]["messages"][0]["content"])
 
+    def test_builtin_agency_glossary(self):
+        text = "本報告由經濟部委託。\n\n" + LONG_ZH
+        ans = lambda b: fake_en(b["messages"][-1]["content"].removeprefix("Translate into English:\n\n")) \
+            + " Ministry of Economic Affairs"                                     # noqa: E731
+        r, seen, _, _ = self.post(self.doc("請翻譯成英文", text=text), answer=ans)
+        info = r.json()["jiezi"]["translation"]
+        self.assertEqual([g["term"] for g in info["default_glossary"]], ["經濟部"])
+        self.assertTrue(info["default_glossary"][0]["source"].startswith("https://"))
+        self.assertIn("經濟部 → Ministry of Economic Affairs", seen[0]["messages"][0]["content"])
+        r, seen, _, _ = self.post(self.doc("請翻譯成英文", text=text, jiezi_translate={"default_glossary": False}),
+                                  answer=ans)
+        self.assertEqual(r.json()["jiezi"]["translation"]["default_glossary"], [])
+        self.assertNotIn("經濟部 →", seen[0]["messages"][0]["content"])
+
     def test_failed_chunks_are_reported_not_hidden(self):
         r, _, _, _ = self.post(self.doc("請翻譯成英文"),
                                answer=lambda b: "" if "1037" in b["messages"][-1]["content"] else fake_en(b["messages"][-1]["content"]))
@@ -358,3 +372,27 @@ class TestCli(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDefaultGlossary(unittest.TestCase):
+    def test_rows_have_sources(self):
+        rows = T.default_glossary()
+        self.assertGreaterEqual(len(rows), 40)
+        self.assertIn(("經濟部", "Ministry of Economic Affairs"), [(a, b) for a, b, _ in rows])
+        self.assertTrue(all(src.startswith("https://") for _, _, src in rows))
+        self.assertEqual(len({a for a, _, _ in rows}), len(rows))                 # 沒有重複 / no duplicates
+
+    def test_merge(self):
+        text = "本法主管機關為經濟部。國立故宮博物院與行政院。"
+        g, used = T.with_default([], text, "en")
+        self.assertIn(("經濟部", "Ministry of Economic Affairs"), g)
+        self.assertEqual({u["term"] for u in used}, {"經濟部", "國立故宮博物院", "行政院"})   # 不另要求「故宮博物院」
+        g, used = T.with_default([("經濟部", "MOEA")], text, "en")                 # 使用者優先 / the user's wins
+        self.assertIn(("經濟部", "MOEA"), g)
+        self.assertNotIn(("經濟部", "Ministry of Economic Affairs"), g)
+        self.assertEqual(T.with_default([], text, "en", use_default=False), ([], []))
+        self.assertEqual(T.with_default([], text, "zh-TW"), ([], []))              # 英翻中不套用 / en → zh unchanged
+        msgs = T.prompt("本法主管機關為經濟部。", "en", glossary=T.with_default([], "本法主管機關為經濟部。", "en")[0])
+        self.assertIn("經濟部 → Ministry of Economic Affairs", msgs[0]["content"])
+        self.assertTrue(T.check("本法主管機關為經濟部。", "The competent authority is the Ministry of Economic Development.",
+                                "en", [("經濟部", "Ministry of Economic Affairs")], ratio=False))   # 譯錯會被抓 / caught

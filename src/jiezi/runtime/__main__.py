@@ -302,6 +302,8 @@ def main(argv: list[str] | None = None) -> int:
     tr.add_argument("--to", choices=["zh-TW", "en"], help="target language (default: Chinese → en, otherwise zh-TW)")
     tr.add_argument("--out", metavar="PATH", help="write the result to a file instead of stdout")
     tr.add_argument("--glossary", metavar="PATH", help="required translations: TSV or `source=translation` lines")
+    tr.add_argument("--no-default-glossary", dest="default_glossary", action="store_false",
+                    help="do not apply the built-in English names of Taiwan agencies (Chinese → English)")
     tr.add_argument("--plain", action="store_true", help="translation only (default: source and translation side by side)")
     tr.add_argument("--yes", "-y", action="store_true", help="do not ask before a long translation")
     tr.add_argument("--local", dest="policy", action="store_const", const="jiezi-local",
@@ -430,7 +432,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "translate":
             from ..cli import translate as translate_cli
             return translate_cli.main(args.file, args.to, args.out, args.glossary, args.plain, args.yes,
-                                      args.policy or "jiezi")
+                                      args.policy or "jiezi", args.default_glossary)
         if args.cmd == "chat":
             from ..cli import chat
             return chat.main(args.policy or "jiezi", new=args.new)

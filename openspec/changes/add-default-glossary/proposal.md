@@ -30,7 +30,7 @@ Existing: the MODA bilingual agency directory (data.gov.tw 32084, Open Governmen
 right entry for 經濟部 but is no longer updated (pre-2023 reorganization) and contains typos, so it cannot be used
 as-is.
 
-**做法建議**：只收「總統府、五院、行政院所屬部會（2023 年改組後現行名稱）」約 40 筆，每筆以該機關英文官網
+**做法（2026-11-25 使用者同意實作）**：只收「總統府、五院、行政院所屬部會（2023 年改組後現行名稱）」約 40 筆，每筆以該機關英文官網
 頁面查核，詞表檔每列附來源網址；資料集 32084 只當起點與交叉比對。之後要加地方政府、法院再逐筆查核。
 
 Proposal: about 40 entries (Presidential Office, the five Yuan, current Executive Yuan ministries and councils),
@@ -47,9 +47,9 @@ each row carries its source, the user's glossary wins, and the built-in list can
 
 ## What Changes / 變更內容
 
-- 新增 `data/glossary/tw-agencies.tsv`（中文、英文、來源網址）。
-- 中翻英時自動合併內建詞表（只取原文裡出現的詞，沿用既有提示與檢查）；使用者詞表同詞時以使用者為準。
-- CLI `--no-default-glossary`；HTTP 選項 `jiezi_glossary_default: false`。
+- 新增 `src/jiezi/data/tw-agencies.tsv`（中文、英文、來源網址；54 筆，含常用簡稱）。
+- 整份文件中翻英時自動合併內建詞表（只取原文裡出現的詞，長詞先比；沿用既有提示與檢查）；使用者詞表同詞時以使用者為準。短文字的一般對話翻譯不套用（那條路徑的提示不帶詞表，只做檢查，套用會造成誤判）。
+- CLI `--no-default-glossary`；HTTP 選項 `jiezi_translate.default_glossary: false`。
 - 譯文結果的資訊欄列出這次套用了哪些內建詞。
 
 ## Non-Goals / 非目標
@@ -61,5 +61,5 @@ each row carries its source, the user's glossary wins, and the built-in list can
 ## Impact / 影響
 
 - 程式：`src/jiezi/translate.py`、`src/jiezi/runtime/gateway.py`（選項）、CLI。
-- 資料：`data/glossary/tw-agencies.tsv`；`docs/licenses.md` 加一行來源。
+- 資料：`src/jiezi/data/tw-agencies.tsv`；`docs/licenses.md` 登記鍵 `tw-agency-names`。
 - 測試：合併優先順序、關閉選項、只套用原文出現的詞、「經濟部」實例。
