@@ -28,6 +28,14 @@ class TestSelftest(unittest.TestCase):
         self.assertTrue(S.score(kb, "", [{"article": "刈包"}]))
         self.assertFalse(S.score(kb, "刈包", []))
 
+    def test_scoring_variants_and_punctuation(self):
+        tw = S.Item("t", "dict-tw", "q", expect=["lia̍h-tsò/lia̍h-tsuè"])
+        self.assertTrue(S.score(tw, "「掠做」台羅是：lia̍h-tsò（或 lia̍h-tsuè）。", []))
+        self.assertTrue(S.score(tw, "念 lia̍h-tsuè", []))
+        self.assertFalse(S.score(tw, "念 lia̍h-tsō", []))
+        book = S.Item("b", "textbook", "q", expect=["跨科：氣候變遷與調適"])
+        self.assertTrue(S.score(book, "第 3 單元是：跨科——氣候變遷與調適。", []))
+
     def test_run_with_fake_gateway(self):
         def fake(url, key, policy, q):
             return {"choices": [{"message": {"content": "不知道"}}], "jiezi": {"tier": 0, "sources": []}}

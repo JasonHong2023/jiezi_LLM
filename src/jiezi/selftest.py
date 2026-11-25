@@ -12,6 +12,7 @@ import json
 import random
 import re
 import time
+import unicodedata
 import urllib.request
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timedelta
@@ -154,7 +155,13 @@ def model_text(content: str) -> str:
 
 
 def _norm(s: str) -> str:
-    return re.sub(r"[\s　·‧,，。]", "", s or "").lower()
+    """去空白與標點（含冒號、破折號）並做 NFC，比對不受格式影響。 / Strip spaces and punctuation, NFC."""
+    return re.sub(r"[\s　·‧,，。:：—–―]", "", unicodedata.normalize("NFC", s or "")).lower()
+
+
+def _alternatives(e: str) -> list[str]:
+    """教典「lia̍h-tsò/lia̍h-tsuè」的斜線是又音，答出任一即可。 / A slash in a dictionary reading separates variants."""
+    return [a for a in e.split("/") if a.strip()] if "/" in e else [e]
 
 
 def score(item: Item, content: str, sources: list[dict]) -> bool:
@@ -165,7 +172,7 @@ def score(item: Item, content: str, sources: list[dict]) -> bool:
         nums = [float(x.replace(",", "")) for x in re.findall(r"-?\d[\d,]*(?:\.\d+)?", text)]
         tol = max(abs(item.number) * 0.005, 0.01)
         return any(abs(n - item.number) <= tol for n in nums)
-    return any(_norm(e) in _norm(text) for e in item.expect if e)
+    return any(_norm(a) in _norm(text) for e in item.expect if e for a in _alternatives(e))
 
 
 # ── 執行 / Running ──
