@@ -81,7 +81,7 @@ class Settings:
     skills: bool = True             # 工具呼叫附上過去成功的範例（技能庫 v0）/ verified tool-call examples
     laws: bool = True               # 法律問題先查全國法規資料庫（add-laws）/ law questions use the MOJ database
     rag: bool = True                # 知識庫用向量重排（有建向量時）/ vector reranking when vectors exist (add-rag)
-    rag_min: float = 0.6            # 知識庫向量門檻（tune-knowledge-relevance 2026-11-18 量測後使用者選 0.6）/ knowledge base
+    rag_min: float = 0.625          # 知識庫向量門檻（2026-11-18 選 0.6；2026-11-25 量測集 311 題後使用者改 0.625）/ knowledge base
     laws_rag_min: float = 0.5       # 法規向量門檻（還沒量測，維持原值）/ statutes, not yet measured
     doc_semantic: bool = True       # 長文件問答用語意挑段落（add-semantic-chunks）/ semantic chunk selection
     doc_embed_timeout_s: float = 20.0  # 第一題最多等段落向量幾秒，之後先用字面 / first-question wait for chunk vectors
@@ -189,7 +189,7 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         web_read=_onoff(env, "JIEZI_WEB_READ", True),
         teacher_models=[m.strip() for m in (env.get("JIEZI_TEACHER_MODELS") or "").split(",") if m.strip()],
         teacher_daily_max=_int(env, "JIEZI_TEACHER_DAILY_MAX", 100),
-        rag_min=float(env.get("JIEZI_RAG_MIN") or 0.6),
+        rag_min=float(env.get("JIEZI_RAG_MIN") or 0.625),
         laws_rag_min=float(env.get("JIEZI_LAWS_RAG_MIN") or 0.5),
         doc_semantic=_onoff(env, "JIEZI_DOC_SEMANTIC", True),
         doc_embed_timeout_s=float(env.get("JIEZI_DOC_EMBED_TIMEOUT") or 20.0),
