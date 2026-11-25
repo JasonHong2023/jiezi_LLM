@@ -295,6 +295,8 @@ def main(argv: list[str] | None = None) -> int:
     _tts_parser(sub)
     from ..asr.cli import add_parser as _asr_parser
     _asr_parser(sub)
+    from ..vision_ocr import add_parser as _ocr_parser
+    _ocr_parser(sub)
     from ..notebooks.cli import add_parser as _nb_parser
     _nb_parser(sub)
     tr = sub.add_parser("translate", help="translate a whole document chunk by chunk (add-translation)")
@@ -421,6 +423,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "notebook":
             from ..notebooks import cli as nb_cli
             return nb_cli.main(args)
+        if args.cmd == "ocr":
+            from .. import vision_ocr
+            from .settings import load_settings
+            return vision_ocr.main(args, load_settings(root))
         if args.cmd == "asr":
             from ..asr import cli as asr_cli
             from .settings import load_settings

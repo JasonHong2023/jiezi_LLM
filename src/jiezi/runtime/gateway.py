@@ -105,6 +105,7 @@ TOOL_NOTE = ("[呼叫工具的規則]\n"
              "4. 使用者一次要求多件事時，每件事各呼叫一次。")
 
 
+OCR_TIMEOUT_S = 30.0     # 圖中文字（含第一次載入模型）/ OCR, first load included
 VISION_TIMEOUT_S = 45.0  # 看圖工具（含第一次載入模型）最多等多久 / vision tools, first model load included
 TILE_TIMEOUT_S = 30.0    # 切塊逐塊看：每塊的時限 / per tile
 TILE_BUDGET_S = 90.0     # 切塊逐塊看：全部的時限，超過的塊略過 / all tiles; later tiles are skipped
@@ -210,6 +211,14 @@ class Gateway:
                 self.vision = vt
             else:
                 log("vision tools: models/vision not found; run the vision download first")
+        self.ocr = None                 # 圖中文字（add-vision-tools OQ4，RapidOCR＋PP-OCRv5）/ text in images
+        if settings.vision_tools:
+            from ..vision_ocr import OcrTool
+            ot = OcrTool(settings.models_dir or settings.root / "models")
+            if ot.available():
+                self.ocr = ot
+            else:
+                log("vision ocr: models/vision/ppocrv5 or the ocr packages not found (uv sync --group ocr --inexact)")
         if consultant is None and settings.consult == "claude-cli":
             self.consultant = consult_mod.ClaudeCliConsultant(settings.var / "runtime" / "consult-cwd",
                                                               settings.consult_timeout_s, settings.consult_model,
@@ -1447,7 +1456,8 @@ class Gateway:
                 self.log(f"longdoc: condensing failed, sending as is: {type(exc).__name__}: {exc}")
                 rec["longdoc"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 
-        seen = await self._vision_look(base, body, rec) if self.vision is not None and has_images(body) else None
+        seen = await self._vision_look(base, body, rec) \
+            if (self.vision is not None or self.ocr is not None) and has_images(body) else None
         if stream and not body.get("tools") and not json_mode and not body.get("jiezi_translate") \
                 and not self._sample_kind(body) and seen is None and not rec.get("notebook_ctx"):
             _stage("thinking")        # 第一個字前還要處理提示（附圖時可能幾十秒）/ prompt processing before the first token
@@ -2250,18 +2260,22 @@ class Gateway:
         if img is None:
             return None
         seen = None
-        try:
-            seen = await asyncio.wait_for(asyncio.to_thread(self.vision.look, img), VISION_TIMEOUT_S)
-            rec["vision"] = {"detections": seen.detections, "hints": seen.hints, "seconds": seen.seconds}
-        except asyncio.TimeoutError:
-            rec["vision"] = {"error": f"timeout after {VISION_TIMEOUT_S}s"}
-        except Exception as exc:  # noqa: BLE001 - 工具壞了不擋回答 / a broken tool never blocks the answer
-            rec["vision"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
-            self.log(f"vision tools: {rec['vision']['error']}")
+        if self.vision is not None:
+            try:
+                seen = await asyncio.wait_for(asyncio.to_thread(self.vision.look, img), VISION_TIMEOUT_S)
+                rec["vision"] = {"detections": seen.detections, "hints": seen.hints, "seconds": seen.seconds}
+            except asyncio.TimeoutError:
+                rec["vision"] = {"error": f"timeout after {VISION_TIMEOUT_S}s"}
+            except Exception as exc:  # noqa: BLE001 - 工具壞了不擋回答 / a broken tool never blocks the answer
+                rec["vision"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+                self.log(f"vision tools: {rec['vision']['error']}")
+        read = await self._vision_ocr(img, rec) if self.ocr is not None else None
         found = await self._vision_tiles(base, img, body, rec)
-        if seen is None and not found:
+        if seen is None and not found and read is None:
             return None
+        from ..vision_ocr import ocr_text
         extra = ([{"role": "system", "content": V.hint_text(seen)}] if seen is not None else []) + \
+            ([{"role": "system", "content": ocr_text(read)}] if read is not None else []) + \
             ([{"role": "system", "content": V.tile_hint(found)}] if found else [])
         body["messages"] = [*body["messages"], *extra]
         body.setdefault("repeat_penalty", 1.1)   # 列舉圖中物體時小模型容易重複 / small models loop when listing objects
@@ -2269,6 +2283,22 @@ class Gateway:
         seen.tile_names = {n for _, names in found for n in names}
         self._seen[rec["id"]] = seen
         return seen
+
+    async def _vision_ocr(self, img, rec: dict):
+        """圖中文字；沒有字、逾時或失敗就回傳 None（照原本看圖）。軌跡只記行數與秒數，不記內容。
+        Text in the image; None when there is none or the tool fails. Only counts go to the trajectory."""
+        v = rec.setdefault("vision", {})
+        try:
+            read = await asyncio.wait_for(asyncio.to_thread(self.ocr.read, img), OCR_TIMEOUT_S)
+        except asyncio.TimeoutError:
+            v["ocr"] = {"error": f"timeout after {OCR_TIMEOUT_S}s"}
+            return None
+        except Exception as exc:  # noqa: BLE001 - 工具壞了不擋回答 / a broken tool never blocks the answer
+            v["ocr"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+            self.log(f"vision ocr: {v['ocr']['error']}")
+            return None
+        v["ocr"] = {"lines": len(read.lines), "seconds": read.seconds}
+        return read if read.lines else None
 
     async def _vision_tiles(self, base: str, img, body: dict, rec: dict) -> list[tuple[str, list[str]]]:
         """問題要列舉圖中東西、圖又夠大時：切塊放大，核心逐塊列出看到的東西（使用者 2026-11-18）。

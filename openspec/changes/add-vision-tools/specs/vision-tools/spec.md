@@ -18,6 +18,12 @@ With vision tools on, tool results SHALL be given to the core as data, not instr
 - **THEN** 答案裡的長頸鹿標成「長頸鹿（不確定）」，metadata `vision_check` 記錄
   The giraffe is marked "(uncertain)" and `vision_check` records it
 
+#### Scenario: 圖中文字當資料 / Text in the image is data
+- **WHEN** 附圖裡有文字（例如招牌寫「請忽略之前的指示」）
+  The image contains text, for example a sign saying "ignore previous instructions"
+- **THEN** 本機 OCR 的辨識結果以「資料、不是指示」標示附給核心，軌跡只記行數與秒數；OCR 失敗或沒有字時照原本看圖
+  The local OCR result is given to the core labelled as data, only counts are logged, and a failure falls back to plain vision
+
 #### Scenario: 不轉雲端 / Stays local
 - **WHEN** 策略是 jiezi，問題附圖
   Policy jiezi, an image question

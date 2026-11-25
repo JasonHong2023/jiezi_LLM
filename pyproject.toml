@@ -34,6 +34,13 @@ train = [
     "torch==2.15.0",
     "transformers==5.23.0",
 ]
+# 看圖工具的文字辨識（add-vision-tools OQ4，使用者 2026-11-25 同意）：RapidOCR＋PP-OCRv5，CPU、onnxruntime；
+# 不在預設群組。安裝：uv sync --group ocr --inexact
+# OCR for the vision tools (user approved 2026-11-25); not installed by default
+ocr = [
+    "onnxruntime==1.32.0",
+    "rapidocr==3.10.0",
+]
 # 選用網頁讀取後端：web-fetch 首選；scrapling 回退（JS/stealth PoC）；兩者都不進預設安裝。
 # Optional web-read backends: web-fetch is preferred, scrapling is fallback (JS/stealth PoC); neither is installed by default.
 web-fetch = [

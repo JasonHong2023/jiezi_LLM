@@ -2,6 +2,8 @@
 >
 > **2026-11-25 待決定 OQ4：OCR 改用哪一個**（主控查證，尚未實作）：Florence-2 的 OCR 以英文為主、繁體中文很弱，照原計畫做出來用處不大。建議改用 **RapidOCR＋PP-OCRv5 中文辨識模型**——PP-OCRv5 官方支援簡體、繁體、拼音、英文、日文（PaddleOCR 3.0 技術報告 arXiv 2507.05595）；RapidOCR 用 onnxruntime 在 CPU 執行，不需要 PaddlePaddle 框架；模型為 Apache-2.0。需要新增 `rapidocr`、`onnxruntime` 兩個套件與約 10–90 MB 的模型檔（mobile／server 版），並照慣例做資安掃描與授權登記。另一選項是維持 Florence-2（只對英文有用），或不做 OCR、繼續靠核心模型看圖讀字。
 > OQ4 (open): Florence-2 OCR is weak on Traditional Chinese; proposed RapidOCR with the PP-OCRv5 Chinese recognizer (covers Traditional Chinese, CPU via onnxruntime, Apache-2.0). Needs two new packages; awaiting the user's choice.
+> **2026-11-25 使用者決定 OQ4：改用 RapidOCR＋PP-OCRv5**（已實作：`src/jiezi/vision_ocr.py`，選用依賴群組 `ocr`，mobile 模型；server 版 32 秒太慢不用）。
+> OQ4 decided 2026-11-25: RapidOCR with PP-OCRv5 (implemented, mobile models).
 
 ## Why
 

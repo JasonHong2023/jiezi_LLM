@@ -73,6 +73,11 @@ def steps(rec: dict) -> list[dict]:
         items = []
         if v.get("detections"):
             items.append("偵測：" + "、".join(f"{k}×{n}" for k, n in v["detections"].items()))
+        ocr = v.get("ocr") or {}
+        if ocr.get("lines"):
+            items.append(f"圖中文字 {ocr['lines']} 行，{ocr.get('seconds')} 秒")
+        elif ocr.get("error"):
+            items.append(f"文字辨識失敗：{_short(ocr['error'], ERROR_MAX)}")
         tiles = v.get("tiles") or {}
         if tiles:
             items.append(f"切塊放大 {tiles.get('grid')} 塊，{tiles.get('seconds')} 秒")
