@@ -2281,6 +2281,7 @@ class Gateway:
         body.setdefault("repeat_penalty", 1.1)   # 列舉圖中物體時小模型容易重複 / small models loop when listing objects
         seen = seen or V.Seen()
         seen.tile_names = {n for _, names in found for n in names}
+        seen.text = "\n".join(read.lines) if read is not None else ""
         self._seen[rec["id"]] = seen
         return seen
 
@@ -2362,7 +2363,11 @@ class Gateway:
         # 切塊放大時看到的不標：整張縮小後 OWLv2 在密集小圖上分不開（2026-11-18 第二張拼貼：猞猁、德牧、大象在場卻被標）
         # Objects seen in an enlarged tile are not marked: on dense collages the whole-image score cannot separate them
         tiled = getattr(seen, "tile_names", set())
-        low = [zh for zh, en in pairs if scores.get(en, 1.0) < V.CHECK_MIN and zh not in tiled]
+        # 圖中文字裡的詞不是物體（2026-11-25 招牌圖：「電話：(02)…」的「電話」被當成電話機標「不確定」）
+        # Words read from the image are text, not objects (the label 電話 on a sign was marked as an absent phone)
+        text = getattr(seen, "text", "")
+        low = [zh for zh, en in pairs if scores.get(en, 1.0) < V.CHECK_MIN and zh not in tiled
+               and not (text and zh in text)]
         if low:
             msg["content"] = V.mark_uncertain(answer, low)
         rec["vision_check"] = {"objects": {f"{zh}/{en}": scores.get(en) for zh, en in pairs}, "uncertain": low,

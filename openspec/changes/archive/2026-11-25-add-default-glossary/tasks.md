@@ -11,4 +11,4 @@
 
 ## 3. 實測 / Live test
 
-- [x] 3.1 著作權法第 1–14 條重翻，「經濟部」譯為 Ministry of Economic Affairs；結果記入討論記錄（2026-11-25 直連引擎 2 次：套用 立法院、經濟部，兩處都譯為 Ministry of Economic Affairs，0 失敗 0 重試，18–20 秒；經 gateway 的確認待重啟後）
+- [x] 3.1 著作權法第 1–14 條重翻，「經濟部」譯為 Ministry of Economic Affairs；結果記入討論記錄（2026-11-25 直連引擎 2 次：套用 立法院、經濟部，兩處都譯為 Ministry of Economic Affairs，0 失敗 0 重試，18–20 秒；重啟後經 gateway：3 段 0 失敗 19.4 秒，CLI 列出套用「立法院 → Legislative Yuan、經濟部 → Ministry of Economic Affairs」，譯文 2 處皆正確）

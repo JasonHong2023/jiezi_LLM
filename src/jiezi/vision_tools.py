@@ -75,6 +75,7 @@ class Seen:
     features: object = None
     seconds: float = 0.0
     tile_names: set = field(default_factory=set)                 # 切塊放大時看到的 / seen in enlarged tiles
+    text: str = ""                                              # 圖中文字（OCR）/ text read from the image
 
 
 class VisionTools:

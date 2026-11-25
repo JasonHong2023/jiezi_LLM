@@ -211,3 +211,13 @@ class TestOcr(unittest.TestCase):
         got = "".join(tool.read(img).lines).replace(" ", "")
         self.assertIn("臺北市中正區忠孝西路一段", got)
         self.assertIn("49", got)
+
+
+class TestOcrWithCheck(unittest.TestCase):
+    def test_words_from_the_image_text_are_not_marked(self):
+        # 2026-11-25：招牌上的「長頸鹿」二字不是動物，不標「不確定」/ a word on a sign is not an absent object
+        r, _, _ = TestGateway().run_one(FakeVision(), question="招牌寫什麼",
+                                        ocr=FakeOcr(lines=("長頸鹿餐廳 營業中",)))
+        data = r.json()
+        self.assertEqual(data["choices"][0]["message"]["content"], "圖裡有馬和長頸鹿。")
+        self.assertEqual(data["jiezi"]["vision_check"]["uncertain"], [])
