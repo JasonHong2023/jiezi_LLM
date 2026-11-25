@@ -87,6 +87,21 @@ class TestCheck(unittest.TestCase):
             T.parse_glossary([["a", "b"]] * (T.MAX_GLOSSARY + 1))
 
 
+class TestPrompt(unittest.TestCase):
+    def test_english_target_uses_english_prompt_without_chinese_context(self):
+        # 2026-11-25：中文提示加中文前文時 r3 常照抄原文 / the r3 core echoed the source with a Chinese prompt
+        msgs = T.prompt("第一條 為保障著作人著作權益，特制定本法。", "en", prev="前一段的中文結尾",
+                        glossary=[("著作權", "copyright")], error="the output is still mostly Chinese")
+        self.assertNotIn("前一段", msgs[0]["content"])
+        self.assertTrue(msgs[0]["content"].startswith("You are a professional translator."))
+        self.assertIn("著作權 → copyright", msgs[0]["content"])
+        self.assertIn("still mostly Chinese", msgs[0]["content"])
+        self.assertTrue(msgs[1]["content"].startswith("Translate into English:"))
+        msgs = T.prompt("Hello.", "zh-TW", prev="previous tail")           # 英翻中維持原樣 / unchanged
+        self.assertIn("previous tail", msgs[0]["content"])
+        self.assertEqual(msgs[1]["content"], "Hello.")
+
+
 class TestConversion(unittest.TestCase):
     def test_word_level_conversion(self):
         src = "这个软件的后台服务器运行稳定。皇后的头发很干净，里面有三只猫。发展中国家的网络信息。我们为了群众登上山峰。面条和台风。"
@@ -113,15 +128,16 @@ class TestChunked(unittest.TestCase):
 
         async def complete(msgs, n):
             seen.append(msgs)
-            return fake_en(msgs[-1]["content"])
+            return fake_en(msgs[-1]["content"].removeprefix("Translate into English:\n\n"))
         pairs, info = self.run_tr(complete)
         self.assertGreater(len(pairs), 3)
         self.assertEqual((info["chunks"], info["failed"], info["retried"]), (len(pairs), [], 0))
         self.assertEqual("".join(s for s, _ in pairs).replace("\n", ""), LONG_ZH.replace("\n", ""))   # 原文一字不漏 / nothing dropped
         for src, tr in pairs:
             self.assertEqual(T.numbers(src) - T.numbers(tr), set())
-        ctx = [m[0]["content"] for m in seen if "前文結尾" in m[0]["content"]]
-        self.assertEqual(len(ctx), len(pairs) - 1)                           # 第一段以外都附前文 / context for all but the first
+        # 中翻英不附中文前文（r3 會照抄原文，2026-11-25）/ no Chinese context for Chinese → English
+        self.assertFalse([m for m in seen if "前文結尾" in m[0]["content"]])
+        self.assertTrue(all(m[1]["content"].startswith("Translate into English:") for m in seen))
         text = T.render("報告.pdf", pairs, True, False)
         self.assertIn(f"〔原文 1/{len(pairs)}〕", text)
         self.assertIn(f"〔譯文 {len(pairs)}/{len(pairs)}〕", text)
@@ -132,10 +148,10 @@ class TestChunked(unittest.TestCase):
 
         async def complete(msgs, n):
             calls["n"] += 1
-            src = msgs[-1]["content"]
+            src = msgs[-1]["content"].removeprefix("Translate into English:\n\n")
             if "1037" in src:                       # 第 1 段永遠漏數字 / the first chunk always drops its numbers
                 return "Revenue grew thanks to overseas markets and the team will keep investing next year. " * 6
-            if "1407" in src and "沒有通過檢查" not in msgs[0]["content"]:
+            if "1407" in src and "failed a check" not in msgs[0]["content"]:
                 return ""                           # 這一段第一次空白，重試後成功 / empty once, fine on retry
             return fake_en(src)
         pairs, info = self.run_tr(complete)

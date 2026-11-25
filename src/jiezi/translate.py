@@ -134,6 +134,8 @@ def chunks(text: str) -> list[str]:
 
 def prompt(chunk: str, target: str, prev: str = "", glossary: list[tuple[str, str]] | None = None,
            error: str | None = None) -> list[dict]:
+    if target == "en":
+        return _prompt_en(chunk, glossary, error)
     rules = [f"你是專業譯者。把使用者給的內容完整翻譯成{LANGS[target]}。",
              "規則：每一句都要翻，不可省略、摘要或加入原文沒有的內容；數字、日期、專有名詞要保留正確；"
              "保留原本的分段與清單格式；只輸出譯文，不要解釋。"]
@@ -145,6 +147,24 @@ def prompt(chunk: str, target: str, prev: str = "", glossary: list[tuple[str, st
     if error:
         rules.append(f"上一次的譯文沒有通過檢查：{error}。請修正後重新翻譯整段。")
     return [{"role": "system", "content": "\n".join(rules)}, {"role": "user", "content": chunk}]
+
+
+def _prompt_en(chunk: str, glossary: list[tuple[str, str]] | None, error: str | None) -> list[dict]:
+    """中翻英用英文提示、不附前文。2026-11-25 實測（qwen3.5-4b-r3，思考關閉）：中文提示加中文前文時，
+    模型常把原文照抄回來（著作權法 3 段中 2 段「譯文大部分仍是中文」）；英文提示、使用者訊息開頭加
+    「Translate into English:」、不附中文前文，同一段 5 次全過，附前文則 5 次錯 1–2 次。
+    Chinese → English uses an English prompt and no Chinese context: with the Chinese prompt and the previous
+    source tail, the r3 core often echoed the source instead of translating it."""
+    rules = ["You are a professional translator. Translate the user's text from Chinese into English completely. "
+             "Translate every sentence; do not omit, summarize or add anything. Keep numbers, dates and proper names "
+             "correct; keep the paragraphs and list formatting. Output only the English translation, no explanations."]
+    used = [(a, b) for a, b in glossary or [] if a in chunk]
+    if used:
+        rules.append("Use these required translations: " + "; ".join(f"{a} → {b}" for a, b in used))
+    if error:
+        rules.append(f"The previous attempt failed a check ({error}). Translate the whole text again, in English.")
+    return [{"role": "system", "content": "\n".join(rules)},
+            {"role": "user", "content": "Translate into English:\n\n" + chunk}]
 
 
 # ── 檢查 / Checks ──
