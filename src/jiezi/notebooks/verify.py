@@ -93,6 +93,8 @@ def verify(question: str, checked: dict, passages: list[dict], sources: dict[str
         return [{"check": "not_found", "message": "來源裡找不到答案，不存進記憶"}]
     # a. 出處完整 / every fact has a source
     for r in checked.get("removed") or []:
+        if r.get("recited"):        # 編號錯但已改成支持的段落 / the marker was corrected
+            continue
         findings.append({"check": "citation_removed",
                          "message": f"「{r['sentence'][:60]}」標了 [{r['n']}]，但{'沒有這一段' if r['why'] == 'no such passage' else '那一段沒有支持這句話'}"})
     for s in checked.get("unsourced") or []:

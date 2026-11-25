@@ -99,42 +99,66 @@ def _support(sentence: str, passage: str) -> float:
     return len(s & p) / len(s)
 
 
-ANCHOR_WINDOW = 24             # 數字前後幾個字內要有句子的詞 / chars around a number that must share a word with the sentence
 _NUMERAL = set("0123456789零〇一二兩三四五六七八九十百千萬億")
-_CLAUSE_END = set("；;。！？!?\n")
 _CLAUSE_END_RE = re.compile(r"[；;。！？!?\n]")
+_PART_RE = re.compile(r"[，,；;、]")
 _WEAK = {"可以", "以請", "一年", "多少", "幾天", "什麼", "如果", "的話", "就是", "這個", "那個", "還是", "也是"}
 
 
-def _anchored(sentence: str, passage: str) -> bool:
-    """句子用字和原文不同（「八天」對「八日」、「過世」對「喪亡」）時的另一種證據：句子裡的每個數字，
-    在段落裡都有同值的數字，而且同一句（以；。！？換行為界）、前後 ANCHOR_WINDOW 字內出現句子裡的詞。
-    2026-11-25 實測：「結婚可以請八天假」對原文「員工結婚者給予婚假八日」雙字詞支持度只有 0.125。
-    Paraphrased sentences: every number in the sentence must occur in the passage next to a word of the sentence."""
-    nums = numbers.spans(sentence)
-    if not nums:
-        return False
-    words = {b for b in _bigrams(_MARK.sub("", sentence))
-             if not (set(b) & _NUMERAL) and b not in _WEAK and all("\u4e00" <= c <= "\u9fff" for c in b)}
+def _clauses(passage: str) -> list[str]:
+    return [c for c in _CLAUSE_END_RE.split(passage) if c.strip()]
+
+
+def _words(text: str) -> set[str]:
+    return {b for b in _bigrams(_MARK.sub("", text))
+            if not (set(b) & _NUMERAL) and b not in _WEAK and all("\u4e00" <= c <= "\u9fff" for c in b)}
+
+
+def _near(words: set[str], clause: str, passage: str, strict: bool) -> bool:
+    """這一條有沒有句子的詞。strict：句子在段落裡出現過的詞，超過一半要落在這一條
+    （「祖父過世可以請八日喪假」的「喪假」在父母那條，「祖父」在另一條 → 不算）。
+    Does the clause share the sentence's words; strict: most of the words found in the passage are in this clause."""
     if not words:
-        return False
-    at = numbers.spans(passage)
-    for v, _, _ in nums:
-        ok = False
-        for w, a, b in at:
-            if w != v:
-                continue
-            lo, hi = max(0, a - ANCHOR_WINDOW), b + ANCHOR_WINDOW
-            stops = [i for i in range(lo, a) if passage[i] in _CLAUSE_END]
-            lo = stops[-1] + 1 if stops else lo
-            end = _CLAUSE_END_RE.search(passage, b, hi)
-            near = passage[lo:end.start() if end else hi]      # 同一句、同一條之內 / within the same clause
-            if any(x in near for x in words):
-                ok = True
-                break
-        if not ok:
+        return not strict
+    inside = sum(w in clause for w in words)
+    if not strict:
+        return inside > 0
+    hits = sum(w in passage for w in words)
+    return inside > 0 and inside * 2 > hits
+
+
+def _numbers_ok(sentence: str, passage: str, strict: bool = False) -> bool | None:
+    """句子裡的數字要在段落的「同一條」（以；。！？換行為界）裡對得上；句子沒有數字回傳 None。
+    - 整句的數字都在同一條裡，而且那一條有句子的詞 → 對；
+    - strict（只靠數字認定出處時）：句子在段落出現過的詞，超過一半要在那一條；
+    - 否則把句子依「，；、」拆開，每一小段的數字都要在某一條裡，且那一條有這一小段的詞（小段沒有詞就只看數字）。
+    2026-11-25 實測：
+    - 「結婚可以請八天假」對原文「員工結婚者給予婚假八日」雙字詞支持度只有 0.125，靠這裡認定有出處；
+    - 「滿一年以上未滿二年者，有十日特休」的 1、2、10 分散在不同條（正確是七日），只比整段的數字集合會放過。
+    Numbers must match within one clause of the passage that also shares a word with the sentence (or, failing
+    that, with each comma-separated part); comparing the set of numbers in the whole passage let a wrong day
+    count through."""
+    nums = numbers.values(sentence)
+    if not nums:
+        return None
+    cl = [(c, numbers.values(c)) for c in _clauses(passage)]
+    words = _words(sentence)
+    if any(nums <= v and words and _near(words, c, passage, strict) for c, v in cl):
+        return True
+    for part in _PART_RE.split(_MARK.sub("", sentence)):
+        pn = numbers.values(part)
+        if not pn:
+            continue
+        pw = _words(part)
+        if not any(pn <= v and (_near(pw, c, passage, strict) if pw else True) for c, v in cl):
             return False
     return True
+
+
+def _anchored(sentence: str, passage: str) -> bool:
+    """用字和原文不同（「八天」對「八日」、「過世」對「喪亡」）時的另一種證據：數字在同一條裡對得上。
+    Paraphrases: the sentence's numbers match within one clause of the passage."""
+    return _numbers_ok(sentence, passage, strict=True) is True
 
 
 def _supported(sentence: str, passage: str, bar: float) -> bool:
@@ -182,6 +206,7 @@ def check(answer: str, passages: list[dict], general: bool = False) -> dict:
             marks = [best["n"]] if _supported(bare, best["text"], AUTO_SUPPORT) else []
             if marks:
                 auto.append(best["n"])
+        bad_at = len(removed)
         keep = []
         for n in dict.fromkeys(marks):
             p = by_n[n]
@@ -191,11 +216,17 @@ def check(answer: str, passages: list[dict], general: bool = False) -> dict:
             keep.append(n)
         # 數字要對：句子裡的數值都要出現在被引用的段落裡（三十＝30、五十萬＝50 萬）
         # Numbers must match: every value in the sentence has to appear in the cited passages
-        missing = numbers.values(bare) - set().union(*(numbers.values(by_n[n]["text"]) for n in keep)) if keep else set()
-        if missing:
-            removed += [{"n": n, "sentence": bare.strip()[:120],
-                         "why": "number not in the passage: " + ", ".join(sorted(missing))} for n in keep]
+        # 一句引了幾段，就合起來比（換行是條的分界）/ a sentence citing several passages is checked against all of them
+        if keep and _numbers_ok(bare, "\n".join(by_n[n]["text"] for n in keep)) is False:
+            missing = numbers.values(bare) - set().union(*(numbers.values(by_n[n]["text"]) for n in keep))
+            why = ("number not in the passage: " + ", ".join(sorted(missing)) if missing
+                   else "numbers not in the same clause of the passage")
+            removed += [{"n": n, "sentence": bare.strip()[:120], "why": why} for n in keep]
             keep = []
+        if bad and keep:      # 錯的編號已改成正確的段落，不算查證發現 / re-cited, not a finding
+            for r in removed[:bad_at]:
+                if r["sentence"] == bare.strip()[:120] and r["why"] == "no such passage":
+                    r["recited"] = keep[0]
         for n in keep:
             used.setdefault(n, bare.strip())
         tail = re.match(r"^(.*?)([。！？!?]*)(\n?)$", bare.rstrip(" "), re.S)
