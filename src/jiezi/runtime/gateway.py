@@ -2270,7 +2270,9 @@ class Gateway:
                 rec["vision"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
                 self.log(f"vision tools: {rec['vision']['error']}")
         read = await self._vision_ocr(img, rec) if self.ocr is not None else None
-        found = await self._vision_tiles(base, img, body, rec)
+        last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
+        text_q = read is not None and last is not None and V.TEXT_QUESTION.search(message_text(last))
+        found = [] if text_q else await self._vision_tiles(base, img, body, rec)   # 問字就不切塊 / text questions: no tiles
         if seen is None and not found and read is None:
             return None
         from ..vision_ocr import ocr_text
@@ -2367,7 +2369,7 @@ class Gateway:
         # Words read from the image are text, not objects (the label 電話 on a sign was marked as an absent phone)
         text = getattr(seen, "text", "")
         low = [zh for zh, en in pairs if scores.get(en, 1.0) < V.CHECK_MIN and zh not in tiled
-               and not (text and zh in text)]
+               and not (text and (zh in text or en in V.TEXT_CARRIERS))]
         if low:
             msg["content"] = V.mark_uncertain(answer, low)
         rec["vision_check"] = {"objects": {f"{zh}/{en}": scores.get(en) for zh, en in pairs}, "uncertain": low,

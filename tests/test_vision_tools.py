@@ -85,7 +85,7 @@ class FakeOcr:
 
 class TestGateway(unittest.TestCase):
     def run_one(self, vision, answer="圖裡有馬和長頸鹿。", stream=False, size=(8, 8), question="有哪些動物",
-                tile_answer="1. 長頸鹿\n2. 长颈鹿\n- 馬（棕色）", ocr=None):
+                tile_answer="1. 長頸鹿\n2. 长颈鹿\n- 馬（棕色）", ocr=None, objects=None):
         from starlette.testclient import TestClient
         from test_runtime_gateway import make_supervisor, settings  # noqa: F401
         from jiezi.runtime.gateway import Gateway, create_app
@@ -99,7 +99,7 @@ class TestGateway(unittest.TestCase):
             if json.dumps(b["messages"], ensure_ascii=False).find(V.TILE_PROMPT) >= 0:
                 content = tile_answer
             elif b.get("response_format"):
-                content = json.dumps({"objects": [{"zh": "馬", "en": "horse"}, {"zh": "長頸鹿", "en": "giraffe"}]})
+                content = json.dumps({"objects": objects or [{"zh": "馬", "en": "horse"}, {"zh": "長頸鹿", "en": "giraffe"}]})
             else:
                 content = answer
             return httpx.Response(200, json={"model": "core", "choices": [
@@ -221,3 +221,20 @@ class TestOcrWithCheck(unittest.TestCase):
         data = r.json()
         self.assertEqual(data["choices"][0]["message"]["content"], "圖裡有馬和長頸鹿。")
         self.assertEqual(data["jiezi"]["vision_check"]["uncertain"], [])
+
+    def test_text_carriers_are_not_marked_when_text_was_read(self):
+        class SignVision(FakeVision):
+            def check(self, seen, names):
+                return {n: 0.05 for n in names}
+        r, _, _ = TestGateway().run_one(SignVision(), question="招牌寫什麼", answer="這是一面告示牌，寫著營業中。",
+                                        ocr=FakeOcr(lines=("營業中",)), objects=[{"zh": "告示牌", "en": "sign"}])
+        self.assertEqual(r.json()["choices"][0]["message"]["content"], "這是一面告示牌，寫著營業中。")
+        r, _, _ = TestGateway().run_one(SignVision(), question="招牌寫什麼", answer="這是一面告示牌，寫著營業中。",
+                                        ocr=FakeOcr(lines=()), objects=[{"zh": "告示牌", "en": "sign"}])                 # 沒讀到字照常核對 / no text: checked
+        self.assertIn("（不確定）", r.json()["choices"][0]["message"]["content"])
+
+    def test_text_questions_skip_tiles_when_text_was_read(self):
+        _, seen, _ = TestGateway().run_one(None, size=(680, 1200), question="招牌上的電話是什麼", ocr=FakeOcr())
+        self.assertFalse(any(V.TILE_PROMPT in json.dumps(b["messages"], ensure_ascii=False) for b in seen))
+        _, seen, _ = TestGateway().run_one(None, size=(680, 1200), question="招牌上的電話是什麼", ocr=FakeOcr(lines=()))
+        self.assertTrue(any(V.TILE_PROMPT in json.dumps(b["messages"], ensure_ascii=False) for b in seen))   # 沒讀到字照切

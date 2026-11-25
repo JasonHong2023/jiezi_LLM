@@ -175,6 +175,12 @@ def hint_text(seen: Seen) -> str:
             "同一種東西只寫一次（可以寫數量，例如「鳥：約 13 隻」），不要一隻一隻重複列出。")
 
 
+# 有讀到字時不核對的「寫字的載體」：整張圖就是告示牌或截圖時，OWLv2 對整體的分數常偏低（2026-11-25 招牌圖「告示牌」0.125）
+# Text carriers are not checked when OCR found text: the whole image is the sign or screenshot and scores low
+TEXT_CARRIERS = frozenset({"sign", "signboard", "notice", "notice board", "poster", "banner", "label", "document",
+                           "paper", "page", "screen", "screenshot", "menu", "receipt", "board", "placard", "text"})
+
+
 # 回答後抽出「說圖裡有的東西」，給 OWLv2 核對（英文名）/ Objects the answer claims, with English names for OWLv2
 EXTRACT_PROMPT = ("下面是一段描述圖片的回答。列出回答中說「圖裡有」的每一種具體物體（動物、人、物品），"
                   "zh 用回答裡的原詞，en 用簡短的英文名詞（例如 giraffe、polar bear）。回答說「沒有」的不要列。\n\n回答：\n{answer}")
@@ -244,6 +250,10 @@ TILE_PROMPT = ("列出這張圖裡看得清楚的每一種動物或物體名稱�
 # 要列舉或描述圖中東西的問題才切塊 / tile only for questions that ask what is in the image
 LISTING = re.compile(r"有哪些|有那些|有什麼|有甚麼|有啥|看到什麼|看到甚麼|看到了什麼|是什麼|列出|找出|幾隻|幾個|幾種|多少|"
                      r"描述|哪些|那些|什麼東西|有沒有|what|which|how many|list|describe|identify", re.I)
+# 問圖中文字的題目（OCR 已讀到字時不切塊；2026-11-25 招牌題「電話和地址是什麼」多花 3 秒切塊）
+# Questions about the text in an image: no tiles when OCR already read text
+TEXT_QUESTION = re.compile(r"寫(了|著|的)?什麼|寫(甚麼|啥)|文字|字樣|電話|地址|號碼|價格|價錢|多少錢|金額|罰款|罰鍰|日期|時間|"
+                           r"營業|翻譯|唸|念出|讀出|上面寫|招牌|告示|標示|菜單|發票|收據|截圖|what does it say|text|read", re.I)
 _ROWS = {1: [""], 2: ["上半", "下半"], 3: ["上排", "中排", "下排"], 4: ["最上排", "中上排", "中下排", "最下排"]}
 _COLS = {1: [""], 2: ["左", "右"], 3: ["左", "中", "右"]}
 _BULLET = re.compile(r"^[\s\-*•·#>\d.、)）]+")
