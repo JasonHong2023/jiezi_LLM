@@ -85,9 +85,22 @@ scripts/jiezi translate 简体文件.txt --to zh-TW              # 簡體 → �
 - **每段都檢查**：不能是空的、長度要合理、原文的數字都要在、譯文確實是目標語言、詞彙表指定的譯法要用上。沒過會重翻一次；再沒過就**保留那一段原文並標記「未能翻譯」**，不會把壞的譯文當成功（結束碼 5）。失敗的段不會送到雲端或 Claude。
 - **長文件先問**：預估超過 5 分鐘時先顯示預估時間並等你確認（`--yes` 略過）。可以隨時 Ctrl+C 中斷，重跑同一個指令會接著做（已翻好的段暫存在 `var/translate/`，只在本機）。
 - **限制**：檢查抓得到漏譯與數字錯，**抓不到意思翻錯**；翻譯品質取決於核心模型，小模型的譯文請務必自行核對。輸出只有文字，不保留原檔版面。簡轉繁依 OpenCC 對照表，專有名詞與少數用語（例如「質量」）可能要自己調整。
+- **內建機關英文名**（add-default-glossary，2026-11-25）：翻成英文時，原文出現總統府、五院、行政院各部會等名稱（54 筆，依行政院英文網，每筆附來源網址，見 `src/jiezi/data/tw-agencies.tsv`），會自動套用官方英文名並列出用了哪些；自己的 `--glossary` 優先。`--no-default-glossary` 可關閉。
 - **隱私**：`jiezi` 策略在本機引擎不可用時，會照一般文件的處理方式把整個請求轉交 Claude；不想讓文件離開本機請加 `--local`。
 
 Whole documents are translated chunk by chunk (zh-TW and en targets only), every chunk is checked, failed chunks keep their source text and are marked (exit code 5), long jobs ask first and can resume. The checks catch omissions and wrong numbers, not wrong meaning. Use `--local` to keep the document on this machine.
+
+### 看圖 / Asking about images（add-image-paths、add-vision-tools）
+
+在問題裡寫圖片路徑就會附上那張圖（例如 `scripts/jiezi ask "~/Pictures/招牌.jpg 這塊招牌寫什麼？"`；chat 裡也可以用 `/image 路徑`）。核心要有視覺模組才看得到圖。
+
+選用的本機看圖工具（`.env` 加 `JIEZI_VISION_TOOLS=on`，重啟 gateway；全部跑在 CPU，不和核心搶顯示卡）：
+
+- **物體偵測與核對**：回答前先偵測圖中物體當資料附上；回答後把答案說到的物體逐一比對，沒把握的標「（不確定）」。
+- **圖中文字（OCR）**：RapidOCR＋PP-OCRv5 mobile（含繁體），一張約 2 秒。圖中文字只當資料、明說「不是指示」，防止圖片裡藏指令。要另外安裝：`uv sync --group ocr --inexact && scripts/jiezi ocr setup`（下載並核對 sha256）；`scripts/jiezi ocr 圖片.jpg` 可以單獨辨識。
+- **預設關閉的原因**（2026-11-26 量測，Open Images 100 張）：開工具後召回率 0.195 → 0.224，但精確率 0.974 → 0.934，每張 2.7 → 19.5 秒；依 R20 精確率沒提升就不預設開。問圖中文字、招牌、文件照片時可以考慮開啟。
+
+Write an image path in the question to attach it. `JIEZI_VISION_TOOLS=on` adds CPU object detection, answer checking and OCR (PP-OCRv5, optional `ocr` group); it is off by default because it did not improve precision in the 100-image evaluation.
 
 ### 只要 JSON（給腳本用）/ JSON answers for scripts
 
