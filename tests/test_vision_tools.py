@@ -85,7 +85,7 @@ class FakeOcr:
 
 class TestGateway(unittest.TestCase):
     def run_one(self, vision, answer="圖裡有馬和長頸鹿。", stream=False, size=(8, 8), question="有哪些動物",
-                tile_answer="1. 長頸鹿\n2. 长颈鹿\n- 馬（棕色）", ocr=None, objects=None):
+                tile_answer="1. 長頸鹿\n2. 长颈鹿\n- 馬（棕色）", ocr=None, objects=None, tools=True, mode="tools"):
         from starlette.testclient import TestClient
         from test_runtime_gateway import make_supervisor, settings  # noqa: F401
         from jiezi.runtime.gateway import Gateway, create_app
@@ -110,6 +110,7 @@ class TestGateway(unittest.TestCase):
             gw = Gateway(sup.s, sup, TrajectoryWriter(Path(d) / "t", log=lambda *_: None),
                          local_http=httpx.AsyncClient(transport=httpx.MockTransport(handler)), log=lambda *_: None)
             gw.core_vision, gw.vision, gw.ocr = True, vision, ocr
+            gw.s.vision_tools, gw.ocr_mode = tools, mode            # tools=False：只開 OCR / OCR alone
             body = {"model": "jiezi-local", "stream": stream, "messages": [{"role": "user", "content": [
                 {"type": "text", "text": question}, {"type": "image_url", "image_url": {"url": data_url(size)}}]}]}
             with patch, TestClient(create_app(gw)) as c:
@@ -211,6 +212,49 @@ class TestOcr(unittest.TestCase):
         got = "".join(tool.read(img).lines).replace(" ", "")
         self.assertIn("臺北市中正區忠孝西路一段", got)
         self.assertIn("49", got)
+
+
+class TestImageOcrSwitch(unittest.TestCase):
+    """add-image-ocr：OCR 不開看圖工具也能用；auto 只在問字時讀。 / OCR without the vision tools."""
+
+    def ocr_ran(self, seen):
+        return any("圖中文字（OCR" in json.dumps(b["messages"], ensure_ascii=False) for b in seen)
+
+    def test_auto_reads_for_text_questions_only(self):
+        r, seen, _ = TestGateway().run_one(None, question="這塊招牌寫什麼？", answer="寫營業時間。", ocr=FakeOcr(),
+                                           tools=False, mode="auto")
+        self.assertTrue(self.ocr_ran(seen))
+        look = next(p for p in r.json()["jiezi"]["process"] if p["kind"] == "look")
+        self.assertIn("圖中文字 2 行", look["items"][0])
+        r, seen, _ = TestGateway().run_one(None, question="圖裡有哪些動物？", answer="有馬。", ocr=FakeOcr(),
+                                           tools=False, mode="auto", size=(680, 1200))
+        self.assertFalse(self.ocr_ran(seen))
+        self.assertFalse(any(p["kind"] == "look" for p in r.json()["jiezi"].get("process", [])))
+        self.assertFalse(any(V.TILE_PROMPT in json.dumps(b["messages"], ensure_ascii=False) for b in seen))  # 不切塊
+
+    def test_on_reads_every_image(self):
+        _, seen, _ = TestGateway().run_one(None, question="圖裡有哪些動物？", answer="有馬。", ocr=FakeOcr(),
+                                           tools=False, mode="on")
+        self.assertTrue(self.ocr_ran(seen))
+
+    def test_not_loaded_when_off_or_tools_mode_without_tools(self):
+        from test_runtime_gateway import make_supervisor  # noqa: F401
+        from jiezi.runtime.gateway import Gateway
+        from jiezi.runtime.trajectory import TrajectoryWriter
+        import dataclasses
+        with tempfile.TemporaryDirectory() as d:
+            sup, _, _ = make_supervisor(Path(d))
+            for tools, mode in ((False, "tools"), (True, "off"), (False, "off")):
+                s = dataclasses.replace(sup.s, vision_tools=tools, image_ocr=mode, models_dir=Path(d))
+                gw = Gateway(s, sup, TrajectoryWriter(Path(d) / "t", log=lambda *_: None), log=lambda *_: None)
+                self.assertIsNone(gw.ocr, (tools, mode))
+
+    def test_bad_mode_rejected(self):
+        from jiezi.runtime.settings import _image_ocr
+        self.assertEqual(_image_ocr(None), "tools")
+        self.assertEqual(_image_ocr(" AUTO "), "auto")
+        with self.assertRaises(Exception):
+            _image_ocr("sometimes")
 
 
 class TestOcrWithCheck(unittest.TestCase):

@@ -69,6 +69,17 @@ def checks(root: Path, port: int) -> list[tuple[str, str, str, str]]:
             "核心選有 mmproj 的模型（Qwen3.5），並下載清單中對應的 *-mmproj-f16")
     except Exception as exc:  # noqa: BLE001
         add("視覺（看圖）", WARN, f"無法判斷：{exc}")
+    try:  # 圖中文字（add-image-ocr；選用）/ text in images, optional
+        from ..vision_ocr import OcrTool
+        from .settings import load_settings
+        st = load_settings(root)
+        ocr_ok = OcrTool(st.models_dir or models).available()
+        mode = {"tools": "跟著看圖工具", "auto": "問圖中文字時", "on": "每張圖", "off": "關閉"}[st.image_ocr]
+        add("圖中文字（OCR）", OK if ocr_ok or st.image_ocr == "off" else WARN,
+            f"{'可用' if ocr_ok else '未安裝（選用）'}；JIEZI_IMAGE_OCR={st.image_ocr}（{mode}）",
+            "uv sync --group ocr --inexact && scripts/jiezi ocr setup")
+    except Exception as exc:  # noqa: BLE001
+        add("圖中文字（OCR）", WARN, f"無法判斷：{exc}")
     sandbox = root / "var" / "tools" / "bubblewrap" / "bin" / "bwrap"  # 與 verify/sandbox.py 相同 / same as the sandbox
     add("程式驗證沙盒", OK if sandbox.exists() or shutil.which("bwrap") else WARN,
         "bubblewrap 可用" if sandbox.exists() or shutil.which("bwrap") else "缺（程式題驗證停用）", "scripts/bootstrap")

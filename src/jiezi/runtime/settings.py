@@ -34,6 +34,18 @@ def _onoff(env: dict, key: str, default: bool) -> bool:
     raise JieziError(f"{key} must be on or off, got {v!r}")
 
 
+IMAGE_OCR_MODES = ("tools", "auto", "on", "off")
+
+
+def _image_ocr(value: str | None) -> str:
+    """圖中文字辨識時機（add-image-ocr）：tools＝跟著看圖工具（量測前的預設，等於原本行為）、auto＝問圖中文字時才跑、
+    on＝每張圖都跑、off＝不跑。 / When to OCR attached images; `tools` (default until measured) keeps the old behaviour."""
+    v = (value or "tools").strip().lower()
+    if v not in IMAGE_OCR_MODES:
+        raise JieziError(f"JIEZI_IMAGE_OCR must be one of {', '.join(IMAGE_OCR_MODES)}, got {v!r}")
+    return v
+
+
 def _recall(value: str | None) -> str:
     from ..longdoc import RECALL_MODES
     v = (value or "hyde").strip().lower()   # 預設 hyde：2026-11-19 量測 32 題答對 off 27、reserve 28、hyde 31
@@ -94,6 +106,7 @@ class Settings:
     rerank_timeout_s: float = 10.0  # 逾時就退回向量排序 / fall back to vector order on timeout
     samples: int = 4                # 可驗證的問題（工具呼叫、程式）平行取樣幾個；1 = 關閉（add-sampling）
     sample_temperature: float = 0.7
+    image_ocr: str = "tools"        # 圖中文字辨識 tools／auto／on／off（add-image-ocr；量測後再定預設）/ OCR mode
     vision_tools: bool = False      # 本機看圖工具：偵測、提示、核對（add-vision-tools；量測過才預設開）/ off until measured
     tts: bool = False               # BlueMagpie-TTS 語音合成（add-tts，預設關）/ speech synthesis, off by default
     tts_idle_s: int = 120           # 合成行程閒置多久自動結束、歸還 GPU / idle seconds before the worker exits
@@ -169,6 +182,7 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         tool_note=_onoff(env, "JIEZI_TOOL_NOTE", True),
         image_paths=_onoff(env, "JIEZI_IMAGE_PATHS", True),
         vision_tools=_onoff(env, "JIEZI_VISION_TOOLS", False),
+        image_ocr=_image_ocr(env.get("JIEZI_IMAGE_OCR")),
         tts=_onoff(env, "JIEZI_TTS", False),
         tts_idle_s=max(30, min(3600, _int(env, "JIEZI_TTS_IDLE_S", 120))),
         asr=_onoff(env, "JIEZI_ASR", False),

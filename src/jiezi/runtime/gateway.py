@@ -211,8 +211,9 @@ class Gateway:
                 self.vision = vt
             else:
                 log("vision tools: models/vision not found; run the vision download first")
-        self.ocr = None                 # 圖中文字（add-vision-tools OQ4，RapidOCR＋PP-OCRv5）/ text in images
-        if settings.vision_tools:
+        self.ocr = None                 # 圖中文字（add-vision-tools OQ4、add-image-ocr，RapidOCR＋PP-OCRv5）/ text in images
+        self.ocr_mode = getattr(settings, "image_ocr", "tools")
+        if self.ocr_mode in ("auto", "on") or (self.ocr_mode == "tools" and settings.vision_tools):
             from ..vision_ocr import OcrTool
             ot = OcrTool(settings.models_dir or settings.root / "models")
             if ot.available():
@@ -2252,6 +2253,14 @@ class Gateway:
         urls = V.images_in(body)
         if not urls:
             return None
+        last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
+        asks_text = last is not None and bool(V.TEXT_QUESTION.search(message_text(last)))
+        # 看圖工具開著就每張都讀字（核對時用）；只開 OCR 時 auto 只在問字時讀（add-image-ocr）
+        # With the vision tools on, OCR every image; OCR alone in auto mode reads only for text questions
+        tools_on = self.vision is not None or bool(self.s.vision_tools)
+        want_ocr = self.ocr is not None and (tools_on or self.ocr_mode == "on" or asks_text)
+        if self.vision is None and not want_ocr:
+            return None
         _stage("looking")
         try:
             img = V.image_from_url(urls[0])
@@ -2269,10 +2278,10 @@ class Gateway:
             except Exception as exc:  # noqa: BLE001 - 工具壞了不擋回答 / a broken tool never blocks the answer
                 rec["vision"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
                 self.log(f"vision tools: {rec['vision']['error']}")
-        read = await self._vision_ocr(img, rec) if self.ocr is not None else None
-        last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
-        text_q = read is not None and last is not None and V.TEXT_QUESTION.search(message_text(last))
-        found = [] if text_q else await self._vision_tiles(base, img, body, rec)   # 問字就不切塊 / text questions: no tiles
+        read = await self._vision_ocr(img, rec) if want_ocr else None
+        text_q = read is not None and asks_text
+        # 問字就不切塊；切塊屬於看圖工具，只開 OCR 時不切 / no tiles for text questions or without the vision tools
+        found = [] if text_q or not tools_on else await self._vision_tiles(base, img, body, rec)
         if seen is None and not found and read is None:
             return None
         from ..vision_ocr import ocr_text

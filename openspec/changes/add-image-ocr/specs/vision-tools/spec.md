@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Image Text Reading On Its Own Switch
-The gateway SHALL run local OCR on an attached image independently of the vision tools, controlled by `JIEZI_IMAGE_OCR` (`auto`, `on`, `off`). In `auto` mode OCR SHALL run only when the OCR packages and models are installed and the question asks about text in the image; the result SHALL be given to the core labelled as data, and only line counts and seconds SHALL be logged.
+The gateway SHALL run local OCR on an attached image independently of the vision tools, controlled by `JIEZI_IMAGE_OCR` (`tools`, `auto`, `on`, `off`; `tools`, the default until the measurement decides, runs OCR only with the vision tools as before). In `auto` mode OCR SHALL run only when the OCR packages and models are installed and the question asks about text in the image; the result SHALL be given to the core labelled as data, and only line counts and seconds SHALL be logged.
 
 #### Scenario: 問招牌寫什麼 / Asking what a sign says
 - **WHEN** `JIEZI_IMAGE_OCR=auto`、`JIEZI_VISION_TOOLS` 關閉，OCR 已安裝，使用者附圖問「這塊招牌寫什麼？」

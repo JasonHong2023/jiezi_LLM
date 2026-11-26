@@ -1,6 +1,7 @@
 # add-image-ocr：圖中文字辨識獨立開關，問字時才跑 / Image OCR on its own switch, run for text questions
 
-> **狀態 / Status**：2026-11-26 主控提出，待使用者審閱（OQ1、OQ2）。/ Proposed 2026-11-26, awaiting the user's review.
+> **狀態 / Status**：2026-11-26 主控提出；使用者回覆「照原計畫進行」→ 依提議實作：OQ1 先用 20 張自製渲染圖（使用者實拍之後可加），OQ2 照提議條件。量測前預設 `tools`（跟著看圖工具，等於原本行為），量測過才改 `auto`。
+> Proposed 2026-11-26; the user said to go ahead as planned. Until measured the default is `tools` (old behaviour).
 
 ## Why / 為什麼
 
@@ -37,7 +38,7 @@ as data and is not logged; images stay local; CPU-only with a timeout.
 
 ## What Changes / 變更內容
 
-- 新設定 `JIEZI_IMAGE_OCR`：
+- 新設定 `JIEZI_IMAGE_OCR`（另有 `tools`＝跟著看圖工具，量測前的預設）：
   - `auto`（提議預設）：裝了 OCR 就載入；附圖且問題像在問字（既有 `TEXT_QUESTION`：寫什麼、招牌、價格、電話、菜單、
     發票、翻譯…）時才跑 OCR，結果當資料附給核心。**不需要開 `JIEZI_VISION_TOOLS`**。
   - `on`：每張附圖都跑 OCR（等於現在開看圖工具時的行為）。
