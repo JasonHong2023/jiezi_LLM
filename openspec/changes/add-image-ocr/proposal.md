@@ -1,6 +1,6 @@
 # add-image-ocr：圖中文字辨識獨立開關，問字時才跑 / Image OCR on its own switch, run for text questions
 
-> **狀態 / Status**：2026-11-26 主控提出；使用者回覆「照原計畫進行」→ 依提議實作：OQ1 先用 20 張自製渲染圖（使用者實拍之後可加），OQ2 照提議條件。量測前預設 `tools`（跟著看圖工具，等於原本行為），量測過才改 `auto`。
+> **狀態 / Status**：2026-11-26 主控提出；使用者回覆「照原計畫進行」→ 依提議實作：OQ1 先用 20 張自製渲染圖（使用者實拍之後可加），OQ2 照提議條件。量測前預設 `tools`（跟著看圖工具，等於原本行為），量測過才改 `auto`。 2026-11-27 量測：auto 沒有比只看圖準（召回率皆 1.0）且每張多 5.2 秒 → 依 OQ2 不改 auto，預設維持 `tools`（預設等於不跑 OCR）。
 > Proposed 2026-11-26; the user said to go ahead as planned. Until measured the default is `tools` (old behaviour).
 
 ## Why / 為什麼

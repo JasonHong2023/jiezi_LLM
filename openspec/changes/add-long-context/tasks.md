@@ -12,5 +12,5 @@
 ## 3. 量測與預設 / Measure and default
 
 - [x] 3.1（11-24～26 共 100 筆：52 筆放得進預算、48 筆超過〔Hermes 未壓縮的長對話〕，報告分兩組，OQ1 看前者）`eval/agent_replay.py`：重放 2026-11-26 Hermes 請求，只生成不執行，量工具呼叫合法率、與雲端同工具比例、首 token 秒數、VRAM 峰值
-- [ ] 3.2（`scripts/night/agent-replay.sh`，排 11-27，等圖中文字評測跑完）夜間跑；依 OQ1 決定預設（R20），結果記入討論紀錄
-- [ ] 3.3 Hermes `context_length` 改 30000（依 OQ2）；更新 `docs/clients.md`、README
+- [x] 3.2（2026-11-27 00:30–01:28 實跑：baseline selftest 88/90、ctx30000 selftest 90/90 通過；放得進預算 52 筆：本機接下 52、合法 1.0、同工具 0.385、中位 2.2 秒、P90 6.2 秒；超過預算 48 筆：22 筆 413、合法 0.542；VRAM 峰值 5296 MiB。同工具未達 0.60 → 依 OQ1 預設維持關、保留開關；24576 未跑〔30000 已過 selftest〕）（`scripts/night/agent-replay.sh`，排 11-27，等圖中文字評測跑完）夜間跑；依 OQ1 決定預設（R20），結果記入討論紀錄
+- [ ] 3.3（2026-11-27：docs/clients.md §6、README 已寫選用方式與量測；Hermes `context_length` 因預設不開而未改，等使用者決定）Hermes `context_length` 改 30000（依 OQ2）；更新 `docs/clients.md`、README

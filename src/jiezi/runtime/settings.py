@@ -128,7 +128,7 @@ class Settings:
     samples: int = 4                # 可驗證的問題（工具呼叫、程式）平行取樣幾個；1 = 關閉（add-sampling）
     sample_temperature: float = 0.7
     agent_ctx: int = 0              # 帶工具的代理請求在本機的上下文預算；0 = 關（每槽 4096，舊行為）（add-long-context）
-    image_ocr: str = "tools"        # 圖中文字辨識 tools／auto／on／off（add-image-ocr；量測後再定預設）/ OCR mode
+    image_ocr: str = "tools"        # 圖中文字辨識 tools／auto／on／off（add-image-ocr；2026-11-27 量測後維持 tools：auto 沒有比較準）/ OCR mode
     vision_tools: bool = False      # 本機看圖工具：偵測、提示、核對（add-vision-tools；量測過才預設開）/ off until measured
     tts: bool = False               # BlueMagpie-TTS 語音合成（add-tts，預設關）/ speech synthesis, off by default
     tts_idle_s: int = 120           # 合成行程閒置多久自動結束、歸還 GPU / idle seconds before the worker exits

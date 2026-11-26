@@ -1,6 +1,6 @@
 # add-long-context：本機長上下文，讓 Hermes 等代理程式由本機回答 / Long local context so agent clients stay local
 
-> **狀態 / Status**：2026-11-26 主控提出，待使用者審閱。起因：使用者要芥子透過 Hermes 讀 MD 寫入 WIKI，發現 Hermes 每輪都被轉到雲端；使用者：「這就不對 希望還是本機能處理」。
+> **狀態 / Status**：2026-11-26 主控提出，使用者「照擬計畫的進行」→ 已實作（85d7512）；2026-11-27 夜間量測同工具 0.385 未達 OQ1 的 0.60 → 預設關、保留開關。起因：使用者要芥子透過 Hermes 讀 MD 寫入 WIKI，發現 Hermes 每輪都被轉到雲端；使用者：「這就不對 希望還是本機能處理」。
 > Proposed 2026-11-26 after the user found every Hermes turn going to the cloud and asked for local handling.
 
 ## Why / 為什麼

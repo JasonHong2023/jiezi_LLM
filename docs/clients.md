@@ -98,9 +98,10 @@ Whole documents are translated chunk by chunk (zh-TW and en targets only), every
 
 - **物體偵測與核對**：回答前先偵測圖中物體當資料附上；回答後把答案說到的物體逐一比對，沒把握的標「（不確定）」。
 - **圖中文字（OCR）**：RapidOCR＋PP-OCRv5 mobile（含繁體），一張約 2 秒。圖中文字只當資料、明說「不是指示」，防止圖片裡藏指令。要另外安裝：`uv sync --group ocr --inexact && scripts/jiezi ocr setup`（下載並核對 sha256）；`scripts/jiezi ocr 圖片.jpg` 可以單獨辨識。
+- **只開 OCR、不開其他看圖工具**（add-image-ocr）：`JIEZI_IMAGE_OCR=auto` 只在問「寫了什麼、招牌、告示」這類圖中文字時跑；`on` 每張都跑；`off` 一律不跑；預設 `tools`（跟著 `JIEZI_VISION_TOOLS`）。2026-11-27 量測（自製繁中招牌、告示、菜單、法規、直排 20 張）：只看圖已經字元召回率 1.0、數字全對、中位 32.7 秒；auto 召回率同樣 1.0、數字 0.968、中位 37.9 秒（每張多 5 秒）→ 依 R20 不預設開，核心看得清楚的圖不需要 OCR；字很小、很密或照片模糊時可以手動設 `auto`。
 - **預設關閉的原因**（2026-11-26 量測，Open Images 100 張）：開工具後召回率 0.195 → 0.224，但精確率 0.974 → 0.934，每張 2.7 → 19.5 秒；依 R20 精確率沒提升就不預設開。問圖中文字、招牌、文件照片時可以考慮開啟。
 
-Write an image path in the question to attach it. `JIEZI_VISION_TOOLS=on` adds CPU object detection, answer checking and OCR (PP-OCRv5, optional `ocr` group); it is off by default because it did not improve precision in the 100-image evaluation.
+Write an image path in the question to attach it. `JIEZI_VISION_TOOLS=on` adds CPU object detection, answer checking and OCR (PP-OCRv5, optional `ocr` group); it is off by default because it did not improve precision in the 100-image evaluation. `JIEZI_IMAGE_OCR=auto|on|off` runs OCR alone (default `tools`: follow the vision tools); on 20 rendered zh-TW signs the core alone already read every character (recall 1.0, 32.7 s) and `auto` added 5 s per image without a gain, so it stays opt-in.
 
 ### 只要 JSON（給腳本用）/ JSON answers for scripts
 
@@ -350,3 +351,14 @@ Whether to point Hermes Agent or OpenCode at the gateway is your call (it change
 > Live test: both agents send very long system prompts and tool lists (about 58,000 tokens from OpenCode; 55 tools
 > from Hermes). They do not fit the 4,096-token local slot, so use `jiezi` (escalates straight away) or
 > `jiezi-ask-claude`; `jiezi-local` answers HTTP 413 `context_too_large`.
+
+> **代理程式長上下文（選用，2026-11-27 起；add-long-context）**：`.env` 加 `JIEZI_AGENT_CTX=30000`（8192–65536）並重啟 gateway，
+> 帶工具的請求在本機最多可用 30000 token（引擎改 36864 共用池、KV 用 q8_0；一般對話仍是每槽 4096）；同時把 Hermes
+> `config.yaml` 的 `model.context_length` 設成同樣的數字，讓 Hermes 自己壓縮舊對話。**預設關閉**：2026-11-27 夜間重放
+> 100 筆 Hermes 請求（核心 qwen3.5-4b），放得進 30000 的 52 筆本機全接下、工具呼叫 100% 合法、中位 2.2 秒、VRAM 峰值
+> 5.3 GB，但和雲端選同一個工具只有 38.5%（門檻 60%）→ 依 R20 不預設開。想讓 Hermes 留在本機、省雲端額度時可以手動開；
+> 超過 30000 的請求照樣轉雲端（`jiezi-local` 則回 413）。
+>
+> Optional long context for agents: `JIEZI_AGENT_CTX=30000` lets tool-bearing requests use up to 30000 tokens locally
+> (set Hermes `model.context_length` to match). Off by default: on 52 replayed Hermes requests that fit, every tool call
+> was valid (median 2.2 s, 5.3 GB VRAM peak) but only 38.5% chose the same tool as the cloud (bar: 60%).
