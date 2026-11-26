@@ -27,9 +27,13 @@ def cmd_serve(root) -> int:
     resolve_core(s)  # 啟動前先確認模型檔存在 / fail fast if the model file is missing
     env = load_env(root)
     slots = s.samples if s.samples > 1 else 1  # 平行取樣需要多個槽位 / parallel sampling needs several slots
+    from .settings import engine_ctx
+    # add-long-context：代理預算開著時，所有槽位共用一個 KV 池、KV 用 q8_0（32k 的 KV 和原本 16k f16 一樣大）
+    # Agent budget on: one shared KV pool for every slot and q8_0 KV (32k costs what 16k f16 did)
+    long_args = ("--kv-unified", "-ctk", "q8_0", "-ctv", "q8_0") if s.agent_ctx else ()
     factory = lambda facts, path, ngl, port, alias=None, mmproj=None: LocalEngine(  # noqa: E731
-        root, facts, path, port_base(env), ngl=ngl, ctx=4096 * slots, parallel=slots, port=port,
-        alias=alias, extra=("--mmproj", str(mmproj)) if mmproj else ())
+        root, facts, path, port_base(env), ngl=ngl, ctx=engine_ctx(s.agent_ctx, slots), parallel=slots, port=port,
+        alias=alias, extra=(("--mmproj", str(mmproj)) if mmproj else ()) + long_args)
     sup = Supervisor(s, lambda: fresh_facts(root), factory)
     gw = Gateway(s, sup, TrajectoryWriter(s.var / "trajectories", s.trajectory, s.retention_days),
                  embedder=_embedder(root, s, env), reranker=_reranker(root, s, env))

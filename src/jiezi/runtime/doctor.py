@@ -80,6 +80,17 @@ def checks(root: Path, port: int) -> list[tuple[str, str, str, str]]:
             "uv sync --group ocr --inexact && scripts/jiezi ocr setup")
     except Exception as exc:  # noqa: BLE001
         add("圖中文字（OCR）", WARN, f"無法判斷：{exc}")
+    try:  # 代理程式的本機上下文（add-long-context）/ local context for agent clients
+        from .settings import engine_ctx, load_settings
+        st = load_settings(root)
+        slots = st.samples if st.samples > 1 else 1
+        add("代理程式上下文", OK,
+            (f"JIEZI_AGENT_CTX={st.agent_ctx}：帶工具的請求本機可用 {st.agent_ctx} token（引擎共用池 "
+             f"{engine_ctx(st.agent_ctx, slots)}、KV q8_0）") if st.agent_ctx else
+            "關（每個槽位 4096 token；Hermes 等代理程式的長請求會轉雲端）",
+            "JIEZI_AGENT_CTX=30000 讓代理程式留在本機；Hermes 的 model.context_length 同步設 30000")
+    except Exception as exc:  # noqa: BLE001
+        add("代理程式上下文", WARN, f"無法判斷：{exc}")
     sandbox = root / "var" / "tools" / "bubblewrap" / "bin" / "bwrap"  # 與 verify/sandbox.py 相同 / same as the sandbox
     add("程式驗證沙盒", OK if sandbox.exists() or shutil.which("bwrap") else WARN,
         "bubblewrap 可用" if sandbox.exists() or shutil.which("bwrap") else "缺（程式題驗證停用）", "scripts/bootstrap")

@@ -37,6 +37,27 @@ def _onoff(env: dict, key: str, default: bool) -> bool:
 IMAGE_OCR_MODES = ("tools", "auto", "on", "off")
 
 
+AGENT_CTX_MIN, AGENT_CTX_MAX = 8192, 65536
+
+
+def _agent_ctx(v: int) -> int:
+    """0 = 關；否則 8192–65536（add-long-context）。 / 0 = off, else 8192-65536 tokens."""
+    if v == 0:
+        return 0
+    if not AGENT_CTX_MIN <= v <= AGENT_CTX_MAX:
+        raise JieziError(f"JIEZI_AGENT_CTX must be 0 or {AGENT_CTX_MIN}-{AGENT_CTX_MAX}, got {v}")
+    return v
+
+
+def engine_ctx(agent_ctx: int, slots: int) -> int:
+    """引擎總上下文：關時每槽 4096；開時共用池＝代理預算進位到 4096 再加一個一般槽位。
+    Total engine context: 4096 per slot when off; when on, a shared pool of the agent budget rounded up plus one slot."""
+    base = 4096 * max(1, slots)
+    if not agent_ctx:
+        return base
+    return max(base, -(-agent_ctx // 4096) * 4096 + 4096)
+
+
 def _image_ocr(value: str | None) -> str:
     """圖中文字辨識時機（add-image-ocr）：tools＝跟著看圖工具（量測前的預設，等於原本行為）、auto＝問圖中文字時才跑、
     on＝每張圖都跑、off＝不跑。 / When to OCR attached images; `tools` (default until measured) keeps the old behaviour."""
@@ -106,6 +127,7 @@ class Settings:
     rerank_timeout_s: float = 10.0  # 逾時就退回向量排序 / fall back to vector order on timeout
     samples: int = 4                # 可驗證的問題（工具呼叫、程式）平行取樣幾個；1 = 關閉（add-sampling）
     sample_temperature: float = 0.7
+    agent_ctx: int = 0              # 帶工具的代理請求在本機的上下文預算；0 = 關（每槽 4096，舊行為）（add-long-context）
     image_ocr: str = "tools"        # 圖中文字辨識 tools／auto／on／off（add-image-ocr；量測後再定預設）/ OCR mode
     vision_tools: bool = False      # 本機看圖工具：偵測、提示、核對（add-vision-tools；量測過才預設開）/ off until measured
     tts: bool = False               # BlueMagpie-TTS 語音合成（add-tts，預設關）/ speech synthesis, off by default
@@ -183,6 +205,7 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         image_paths=_onoff(env, "JIEZI_IMAGE_PATHS", True),
         vision_tools=_onoff(env, "JIEZI_VISION_TOOLS", False),
         image_ocr=_image_ocr(env.get("JIEZI_IMAGE_OCR")),
+        agent_ctx=_agent_ctx(_int(env, "JIEZI_AGENT_CTX", 0)),
         tts=_onoff(env, "JIEZI_TTS", False),
         tts_idle_s=max(30, min(3600, _int(env, "JIEZI_TTS_IDLE_S", 120))),
         asr=_onoff(env, "JIEZI_ASR", False),

@@ -213,6 +213,7 @@ class Gateway:
                 log("vision tools: models/vision not found; run the vision download first")
         self.ocr = None                 # 圖中文字（add-vision-tools OQ4、add-image-ocr，RapidOCR＋PP-OCRv5）/ text in images
         self.ocr_mode = getattr(settings, "image_ocr", "tools")
+        self._long_lock = anyio.Lock()   # add-long-context：同時一個長請求 / one long request at a time
         if self.ocr_mode in ("auto", "on") or (self.ocr_mode == "tools" and settings.vision_tools):
             from ..vision_ocr import OcrTool
             ot = OcrTool(settings.models_dir or settings.root / "models")
@@ -371,7 +372,8 @@ class Gateway:
             msgs = [*msgs, {"role": "system", "content": TOOL_NOTE}]  # merge_system 會併到開頭 / merged to the front
         # 每個槽位 4096 token：超出就裁（最舊對話 → 最長資料 → 問題）/ fit the 4096-token slot
         from .context import fit, merge_system
-        out["messages"], trim = fit(msgs, body.get("tools"), body.get("max_tokens") or body.get("max_completion_tokens"))
+        out["messages"], trim = fit(msgs, body.get("tools"), body.get("max_tokens") or body.get("max_completion_tokens"),
+                                    ctx=self._ctx(body))
         out["messages"] = merge_system(out["messages"])  # 範本只接受開頭的 system 訊息 / templates want one leading system message
         if trim["dropped_turns"] or trim["shortened_data"] or trim["shortened_question"]:
             self.log(f"context: trimmed {trim}")
@@ -779,7 +781,11 @@ class Gateway:
             return
         rec["web_read_ok"] = True
         self._untrainable(rec, "license")   # 網頁內容的授權不明 / page licences are unknown
-        if MEMO.search(text):
+        # 只在使用者剛問的那一輪記；代理程式之後每一步工具呼叫都會帶著同一則使用者訊息再來，不再重記（2026-11-26 實機：
+        # Hermes 一個任務把同一批網頁記了約 30 次）。評測請求不寫記憶。
+        # Remember only on the turn the user asked; later agent tool steps repeat the same user message (a live Hermes
+        # task saved the same pages about 30 times). Evaluation requests never write memory.
+        if MEMO.search(text) and idx == len(msgs) - 1 and not rec.get("eval"):
             rec["web_memo"] = [{"url": p["url"], "title": p["title"]} for p in pages]
             rec["_web_pages"] = [p["text"][:WEB_MEMO_CHARS] for p in pages]   # 摘要用，不寫進軌跡 / not logged
         question = text
@@ -1464,6 +1470,12 @@ class Gateway:
             _stage("thinking")        # 第一個字前還要處理提示（附圖時可能幾十秒）/ prompt processing before the first token
             return StreamingResponse(self._relay_stream(base, body, rec, t0, policy), media_type="text/event-stream")
         try:
+            if self._is_long(body):
+                # 同時只放行一個長請求，免得共用 KV 池被兩個長提示擠爆（add-long-context）
+                # One long request at a time so two long prompts never overflow the shared KV pool
+                rec["long_context"] = {"budget": self._ctx(body)}
+                async with self._long_lock:
+                    return await self._tiered(base, body, rec, t0, policy, stream)
             return await self._tiered(base, body, rec, t0, policy, stream)
         finally:
             self._seen.pop(rec["id"], None)
@@ -1935,15 +1947,33 @@ class Gateway:
         self.log(f"tool filter: {res['original']} → {len(res['tools'])} tools ({res['stage']})")
         return {**body, "tools": res["tools"]}
 
+    def _ctx(self, body: dict) -> int:
+        """本機上下文預算：帶工具的代理請求在 JIEZI_AGENT_CTX 開著時用代理預算，其餘一個槽位 4096（add-long-context）。
+        The local budget: the agent budget for tool-bearing requests when JIEZI_AGENT_CTX is set, else one 4096 slot."""
+        from .context import SLOT_CTX
+        agent = getattr(self.s, "agent_ctx", 0)
+        return agent if agent and body.get("tools") else SLOT_CTX
+
+    def _is_long(self, body: dict) -> bool:
+        """超過一個一般槽位的請求（只有代理預算開著時會出現）。 / A request larger than one ordinary slot."""
+        from .context import SLOT_CTX, total
+        if self._ctx(body) <= SLOT_CTX:
+            return False
+        try:
+            return total(body["messages"], body.get("tools")) > SLOT_CTX - TOO_LARGE_ROOM
+        except Exception:  # noqa: BLE001
+            return False
+
     def _too_large(self, body: dict) -> dict | None:
-        """裁到不能再裁還是放不進一個槽位就回傳 {"after", "ctx"}。 / Set when even full trimming cannot fit one slot."""
-        from .context import SLOT_CTX, fit
+        """裁到不能再裁還是放不進預算就回傳 {"after", "ctx"}。 / Set when even full trimming cannot fit the budget."""
+        from .context import fit
+        ctx = self._ctx(body)
         try:
             _, info = fit(body["messages"], body.get("tools"),
-                          body.get("max_tokens") or body.get("max_completion_tokens"))
+                          body.get("max_tokens") or body.get("max_completion_tokens"), ctx=ctx)
         except Exception:  # noqa: BLE001 - 估不出來就照舊送 / unknown shapes go through as before
             return None
-        return {"after": info["after"], "ctx": SLOT_CTX} if info["after"] > SLOT_CTX - TOO_LARGE_ROOM else None
+        return {"after": info["after"], "ctx": ctx} if info["after"] > ctx - TOO_LARGE_ROOM else None
 
     def _pre_route(self, body: dict, rec: dict) -> str | None:
         """需要上網或即時資料、且沒有程式算好的答案時，直接轉交。 / Web/live questions without computed facts."""
@@ -1967,6 +1997,8 @@ class Gateway:
     def _sample_kind(self, body: dict) -> str | None:
         """可驗證、值得取樣的問題種類。 / The kind of verifiable question worth sampling."""
         if self.s.samples <= 1:
+            return None
+        if self._is_long(body):  # 長請求平行取樣會把共用 KV 池撐爆 / N copies of a long prompt overflow the shared pool
             return None
         if body.get("tools"):
             return "tools"

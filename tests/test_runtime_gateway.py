@@ -45,6 +45,12 @@ class TestSettings(unittest.TestCase):
         self.assertEqual((s.gateway_port, s.engine_port, s.escalation_models, s.cloud_ready),
                          (36100, 36101, ["a", "b"], True))
         self.assertFalse(load_settings(Path("/x"), {"JIEZI_GATEWAY_KEY": KEY}).cloud_ready)  # 預設關閉 / off
+        self.assertEqual(load_settings(Path("/x"), {"JIEZI_GATEWAY_KEY": KEY}).agent_ctx, 0)  # add-long-context 預設關
+        self.assertEqual(load_settings(Path("/x"), {"JIEZI_GATEWAY_KEY": KEY, "JIEZI_AGENT_CTX": "30000"}).agent_ctx, 30000)
+        with self.assertRaises(JieziError):
+            load_settings(Path("/x"), {"JIEZI_GATEWAY_KEY": KEY, "JIEZI_AGENT_CTX": "4096"})
+        from jiezi.runtime.settings import engine_ctx
+        self.assertEqual((engine_ctx(0, 4), engine_ctx(30000, 4), engine_ctx(0, 1)), (16384, 36864, 4096))
 
     def test_key_generation(self):
         with tempfile.TemporaryDirectory() as d:
@@ -205,6 +211,25 @@ class TestScraplingFallback(unittest.TestCase):
         self.assertEqual(rec["web_read"][0]["backend"], Backend.WEB_FETCH)
         build.assert_not_called()
         self.assertFalse(audit.audit_dir(self.tmp).exists())
+
+    def test_web_memo_only_on_the_users_own_turn(self):
+        # 2026-11-26 實機：Hermes 每一步工具呼叫都帶著同一則使用者訊息再來，同一批網頁被記了約 30 次
+        gw = self.gateway(PolicyConfig())
+        page = {"url": "https://example.com/", "final_url": "https://example.com/",
+                "title": "Example", "text": "page body", "bytes": 9}
+        ask = {"role": "user", "content": "仔細閱讀這個網址的內容並記憶起來 https://example.com/"}
+        step = [ask, {"role": "assistant", "content": None, "tool_calls": [
+            {"id": "c", "type": "function", "function": {"name": "terminal", "arguments": "{}"}}]},
+                {"role": "tool", "tool_call_id": "c", "content": "ok"}]
+        with mock.patch("jiezi.webread.fetch", new=mock.AsyncMock(return_value=page)):
+            first, later, ev = {}, {}, {"eval": True}
+            anyio.run(gw._read_urls, {"messages": [dict(ask)]}, first)
+            anyio.run(gw._read_urls, {"messages": [dict(m) for m in step]}, later)
+            anyio.run(gw._read_urls, {"messages": [dict(ask)]}, ev)
+        self.assertEqual(first["web_memo"], [{"url": "https://example.com/", "title": "Example"}])
+        self.assertNotIn("web_memo", later)
+        self.assertTrue(later["web_read_ok"])                 # 網頁仍照讀、附給模型 / still read and attached
+        self.assertNotIn("web_memo", ev)
 
     def test_disabled_scrapling_keeps_original_error(self):
         gw = self.gateway(PolicyConfig())
@@ -371,10 +396,11 @@ class TestGateway(unittest.TestCase):
     def tearDown(self):
         self._t.cleanup()
 
-    def client(self, answers, cloud_on=False, cloud_fail=False, cap=200, engine_ok=True, samples=1):
+    def client(self, answers, cloud_on=False, cloud_fail=False, cap=200, engine_ok=True, samples=1, agent_ctx=0):
         sup, engines, patch = make_supervisor(
             self.tmp, cloud_escalation=cloud_on, cloud_base="http://cloud" if cloud_on else None,
-            escalation_models=["nemotron"] if cloud_on else [], cloud_daily_max=cap, samples=samples)
+            escalation_models=["nemotron"] if cloud_on else [], cloud_daily_max=cap, samples=samples,
+            agent_ctx=agent_ctx)
         self.patch = patch
         patch.start()
         self.addCleanup(patch.stop)
@@ -430,6 +456,61 @@ class TestGateway(unittest.TestCase):
             self.assertEqual(r.status_code, 200)
             self.assertEqual(r.json()["jiezi"]["escalation"], "context_too_large")
             self.assertEqual(self.local_seen, [])
+
+    # ── add-long-context ──
+    def _hermes_like(self):
+        # 約 15,000 token 的系統提示（Hermes 一類）＋幾個工具 / a ~15k-token agent system prompt plus a few tools
+        tools = [{"type": "function", "function": {"name": n, "description": "說明" * 20,
+                                                    "parameters": {"type": "object", "properties": {"path": {"type": "string"}},
+                                                                   "required": ["path"]}}}
+                 for n in ("read_file", "write_file", "terminal")]
+        return {"model": "jiezi", "tools": tools, "messages": [
+            {"role": "system", "content": "代理規則" * 3750},
+            {"role": "user", "content": "把這份檔案讀進來"}]}
+
+    def test_agent_budget_keeps_long_tool_requests_local(self):
+        call = {"role": "assistant", "content": None, "tool_calls": [
+            {"id": "c1", "type": "function", "function": {"name": "read_file", "arguments": "{\"path\": \"a.md\"}"}}]}
+        with self.client([call], cloud_on=True, agent_ctx=30000) as c:
+            r = self.post(c, self._hermes_like())
+            self.assertEqual(r.status_code, 200)
+            self.assertIsNone(r.json()["jiezi"].get("escalation"))
+        self.assertEqual(len(self.local_seen), 1)
+        self.assertEqual(self.cloud_calls, [])
+        self.assertEqual(len(self.local_seen[0]["messages"][0]["content"]) >= 15000, True)   # 沒被裁 / not trimmed
+        self.assertEqual(self.traj()[0]["long_context"], {"budget": 30000})
+
+    def test_without_agent_budget_long_tool_requests_escalate(self):
+        with self.client([{"role": "assistant", "content": "不該送到本機"}], cloud_on=True) as c:
+            r = self.post(c, self._hermes_like())
+            self.assertEqual(r.json()["jiezi"]["escalation"], "context_too_large")
+        self.assertEqual(self.local_seen, [])
+
+    def test_agent_budget_does_not_widen_plain_chat(self):
+        history = [{"role": "user" if i % 2 == 0 else "assistant", "content": "很長的對話" * 300} for i in range(10)]
+        body = {"model": "jiezi-local", "messages": history + [{"role": "user", "content": "總結一下"}]}
+        with self.client([{"role": "assistant", "content": "好"}], agent_ctx=30000) as c:
+            self.assertEqual(self.post(c, body).status_code, 200)
+        from jiezi.runtime.context import SLOT_CTX, total
+        self.assertLessEqual(total(self.local_seen[0]["messages"]), SLOT_CTX)          # 一般對話仍裁到 4096
+        self.assertNotIn("long_context", self.traj()[0])
+
+    def test_long_requests_are_not_sampled(self):
+        call = {"role": "assistant", "content": None, "tool_calls": [
+            {"id": "c1", "type": "function", "function": {"name": "read_file", "arguments": "{\"path\": \"a.md\"}"}}]}
+        with self.client([call] * 4, agent_ctx=30000, samples=4) as c:
+            self.assertEqual(self.post(c, {**self._hermes_like(), "model": "jiezi-local"}).status_code, 200)
+        self.assertEqual(len(self.local_seen), 1)                                       # 不平行取樣 / one generation
+
+    def test_long_request_with_a_bad_tool_call_retries(self):
+        bad = {"role": "assistant", "content": None, "tool_calls": [
+            {"id": "c1", "type": "function", "function": {"name": "manage_catalog", "arguments": "{}"}}]}
+        good = {"role": "assistant", "content": None, "tool_calls": [
+            {"id": "c2", "type": "function", "function": {"name": "read_file", "arguments": "{\"path\": \"a.md\"}"}}]}
+        with self.client([bad, good], agent_ctx=30000) as c:
+            r = self.post(c, {**self._hermes_like(), "model": "jiezi-local"}).json()
+        self.assertEqual(r["jiezi"]["tier"], 1)
+        self.assertEqual(r["choices"][0]["message"]["tool_calls"][0]["function"]["name"], "read_file")
 
     def test_tool_filter_lets_agent_requests_run_locally(self):
         # add-client-tool-filter：60 個無關工具＋必留 read＋相關的 weather_lookup → 篩完放得下，走本機
