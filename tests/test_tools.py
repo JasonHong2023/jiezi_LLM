@@ -37,6 +37,13 @@ class TestCalculator(unittest.TestCase):
         self.assertIn("3*7+2 = 23", facts("3 乘以 7 加 2 等於多少"))
         self.assertIn("除數不能是 0", facts("100 除以 0 是多少"))
 
+    def test_article_numbers_are_not_math(self):
+        # 2026-11-26 實測：「第51-1條」被算成 51-1 = 50 / an article number was computed as a subtraction
+        self.assertIsNone(facts("個人資料保護法第51-1條規定什麼？"))
+        self.assertIsNone(facts("民法第 184-1 條是什麼？"))
+        self.assertIsNone(facts("中山路 12-3 號在哪？"))
+        self.assertIn("51-1 = 50", facts("51-1 等於多少？"))
+
     def test_not_math(self):
         for q in ("Qwen3.5-2B 是什麼", "電話 02-2345-6789", "我的電話是 0912-345-678 對嗎?", "我 2026-11-16 要開會",
                   "我加油了 3 次", "台北101有多高"):

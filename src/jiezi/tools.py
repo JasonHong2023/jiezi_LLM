@@ -112,6 +112,7 @@ class _DateLike:
 
 
 DATE_LIKE = _DateLike()
+_NUMBERED = set("條項款目號章節編頁點樓巷弄段")   # 「51-1」後面接這些字是編號 / numbering suffixes
 
 
 def calculations(text: str) -> list[str]:
@@ -134,6 +135,8 @@ def calculations(text: str) -> list[str]:
             continue  # 0912-345-678、02-2345-6789：電話 / phone numbers
         if not cue and dashes_only:
             continue  # 只有減號又沒有問計算：多半是電話、編號 / dashes only, no question: phone numbers, codes
+        if dashes_only and (t[:m.start()].rstrip().endswith("第") or t[m.end():].lstrip()[:1] in _NUMBERED):
+            continue  # 「第51-1條」「3-2號」：條號、門牌 / article and address numbers
         try:
             v = evaluate(raw)
         except CalcError as exc:
