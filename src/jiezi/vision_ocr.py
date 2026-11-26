@@ -74,8 +74,39 @@ class OcrTool:
         with self.lock:
             engine = self._load()
             r = engine(np.asarray(img.convert("RGB"))[:, :, ::-1])     # RapidOCR 吃 BGR / RapidOCR expects BGR
-        lines = [t.strip() for t, s in zip(r.txts or (), r.scores or ()) if t and t.strip() and s >= MIN_SCORE]
+        boxes = r.boxes if r.boxes is not None else [None] * len(r.txts or ())
+        kept = [(t.strip(), b) for t, s, b in zip(r.txts or (), r.scores or (), boxes)
+                if t and t.strip() and s >= MIN_SCORE]
+        lines = vertical_order(kept) or [t for t, _ in kept]
         return Read(lines=lines[:MAX_LINES], seconds=round(time.monotonic() - t0, 2))
+
+
+def vertical_order(kept: list[tuple[str, object]]) -> list[str] | None:
+    """直排（多數多字框高大於寬）時改成由右而左、由上而下，同一欄的片段接成一行；橫排或混排回傳 None 照原順序。
+    2026-11-26 實測：四欄直排告示 RapidOCR 依由左而右輸出、同一欄被拆成兩段。
+    Vertical text (most multi-character boxes taller than wide): columns right to left, top to bottom, fragments
+    of one column joined. Returns None for horizontal or mixed layouts, which keep RapidOCR's order."""
+    rects = []
+    for text, b in kept:
+        if b is None:
+            return None
+        xs, ys = [float(pt[0]) for pt in b], [float(pt[1]) for pt in b]
+        rects.append((text, min(xs), max(xs), min(ys), max(ys)))
+    multi = [(r[2] - r[1], r[4] - r[3]) for r in rects if len(r[0]) >= 2]
+    if not multi or sum(h > 1.5 * w for w, h in multi) * 2 <= len(multi):
+        return None
+    cols: list[list] = []                                    # 每欄：[x0, x1, 片段…] / [x0, x1, pieces]
+    for r in sorted(rects, key=lambda r: -(r[1] + r[2])):
+        for c in cols:
+            overlap = min(c[1], r[2]) - max(c[0], r[1])
+            if overlap >= 0.5 * min(c[1] - c[0], r[2] - r[1]):
+                c[0], c[1] = min(c[0], r[1]), max(c[1], r[2])
+                c[2].append(r)
+                break
+        else:
+            cols.append([r[1], r[2], [r]])
+    cols.sort(key=lambda c: -(c[0] + c[1]))
+    return ["".join(r[0] for r in sorted(c[2], key=lambda r: r[3])) for c in cols]
 
 
 def ocr_text(read: Read) -> str:

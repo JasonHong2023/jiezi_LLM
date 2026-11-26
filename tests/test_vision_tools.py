@@ -214,6 +214,34 @@ class TestOcr(unittest.TestCase):
         self.assertIn("49", got)
 
 
+class TestVerticalOrder(unittest.TestCase):
+    """直排由右而左、同欄片段接起來；橫排不動。 / Vertical columns right to left; horizontal untouched."""
+
+    @staticmethod
+    def box(x0, y0, x1, y1):
+        return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
+
+    def test_columns_right_to_left_and_joined(self):
+        from jiezi.vision_ocr import vertical_order
+        kept = [("電話", self.box(77, 39, 131, 138)), ("至晚上九時", self.box(157, 42, 212, 282)),
+                ("營業時間上午十時", self.box(234, 37, 294, 427)), ("本店每週一公休", self.box(314, 39, 374, 380)),
+                ("二二三四五六七", self.box(76, 189, 132, 520))]
+        self.assertEqual(vertical_order(kept), ["本店每週一公休", "營業時間上午十時", "至晚上九時", "電話二二三四五六七"])
+
+    def test_single_column_fragments(self):
+        from jiezi.vision_ocr import vertical_order
+        kept = [("日", self.box(120, 120, 170, 170)), ("日", self.box(120, 190, 170, 240)),
+                ("咖啡", self.box(115, 260, 175, 400))]
+        self.assertEqual(vertical_order(kept), ["日日咖啡"])
+
+    def test_horizontal_and_mixed_keep_order(self):
+        from jiezi.vision_ocr import vertical_order
+        kept = [("阿嬤豆花 營業中", self.box(40, 30, 420, 80)), ("古早味", self.box(600, 130, 650, 310)),
+                ("花生豆花45元", self.box(40, 200, 380, 250)), ("紅豆豆花50元", self.box(40, 280, 380, 330))]
+        self.assertIsNone(vertical_order(kept))
+        self.assertIsNone(vertical_order([("沒有框", None)]))
+
+
 class TestImageOcrSwitch(unittest.TestCase):
     """add-image-ocr：OCR 不開看圖工具也能用；auto 只在問字時讀。 / OCR without the vision tools."""
 
