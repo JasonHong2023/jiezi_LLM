@@ -37,7 +37,10 @@ SELF = re.compile(r"自我介紹|你是誰|你叫什麼|你的名字|你在哪|�
                   r"你是芥子|芥子(?:的作者|是誰做|是什麼模型|這個名字|的名字)")
 # 創作類請求：每次都該重新創作，不存也不拿記憶裡的舊答案（2026-11-18：「說一個笑話」每次都回同一則）
 # Creative requests: never stored or answered from memory (a joke kept coming back verbatim)
+# 「寫一首押韻的古詩」這種中間有修飾語的也算（2026-11-27：舊規則漏掉，Claude 寫的詩被存成記憶）
+# Modifiers between the measure word and the genre count too
 CREATIVE = re.compile(r"笑話|講個?故事|說個?故事|編一?個|寫一?(?:首|篇|段|則)?(?:詩|歌詞|故事|小說|散文|對聯|笑話)|"
+                      r"(?:寫|作|來|創作)一?(?:首|篇|段|則)[^，。？?！!\n]{0,12}?(?:詩|詞|歌|故事|小說|散文|對聯|笑話)|"
                       r"作一?首詩|繞口令|謎語|腦筋急轉彎|順口溜|藏頭詩|打油詩")
 # 要上網、即時或網頁內容 / needs the web or live data
 WEB = re.compile(r"https?://|網路上|上網|網頁|網站|新聞|今天|今日|昨天|明天|現在幾點|最新|即時|天氣|股價|匯率|目前")

@@ -204,6 +204,14 @@ class TestMemoryLinksAndRepair(unittest.TestCase):
             self.assertEqual(m.repair_web_memos(root / "var" / "memory" / "backup"), [])   # 再跑不動 / idempotent
 
 
+class TestCreativeNotStored(unittest.TestCase):
+    def test_creative_requests_with_modifiers(self):
+        for q in ("寫一首押韻的古詩", "來一首關於秋天的五言絕句詩", "寫一篇三百字的短篇故事", "說一個笑話"):
+            self.assertEqual(M.storable(q), "creative", q)
+        for q in ("唐詩三百首是誰編的", "李白寫了幾首詩", "台灣最長的河流是哪一條"):
+            self.assertIsNone(M.storable(q), q)
+
+
 class TestTaintAcrossChannels(unittest.TestCase):
     """gateway 登記的污染內容，記憶寫入時也會被擋（同一個 root 共用 taint index）。"""
 
