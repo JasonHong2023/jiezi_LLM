@@ -9,6 +9,7 @@ redirect too. No cookies, no user data. The page text is attached as a document 
 from __future__ import annotations
 
 import ipaddress
+import html
 import re
 import socket
 from urllib.parse import urljoin, urlsplit
@@ -110,7 +111,8 @@ async def fetch(url: str, client: httpx.AsyncClient | None = None, resolve=socke
     else:
         text = read_html(data)["text"]
     title = re.search(rb"<title[^>]*>(.*?)</title>", data, re.I | re.S)
-    title = re.sub(r"\s+", " ", title.group(1).decode("utf-8", "replace")).strip()[:120] if title else ""
+    # 標題的 HTML entity 要解碼（2026-11-26 實機：「&amp;」原樣存進記憶）/ decode entities in the title
+    title = re.sub(r"\s+", " ", html.unescape(title.group(1).decode("utf-8", "replace"))).strip()[:120] if title else ""
     if not text.strip():
         raise WebError("no_text")
     return {"url": url, "final_url": current, "title": title, "text": text, "bytes": len(data)}

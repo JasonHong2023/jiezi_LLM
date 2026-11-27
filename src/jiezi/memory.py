@@ -88,7 +88,20 @@ def storable(question: str, earlier_user_turns: int = 0) -> str | None:
     return None
 
 
+# 網頁記憶的問題是固定句型（gateway._summarise_pages）；比主題時只看網頁標題，否則固定字樣讓所有網頁都被歸到同一頁
+# （2026-11-26 實機：不同網站的重點全進了同一個主題頁）。
+# Web memos share a fixed question wording; compare topics by the page title alone.
+WEB_MEMO_QUESTION = "網頁「{title}」的內容重點"
+_WEB_MEMO_RE = re.compile(r"^網頁「(.+)」的內容重點$", re.S)
+
+
+def _bare(question: str) -> str:
+    m = _WEB_MEMO_RE.match((question or "").strip())
+    return m.group(1) if m else question
+
+
 def topic_title(question: str) -> str:
+    question = _bare(question)
     t = " ".join(_core(question).split())
     return (t or question.strip())[:30]
 
@@ -236,6 +249,8 @@ class Memory:
     def topic_for(self, question: str) -> str | None:
         """既有主題頁：標題幾乎都出現在問題裡，或已有很像的問題。 / An existing topic page for the question."""
         self._scan()
+        web = _bare(question) != question
+        question = _bare(question)
         q = _grams(question)
         best, score = None, 0.0
         for title, page in self.titles.items():
@@ -246,7 +261,9 @@ class Memory:
             if cover >= TOPIC and cover > score:
                 best, score = page, cover
         for e in self.entries:
-            if e.kind != "note" and similarity(question, e.question) >= RELATED and score < 1.0:
+            if web and _bare(e.question) == e.question:
+                continue          # 網頁記憶只和網頁記憶比 / web memos join only web-memo pages
+            if e.kind != "note" and similarity(question, _bare(e.question)) >= RELATED and score < 1.0:
                 return e.page
         return best
 

@@ -64,7 +64,7 @@ def message_text(m: dict) -> str:
     return c if isinstance(c, str) else ""
 
 
-from ..memory import CREATIVE  # noqa: E402 - 創作類請求 / creative requests
+from ..memory import CREATIVE, WEB_MEMO_QUESTION  # noqa: E402 - 創作類請求、網頁記憶句型 / creative requests, web memo wording
 
 
 # 系統附在回答後面的附錄（辭典原文、計算、參考資料…）。對話紀錄送回模型前要拿掉，否則模型會照抄格式自己寫一段，
@@ -833,7 +833,7 @@ class Gateway:
             title = page["title"] or page["url"]
             try:
                 saved = await anyio.to_thread.run_sync(
-                    self.memory.save_answer, f"網頁「{title}」的內容重點",
+                    self.memory.save_answer, WEB_MEMO_QUESTION.format(title=title),
                     f"{summary}\n\n（來源：{page['url']}，{now_iso()[:10]} 由芥子在本機讀取整理）", "local", None)
                 from ..webread import remember
                 await anyio.to_thread.run_sync(remember, self.s.root, page["url"], page["title"], summary, saved)

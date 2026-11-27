@@ -129,6 +129,27 @@ training_use: false
         self.assertEqual(len(pages), 0)
 
 
+class TestWebMemoTopics(unittest.TestCase):
+    """網頁記憶依網頁標題分頁，不被固定句型歸到同一頁。 / Web memos are grouped by page title, not the fixed wording."""
+    def test_different_pages_get_their_own_topic(self):
+        with tempfile.TemporaryDirectory() as d:
+            m = M.Memory(Path(d) / "wiki")
+            q = M.WEB_MEMO_QUESTION.format
+            a = m.save_answer(q(title="CUDA Programming Guide"), "CUDA 核心概念：thread、block、grid。", "local", None)
+            b = m.save_answer(q(title="Ubuntu 官方文件"), "Ubuntu 安裝與套件管理。", "local", None)
+            c = m.save_answer(q(title="CUDA Programming Guide"), "更新：記憶體階層。", "local", None)
+            self.assertNotEqual(a, b)
+            self.assertEqual(a, c)
+            self.assertNotIn("內容重點", a)
+
+    def test_web_memo_does_not_join_an_unrelated_question(self):
+        with tempfile.TemporaryDirectory() as d:
+            m = M.Memory(Path(d) / "wiki")
+            a = m.save_answer("網頁的內容重點怎麼整理？", "先看標題。", "cloud", None)
+            b = m.save_answer(M.WEB_MEMO_QUESTION.format(title="台灣高鐵時刻表"), "班次與票價。", "local", None)
+            self.assertNotEqual(a, b)
+
+
 class TestTaintAcrossChannels(unittest.TestCase):
     """gateway 登記的污染內容，記憶寫入時也會被擋（同一個 root 共用 taint index）。"""
 

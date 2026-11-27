@@ -38,6 +38,12 @@ class TestWebRead(unittest.TestCase):
         self.assertEqual(out["title"], "Python 3 docs")
         self.assertIn("Tutorial and library.", out["text"])
 
+    def test_title_entities_are_decoded(self):
+        page = b"<html><head><title>CUDA &amp; C++ &#x6307;&#21335;</title></head><body><p>x</p></body></html>"
+        out = self.run_fetch("https://a.example/", {
+            "https://a.example/": (200, {"content-type": "text/html; charset=utf-8"}, page)})
+        self.assertEqual(out["title"], "CUDA & C++ 指南")
+
     def test_refuses_private_and_redirect_to_private(self):
         with self.assertRaisesRegex(W.WebError, "private_address"):
             self.run_fetch("http://router.local/", {}, {"router.local": "192.168.1.1"})

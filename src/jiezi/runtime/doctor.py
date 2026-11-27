@@ -50,8 +50,13 @@ def checks(root: Path, port: int) -> list[tuple[str, str, str, str]]:
     builds = [b for b in ("build-cuda", "build-cpu") if (root / b / "bin" / "llama-server").exists()]
     add("llama.cpp", OK if builds else FAIL, "、".join(builds) or "沒有建置", "scripts/bootstrap")
     models = root / "models"
-    core = models / "Qwen3-0.6B-Q8_0.gguf"
-    add("核心模型", OK if core.exists() else FAIL, core.name if core.exists() else "缺檔", "scripts/bootstrap")
+    try:  # 實際設定的核心（JIEZI_CORE_MODEL），不是 bootstrap 的預設檔 / the configured core, not the bootstrap default
+        from .settings import load_settings
+        from .supervisor import resolve_core
+        core = resolve_core(load_settings(root))
+        add("核心模型", OK, f"{core['name']}（{core['file']}）")
+    except Exception as exc:  # noqa: BLE001
+        add("核心模型", FAIL, str(exc)[:200], "scripts/bootstrap（預設核心），或 scripts/eval e0 fetch")
     emb = models / "Qwen3-Embedding-0.6B-Q8_0.gguf"
     add("embedding 模型", OK if emb.exists() else WARN, emb.name if emb.exists() else "缺檔（向量檢索停用）",
         "見 models/manifest.toml 的 qwen3-embedding-0.6b-q8_0")
