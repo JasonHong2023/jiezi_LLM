@@ -33,7 +33,8 @@ class TestMemoryWiki(unittest.TestCase):
         self.assertIn("title: 三值量化（ternary quantization）", text)
         self.assertIn("training_use: false", text)
         self.assertIn("**定義**", text)                            # 內文標題改粗體 / heading demoted
-        self.assertIn("[[三值量化（ternary quantization）]]", (self.m.wiki / "index.md").read_text(encoding="utf-8"))
+        self.assertIn("[[三值量化ternary_quantization|三值量化（ternary quantization）]]",
+                      (self.m.wiki / "index.md").read_text(encoding="utf-8"))
         self.assertIn("| remember |", (self.m.wiki / "log.md").read_text(encoding="utf-8"))
         self.m.save_answer("三值量化和二值量化差在哪？", "新答案。", "claude", "claude-x")
         self.assertEqual([e.text for e in self.m.entries if e.question.startswith("三值量化和")], ["新答案。"])
@@ -148,6 +149,59 @@ class TestWebMemoTopics(unittest.TestCase):
             a = m.save_answer("網頁的內容重點怎麼整理？", "先看標題。", "cloud", None)
             b = m.save_answer(M.WEB_MEMO_QUESTION.format(title="台灣高鐵時刻表"), "班次與票價。", "local", None)
             self.assertNotEqual(a, b)
+
+
+class TestMemoryLinksAndRepair(unittest.TestCase):
+    def test_index_links_use_the_file_name(self):
+        with tempfile.TemporaryDirectory() as d:
+            m = M.Memory(Path(d) / "wiki")
+            page = m.save_answer("台灣最高的山是哪座 高度多少公尺", "玉山，3952 公尺。", "cloud", None)
+            m.save_answer("玉山國家公園在哪裡", "跨南投、嘉義、高雄、花蓮。台灣最高的山是哪座 高度多少公尺 見另一頁。", "cloud", None)
+            index = (Path(d) / "wiki" / "index.md").read_text(encoding="utf-8")
+            stem = Path(page).stem
+            self.assertIn(f"[[{stem}|台灣最高的山是哪座 高度多少公尺]]", index)
+            names = {p.stem for p in (Path(d) / "wiki").rglob("*.md")}
+            import re
+            for target in re.findall(r"\[\[([^\]|]+)", index):
+                if target != "使用者要我記住的事":          # 筆記頁第一次記筆記才建立 / created with the first note
+                    self.assertIn(target, names)
+
+    def test_repair_splits_merged_web_memos_without_losing_text(self):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            wiki = root / "var" / "memory" / "wiki"
+            m = M.Memory(wiki, root)
+            page = wiki / "topics" / "網頁_https_docsubuntucom_的內.md"
+            qa = [("網頁「https://docs.ubuntu.com/」的內容重點", "2026-11-18T10:00", "本機（讀網頁）",
+                   "Ubuntu 重點。\n\n（來源：https://docs.ubuntu.com/，2026-11-18 由芥子在本機讀取整理）"),
+                  ("網頁「Python 3.15.2 documentation」的內容重點", "2026-11-24T10:00", "本機（讀網頁）",
+                   "Python 重點。\n\n（來源：https://docs.python.org/3/，2026-11-24 由芥子在本機讀取整理）"),
+                  ("網頁「CUDA Guide &#8212; CUDA」的內容重點", "2026-11-26T10:00", "本機（讀網頁）",
+                   "CUDA 重點。\n\n（來源：https://docs.nvidia.com/cuda/，2026-11-26 由芥子在本機讀取整理）"),
+                  ("網頁「CUDA Guide &#8212; CUDA」的內容重點", "2026-11-26T11:00", "本機（讀網頁）",
+                   "CUDA 重點新版。\n\n（來源：https://docs.nvidia.com/cuda/，2026-11-26 由芥子在本機讀取整理）")]
+            page.write_text(M.render_page("網頁 https //docs.ubuntu.com/ 的內", "2026-11-18T10:00", qa, [], [],
+                                          ["jiezi-memory", "consult"]), encoding="utf-8")
+            (root / "var" / "memory" / "web_memo.json").write_text(json.dumps([
+                {"url": "https://docs.python.org/3/", "title": "Python", "page": "topics/" + page.name},
+                {"url": "https://docs.nvidia.com/cuda/", "title": "CUDA Guide &#8212; CUDA", "page": "topics/" + page.name}]),
+                encoding="utf-8")
+            done = m.repair_web_memos(root / "var" / "memory" / "backup")
+            self.assertEqual(len(done), 1)
+            self.assertTrue(page.exists())
+            kept = page.read_text(encoding="utf-8")
+            self.assertIn("Ubuntu 重點", kept)
+            self.assertNotIn("Python 重點", kept)
+            texts = "".join(p.read_text(encoding="utf-8") for p in (wiki / "topics").glob("*.md"))
+            for s in ("Ubuntu 重點", "Python 重點", "CUDA 重點新版", "2026-11-24T10:00"):
+                self.assertIn(s, texts)
+            self.assertNotIn("&#8212;", texts)
+            self.assertEqual(len(list((root / "var" / "memory" / "backup").glob("*.md"))), 1)
+            rows = json.loads((root / "var" / "memory" / "web_memo.json").read_text(encoding="utf-8"))
+            self.assertTrue(all(r["page"] != "topics/" + page.name for r in rows))
+            self.assertEqual(rows[1]["title"], "CUDA Guide — CUDA")
+            self.assertEqual(m.repair_web_memos(root / "var" / "memory" / "backup"), [])   # 再跑不動 / idempotent
 
 
 class TestTaintAcrossChannels(unittest.TestCase):

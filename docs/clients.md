@@ -252,6 +252,7 @@ Arithmetic, conversions and dates are computed by code and appended after the an
 scripts/jiezi memory list            # 列出主題與要記住的事
 scripts/jiezi memory search LoRA     # 查記憶
 scripts/jiezi memory forget LoRA     # 刪掉一個主題（也可以直接刪 wiki 裡的檔案）
+scripts/jiezi memory repair            # 拆開舊版被歸到同一頁的網頁記憶（先備份到 var/memory/backup/，不刪檔）
 scripts/jiezi chat --new             # 開新對話（預設接續上次）
 ```
 

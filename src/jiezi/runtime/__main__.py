@@ -337,7 +337,7 @@ def main(argv: list[str] | None = None) -> int:
     lp.add_argument("--gpu", action="store_true", help="embed: 用 GPU 建向量 / use the GPU")
     lp.add_argument("query", nargs="?", help="例如「民法第184條」/ e.g. 民法第184條")
     mp = sub.add_parser("memory", help="memory wiki: consulted answers, notes, corrections (add-memory)")
-    mp.add_argument("action", choices=["list", "search", "forget", "path"])
+    mp.add_argument("action", choices=["list", "search", "forget", "path", "repair"])
     mp.add_argument("query", nargs="?", help="search：問題；forget：主題名稱 / search: question; forget: topic title")
     trp = sub.add_parser("train", help="Phase 6 LoRA training (R20): plan, sft, export, gate")
     trp.add_argument("action", choices=["plan", "sft", "export", "gate", "replay"])
@@ -490,6 +490,10 @@ def main(argv: list[str] | None = None) -> int:
             m = M.Memory(M.wiki_path(root), root)
             if args.action == "path":
                 print(m.wiki)
+                return 0
+            if args.action == "repair":   # 拆開修 bug 前被歸到同一頁的網頁記憶 / split merged web memos
+                done = m.repair_web_memos(root / "var" / "memory" / "backup")
+                print("\n".join(done) if done else "沒有需要修的頁面 / nothing to repair")
                 return 0
             if args.action == "list":
                 topics = m.topics()

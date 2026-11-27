@@ -199,6 +199,7 @@ class Memory:
         """root：專案根目錄，用來共用 gateway 的 taint index（add-agent-trust-gate）；沒給就只用記憶體裡的 gate。
         root shares the gateway's taint index; without it an in-memory gate is used."""
         self.wiki = wiki
+        self.root = root
         self.gate = get_gate(root)
         for d in ("topics", "notes"):
             (wiki / d).mkdir(parents=True, exist_ok=True)
@@ -241,9 +242,16 @@ class Memory:
 
     def _index(self) -> None:
         self._scan()
-        lines = ["# 芥子記憶 Index", "", "## 主題", ""] + [f"- [[{t}]]" for t in sorted(self.titles)]
-        lines += ["", "## 筆記", "", "- [[使用者要我記住的事]]", ""]
+        lines = ["# 芥子記憶 Index", "", "## 主題", ""] + [f"- [[{self._target(t)}]]" for t in sorted(self.titles)]
+        lines += ["", "## 筆記", "", f"- [[{Path(NOTES_PAGE).stem}]]", ""]
         _atomic_write(self.wiki / "index.md", "\n".join(lines))
+
+    def _target(self, title: str) -> str:
+        """wikilink 目標：Obsidian／Hermes 依檔名找頁，標題和檔名不同時寫成「檔名|標題」（2026-11-27：index 有 8/19 個
+        連結點不開）。 / Link target: pages resolve by file name, so write `stem|title` when they differ."""
+        page = self.titles.get(title)
+        stem = Path(page).stem if page else safe_name(title)
+        return title if stem == title else f"{stem}|{title}"
 
     # ── 主題歸類 / Topic assignment ──
     def topic_for(self, question: str) -> str | None:
@@ -299,8 +307,9 @@ class Memory:
             corr = [e for e in corr if normalize(e[0]) != normalize(question)] + [new]
         self._scan()
         others = [t for t in self.titles if t != title]
-        related = sorted({r.strip("[]") for r in re.findall(r"^- \[\[(.+?)\]\]", secs.get("相關", ""), re.M)} |
+        related = sorted({r.split("|")[-1] for r in re.findall(r"^- \[\[(.+?)\]\]", secs.get("相關", ""), re.M)} |
                          {t for t in others if t in text or t in question})
+        related = [self._target(r) for r in related]
         tags = ["jiezi-memory", "correction" if corr else "consult"]
         _atomic_write(self.wiki / page, render_page(title, created, qa, corr, related, tags,
                                                     trust_level=level.name.lower(), provenance=provenance.to_dict()))
@@ -308,6 +317,89 @@ class Memory:
                   f"question={question.strip()[:60]}; source={source or 'user'}")
         self._index()
         return page
+
+    # ── 修復 / Repair ──
+    def repair_web_memos(self, backup: Path) -> list[str]:
+        """把修 bug 前被歸到同一頁的不同網站拆開（2026-11-27）：依來源網址的主機分組；和原頁主題相同的那組留在原頁，
+        其餘移到各自的新頁。原文、日期、來源全部保留，改寫前先備份原頁，不刪檔。回傳改動說明。
+        Split web memos that the old bug merged: group by source host; the page's own group stays, others move to new
+        pages with their dates, sources and text intact. The original page is backed up first; no file is deleted."""
+        import html
+        from urllib.parse import urlsplit
+        self._scan()
+        done = []
+        for f in sorted(self.wiki.glob("topics/*.md")):
+            meta, secs = parse_page(f.read_text(encoding="utf-8"))
+            qa, corr = _entries(secs.get("問答", "")), _entries(secs.get("使用者更正", ""))
+            groups: dict[str, list] = {}
+            for e in qa:
+                q = html.unescape(e[0])
+                if _bare(q) == q:
+                    groups.setdefault("", []).append(e)
+                    continue
+                m = re.search(r"來源：(https?://[^\s，）]+)", e[3])
+                host = (urlsplit(m.group(1)).hostname or "") if m else _bare(q)
+                groups.setdefault(host, []).append((q, *e[1:]))
+            web = {k: v for k, v in groups.items() if k}
+            if len(web) < 2:
+                continue
+            title = meta.get("title") or f.stem
+            keep = next((k for k, v in web.items() if any(normalize(topic_title(e[0])) == normalize(title)
+                                                          or k in normalize(title.replace(" ", "")) for e in v)),
+                        min(web, key=lambda k: min(e[1] for e in web[k])))
+            backup.mkdir(parents=True, exist_ok=True)
+            (backup / f"{_now()[:16].replace(':', '')}-{f.name}").write_text(f.read_text(encoding="utf-8"),
+                                                                            encoding="utf-8")
+            prov = {k[len("provenance_"):]: v for k, v in meta.items() if k.startswith("provenance_")}
+            level = meta.get("trust_level") or "unverified"
+            tags = [x.strip() for x in meta.get("tags", "[jiezi-memory, consult]").strip("[]").split(",") if x.strip()]
+
+            def dedupe(es):
+                out = {}
+                for e in sorted(es, key=lambda e: e[1]):
+                    out[normalize(e[0])] = e
+                return list(out.values())
+            moved = []
+            for host, es in web.items():
+                if host == keep:
+                    continue
+                es = dedupe(es)
+                ntitle = topic_title(es[-1][0])
+                page = f"topics/{safe_name(ntitle)}.md"
+                n = 1
+                while (self.wiki / page).exists():
+                    n += 1
+                    page = f"topics/{safe_name(ntitle)}_{n}.md"
+                _atomic_write(self.wiki / page, render_page(ntitle, min(e[1] for e in es), es, [], [], tags,
+                                                            trust_level=level, provenance=prov or None))
+                self._log("repair", Path(page).name, f"從 {f.name} 拆出 {len(es)} 則（{host}）")
+                moved.append((host, page, es))
+            rest = dedupe(groups.get("", []) + web[keep])
+            related = [r.split("|")[-1] for r in re.findall(r"^- \[\[(.+?)\]\]", secs.get("相關", ""), re.M)]
+            _atomic_write(f, render_page(html.unescape(title), meta.get("created") or _now(), rest, corr, related, tags,
+                                         trust_level=level, provenance=prov or None))
+            self._log("repair", f.name, f"留 {len(rest)} 則（{keep}），拆出 {sum(len(m[2]) for m in moved)} 則；備份在 {backup}")
+            done.append(f"{f.name}：留 {len(rest)} 則（{keep}）；" + "；".join(f"{h} → {p}" for h, p, _ in moved))
+            self._repair_memo_index(f.relative_to(self.wiki).as_posix(), moved)
+        self._stamp = None
+        self._index()
+        return done
+
+    def _repair_memo_index(self, old_page: str, moved: list) -> None:
+        """web_memo.json 裡指到舊頁的網址改指新頁，標題解碼。 / Repoint web_memo.json rows and unescape titles."""
+        import html
+        import json
+        from urllib.parse import urlsplit
+        p = Path(self.root) / "var" / "memory" / "web_memo.json" if self.root else None
+        if not p or not p.exists():
+            return
+        rows = json.loads(p.read_text(encoding="utf-8"))
+        to = {h: page for h, page, _ in moved}
+        for r in rows:
+            r["title"] = html.unescape(r.get("title") or "")
+            if r.get("page") == old_page:
+                r["page"] = to.get(urlsplit(r.get("url") or "").hostname or "", old_page)
+        p.write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
 
     # ── 寫入 / Write ──
     def save_answer(self, question: str, answer: str, provider: str, model: str | None) -> str | None:
