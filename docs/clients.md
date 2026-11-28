@@ -259,6 +259,19 @@ scripts/jiezi chat --new             # 開新對話（預設接續上次）
 Claude 的答案在記憶裡只用來查，不用於訓練。`JIEZI_MEMORY=off` 可關閉。
 Consulted answers, notes and corrections are kept in a Markdown wiki; Claude's answers are lookup-only.
 
+### 我的 wiki / The user's own wiki（add-wiki-recall，預設關）
+
+回答時查你自己的知識庫 `~/wiki`（只讀頁面，不讀 `raw/`，也不寫入）。用到的回答不可訓練；轉給雲端或 Claude 時會先拿掉 wiki 段落。
+
+```bash
+scripts/jiezi wiki index                 # 建／更新索引（只重做有變動的頁面），報告在 var/wiki-recall/report.md
+scripts/jiezi wiki search CUDA 執行模型    # 看會附上哪些段落
+# .env：JIEZI_WIKI_RECALL=on 後重啟 gateway；JIEZI_WIKI_RECALL_EXCLUDE=folder/,page.md 加排除
+```
+
+預設不收 `social/`、`boards/`、超過 200 KB 的頁面、`private: true` 的頁面，以及看起來像金鑰的段落（報告只列位置）。
+Off by default; read-only; passages never leave this machine and answers using them are untrainable.
+
 ### 缺口報告 / Gap report
 
 ```bash

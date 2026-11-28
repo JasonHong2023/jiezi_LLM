@@ -402,6 +402,9 @@ def main(argv: list[str] | None = None) -> int:
     kp.add_argument("action", choices=["build", "search", "embed"])
     kp.add_argument("--gpu", action="store_true", help="embed: 用 GPU 建向量（E0 等評測沒在跑時）/ use the GPU")
     kp.add_argument("query", nargs="?")
+    wkp = sub.add_parser("wiki", help="the user's own ~/wiki: read-only index for answers (add-wiki-recall)")
+    wkp.add_argument("action", choices=["index", "search"])
+    wkp.add_argument("query", nargs="?")
     wp = sub.add_parser("writing-refs", help="writing-lesson link index, titles and URLs only (add-curriculum D6)")
     wp.add_argument("action", choices=["build", "search"])
     wp.add_argument("query", nargs="?")
@@ -755,6 +758,20 @@ def main(argv: list[str] | None = None) -> int:
                 rr.stop()
                 if emb is not None:
                     emb.stop()
+        if args.cmd == "wiki":
+            import os
+
+            from .. import wiki_recall as WR
+            env = load_env(root)
+            if args.action == "index":
+                WR.build(root, WR.vault_path({**os.environ, **env}), WR.excludes(env))
+                print(f"index: {WR.db_path(root)}; report: {WR.db_path(root).parent / 'report.md'}"
+                      "; JIEZI_WIKI_RECALL=on and restart the gateway to use it")
+                return 0
+            hits = WR.WikiRecall(WR.db_path(root)).search(args.query or "")
+            for h in hits:
+                print(f"{h['path']}｜{h['heading']}（{h['hits']}）\n  {h['text'][:160]}")
+            return 0 if hits else 1
         if args.cmd == "knowledge":
             from .. import knowledge as K
             if args.action == "build":

@@ -146,6 +146,7 @@ class Settings:
     memory: bool = True             # 記憶 wiki：請教過的答案、記住的事、更正（add-memory）/ memory wiki
     tw_phrases: bool = True         # 本機輸出換成台灣用語（OpenCC TWPhrases 篩選）/ Taiwan phrasing for local output
     knowledge: bool = True          # 台灣知識問題先查 taiwan-md（add-knowledge）/ Taiwan questions use taiwan-md
+    wiki_recall: bool = False       # 回答時查使用者自己的 ~/wiki（add-wiki-recall；預設關，試過再開）/ the user's wiki, off
     writing_refs: bool = True       # 寫作問題附延伸閱讀連結（add-curriculum D6）/ further-reading links for writing questions
     curriculum: bool = True         # 課綱／國小學習問題先查知識圖譜（add-curriculum）/ curriculum questions use the graph
     consult_auto: bool = True       # 自動請教，不用逐次同意（使用者 2026-11-15）/ auto-consult without per-call approval
@@ -194,6 +195,7 @@ def load_settings(root: Path | None = None, env: dict | None = None) -> Settings
         curriculum=_onoff(env, "JIEZI_CURRICULUM", True),
         writing_refs=_onoff(env, "JIEZI_WRITING_REFS", True),
         knowledge=_onoff(env, "JIEZI_KNOWLEDGE", True),
+        wiki_recall=_onoff(env, "JIEZI_WIKI_RECALL", False),
         tw_phrases=_onoff(env, "JIEZI_TW_PHRASES", True),
         memory=_onoff(env, "JIEZI_MEMORY", True),
         tools=_onoff(env, "JIEZI_TOOLS", True),

@@ -64,6 +64,7 @@ def message_text(m: dict) -> str:
     return c if isinstance(c, str) else ""
 
 
+from ..wiki_recall import strip_private  # noqa: E402 - 轉交前拿掉使用者 wiki 段落 / drop wiki passages
 from ..memory import CREATIVE, WEB_MEMO_QUESTION  # noqa: E402 - 創作類請求、網頁記憶句型 / creative requests, web memo wording
 
 
@@ -264,6 +265,14 @@ class Gateway:
                 self.knowledge = Knowledge(knowledge_db(settings.root))
             except Exception as exc:  # noqa: BLE001 - 沒建置就跳過 / skipped when not built
                 self.knowledge_note = str(exc)
+        self.wiki, self.wiki_note = None, "off"
+        if getattr(settings, "wiki_recall", False):   # 使用者自己的 ~/wiki（add-wiki-recall；預設關）/ the user's wiki
+            from ..wiki_recall import WikiRecall, db_path as wiki_db
+            try:
+                self.wiki = WikiRecall(wiki_db(settings.root))
+                self.wiki_note = "on ({} pages, {} sections)".format(*self.wiki.count())
+            except Exception as exc:  # noqa: BLE001 - 沒建索引就跳過 / skipped when not indexed
+                self.wiki_note = str(exc)
         self.skills = None
         if settings.skills:
             from ..skills import Skills, skills_path
@@ -405,6 +414,8 @@ class Gateway:
         headers = {"Authorization": f"Bearer {self.s.cloud_key}"} if self.s.cloud_key else {}
         payload = {k: v for k, v in body.items()
                    if k not in ("model", "stream", "stream_options", "chat_template_kwargs", "jiezi_translate")}
+        if "messages" in payload:  # 使用者 wiki 的段落不出本機 / the user's wiki passages never leave this machine
+            payload["messages"] = strip_private(payload["messages"])
         last = None
         for model in self.s.escalation_models:
             try:
@@ -498,7 +509,8 @@ class Gateway:
         """詞語問題查本機辭典、課綱問題查知識圖譜，把原文附給模型（add-dictionary D2、D3；add-curriculum D2、D3）。
         Attach verbatim dictionary entries for word questions and curriculum-graph data for curriculum questions."""
         if body.get("tools") or (not self.s.tools and all(x is None for x in (
-                self.memory, self.dictionary, self.curriculum, self.knowledge, self.writing, self.laws))):
+                self.memory, self.dictionary, self.curriculum, self.knowledge, self.writing, self.laws,
+                getattr(self, "wiki", None)))):
             return
         last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
         if not last:
@@ -555,6 +567,19 @@ class Gateway:
         if self.memory is not None and not last.get("_img") and not CREATIVE.search(last["content"] or ""):  # 記憶最優先
             from ..memory import recall_block
             found.append(recall_block(last["content"], self.memory, include_answer=tool_grounded is None))
+        from ..documents import DOC_RE
+        if getattr(self, "wiki", None) is not None and not doc and not last.get("_img") \
+                and not DOC_RE.search(last["content"] or ""):   # 附了文件就是在問文件 / a document question
+            # 使用者自己的 ~/wiki（add-wiki-recall）：私人資料，不可訓練，轉交前拿掉 / private; stripped on escalation
+            from ..wiki_recall import grounding as wiki_grounding
+            try:
+                got = wiki_grounding(self.wiki, last["content"] or "")
+            except Exception as exc:  # noqa: BLE001 - 查不到照常回答 / recall failure never blocks
+                self.log(f"wiki recall: {type(exc).__name__}: {exc}")
+                got = None
+            if got:
+                rec["wiki_recall"] = [x["page"] for x in got[1]]
+                found.append(got)
         if getattr(self, "experience", None) is not None and not last.get("_img") \
                 and not CREATIVE.search(last["content"] or ""):
             # 過去解題的經驗當提示（local-first-solving）/ lessons from earlier questions as hints
@@ -620,8 +645,8 @@ class Gateway:
             rec["grounding_text"] = (rec.get("grounding_text") or "") + "\n" + content
             rec["sources"] = (rec.get("sources") or []) + sources
             rec["dict_appendix"] = (rec.get("dict_appendix") or "") + appendix
-            if not trainable:
-                self._untrainable(rec, "license")  # 例如禁止改作的辭典 / e.g. a no-derivatives dictionary
+            if not trainable:  # 例如禁止改作的辭典；使用者的 wiki 是私人資料 / no-derivatives licence, or private wiki
+                self._untrainable(rec, "private" if sources and sources[0].get("source") == "wiki" else "license")
         if self.writing is not None:
             w = self.writing.appendix(last["content"])
             if w:  # 只附連結，不給模型內文 / links only; no article text reaches the model
@@ -985,6 +1010,7 @@ class Gateway:
                              "writing_refs": "on" if self.writing else (self.writing_note or "off"),
                              "knowledge": "on" if self.knowledge else (self.knowledge_note or "off"),
                              "rag": self.rag_note,
+                             "wiki_recall": getattr(self, "wiki_note", "off"),
                              "rerank": self.reranker.note if self.reranker else "off",
                              "agent": "on" if self.s.agent else "off",
                              "laws": "on" if self.laws else (self.laws_note or "off"),
@@ -2176,7 +2202,7 @@ class Gateway:
         rec["_teachers_done"] = True
         delivered = next((t["answer"].get("content") for t in reversed(rec.get("tiers") or []) if isinstance(t, dict)
                           and t.get("tier") == 3 and isinstance(t.get("answer"), dict)), "") or ""
-        msgs = [{"role": m["role"], "content": m["content"]} for m in req.get("messages") or []
+        msgs = [{"role": m["role"], "content": m["content"]} for m in strip_private(req.get("messages") or [])
                 if m.get("role") in ("system", "user", "assistant") and isinstance(m.get("content"), str)]
         try:
             asyncio.get_running_loop().create_task(
@@ -2422,6 +2448,8 @@ class Gateway:
                      ) -> Response | None:
         """第 2 層：協助者只給回饋，本機帶著回饋重答一次。通過就回覆；回傳 None 表示繼續第 3 層。
         Tier 2: the helper gives feedback only and the local model answers once more. None means go on to tier 3."""
+        if rec.get("wiki_recall"):  # 本機答案用到私人 wiki，不送給協助者看 / a wiki-based answer is not shown to helpers
+            return None
         msgs = escalation.feedback_request(body, _message(last), ver.get("error") or "")
         _stage("asking_feedback")
         try:
@@ -2478,6 +2506,7 @@ class Gateway:
         return self._deliver(resp, meta, rec, stream)
 
     async def _consult_once(self, body: dict) -> tuple[dict, dict]:
+        body = {**body, "messages": strip_private(body.get("messages") or [])}   # wiki 段落不出本機 / stays local
         last = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), None)
         text = last["content"] if last and isinstance(last.get("content"), str) else ""
         from ..consult_hints import hints_for

@@ -116,6 +116,13 @@ def checks(root: Path, port: int) -> list[tuple[str, str, str, str]]:
         fix = ("scripts/jiezi knowledge embed --gpu" if "知識" in name else "scripts/jiezi laws embed --gpu") if vec \
             else "scripts/jiezi data build"
         add(name, OK if n else (WARN if vec else FAIL), f"{n:,} 筆" if n else "沒有建置", fix)
+    from ..config import load_env
+    from ..wiki_recall import db_path as wiki_db  # 使用者自己的 ~/wiki（add-wiki-recall）/ the user's wiki
+    wiki_on = str(load_env(root).get("JIEZI_WIKI_RECALL", "off")).strip().lower() in ("on", "1", "true", "yes")
+    n = _rows(wiki_db(root), "SELECT COUNT(*) FROM pages") if wiki_db(root).exists() else None
+    add("我的 wiki（~/wiki）", (OK if n else WARN) if wiki_on else OK,
+        (f"開啟，{n:,} 頁" if n else "開啟但沒有索引") if wiki_on else ("關閉" + (f"（索引 {n:,} 頁）" if n else "")),
+        "scripts/jiezi wiki index" if wiki_on and not n else "JIEZI_WIKI_RECALL=on 開啟")
     cur = root / "var" / "curriculum"
     add("課綱與課本", OK if any(cur.glob("*.json")) else FAIL, "已下載" if any(cur.glob("*.json")) else "沒有建置",
         "scripts/jiezi data build")
