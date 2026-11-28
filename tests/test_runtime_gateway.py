@@ -231,6 +231,18 @@ class TestScraplingFallback(unittest.TestCase):
         self.assertTrue(later["web_read_ok"])                 # 網頁仍照讀、附給模型 / still read and attached
         self.assertNotIn("web_memo", ev)
 
+    def test_web_memo_ignores_remember_inside_documents(self):
+        # 2026-11-28 夜間：附件內文有「記憶」，被當成使用者要記住 / "記憶" inside a document is not a request
+        gw = self.gateway(PolicyConfig())
+        page = {"url": "https://example.com/", "final_url": "https://example.com/",
+                "title": "Example", "text": "page body", "bytes": 9}
+        msg = {"role": "user", "content": "【文件：筆記】\n長期記憶的設計\n【文件結束】\n\n摘要 https://example.com/"}
+        with mock.patch("jiezi.webread.fetch", new=mock.AsyncMock(return_value=page)):
+            rec = {}
+            anyio.run(gw._read_urls, {"messages": [msg]}, rec)
+        self.assertTrue(rec["web_read_ok"])
+        self.assertNotIn("web_memo", rec)
+
     def test_disabled_scrapling_keeps_original_error(self):
         gw = self.gateway(PolicyConfig())
         body = {"messages": [{"role": "user", "content": "https://example.com/"}]}

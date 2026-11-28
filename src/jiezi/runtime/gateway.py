@@ -785,7 +785,9 @@ class Gateway:
         # Hermes 一個任務把同一批網頁記了約 30 次）。評測請求不寫記憶。
         # Remember only on the turn the user asked; later agent tool steps repeat the same user message (a live Hermes
         # task saved the same pages about 30 times). Evaluation requests never write memory.
-        if MEMO.search(text) and idx == len(msgs) - 1 and not rec.get("eval"):
+        # 「記住」要是使用者自己說的，不算附件裡的字（2026-11-28 夜間：文件內文有「記憶」，同一網頁被記了 9 次）
+        # "Remember" must be the user's own words, not text inside an attached document
+        if MEMO.search(D.DOC_RE.sub(" ", text)) and idx == len(msgs) - 1 and not rec.get("eval"):
             rec["web_memo"] = [{"url": p["url"], "title": p["title"]} for p in pages]
             rec["_web_pages"] = [p["text"][:WEB_MEMO_CHARS] for p in pages]   # 摘要用，不寫進軌跡 / not logged
         question = text
